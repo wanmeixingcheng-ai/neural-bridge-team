@@ -1,0 +1,8 @@
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  background: #eef1f7;
+}
