@@ -1,8 +1,9 @@
-import { isAuthenticated } from "../auth/session.js";
+import { isAuthenticatedAsync } from "../auth/session.js";
 import { createHash, timingSafeEqual } from "crypto";
 import { readJsonLimited, requestBodyTooLargeResponse } from "../../../lib/requestBody.mjs";
 import { containsSensitiveSecret, sensitiveContentResponse } from "../../../lib/secretPolicy.mjs";
-import { checkRateLimit, rateLimitResponse } from "../../../lib/rateLimit.mjs";
+import { checkRateLimitAsync, rateLimitResponse } from "../../../lib/rateLimit.mjs";
+import { auditEvent } from "../../../lib/auditLog.mjs";
 
 const CODEX_TASK_MAX_REQUEST_BYTES = 64 * 1024;
 const CODEX_TASK_RATE_WINDOW_MS = 60_000;
@@ -43,10 +44,12 @@ function codexDispatchConfigError() {
 }
 
 export async function POST(request) {
-  if (!isAuthenticated(request)) {
+  if (!await isAuthenticatedAsync(request)) {
+    await auditEvent(request, { type:"codex_task.auth_failed", status:"blocked" });
     return Response.json({ ok: false, error: "未登录" }, { status: 401 });
   }
-  if (!checkRateLimit({ request, namespace:"codex-tasks", limit:CODEX_TASK_RATE_LIMIT, windowMs:CODEX_TASK_RATE_WINDOW_MS })) {
+  if (!await checkRateLimitAsync({ request, namespace:"codex-tasks", limit:CODEX_TASK_RATE_LIMIT, windowMs:CODEX_TASK_RATE_WINDOW_MS })) {
+    await auditEvent(request, { type:"codex_task.rate_limited", status:"blocked" });
     return rateLimitResponse("Codex task rate limit exceeded");
   }
 
@@ -60,6 +63,12 @@ export async function POST(request) {
   }
   const configError = codexDispatchConfigError();
   if (configError) {
+    await auditEvent(request, {
+      type:"codex_task.forwarded",
+      status:"ok",
+      target:"github",
+      metadata:{ taskId, issueUrl:data.html_url, pendingApproval:!autoRunEnabled },
+    });
     return Response.json({
       ok: false,
       forwarded: false,
@@ -67,6 +76,7 @@ export async function POST(request) {
     }, { status: 503 });
   }
   if (!canDispatchCodexTask(body)) {
+    await auditEvent(request, { type:"codex_task.dispatch_denied", status:"blocked" });
     return Response.json({
       ok: false,
       forwarded: false,
@@ -74,6 +84,7 @@ export async function POST(request) {
     }, { status: 403 });
   }
   if (containsSensitiveSecret(`${body?.userTask || ""}\n${body?.systemPrompt || ""}`)) {
+    await auditEvent(request, { type:"codex_task.secret_blocked", status:"blocked" });
     return sensitiveContentResponse();
   }
   const userTask = `${body?.userTask || ""}`.trim();
@@ -149,6 +160,7 @@ export async function POST(request) {
       );
     }
 
+    await auditEvent(request, { type:"codex_task.forwarded", status:"ok", target:"webhook", metadata:{ taskId } });
     return Response.json({ ok: true, taskId, forwarded: true });
   }
 

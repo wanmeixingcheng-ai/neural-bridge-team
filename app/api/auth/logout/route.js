@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "../session.js";
+import { revokeSessionToken, SESSION_COOKIE } from "../session.js";
+import { auditEvent } from "../../../../lib/auditLog.mjs";
 
-export async function POST() {
+export async function POST(request) {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  await revokeSessionToken(token);
+  await auditEvent(request, { type:"auth.logout", status:"ok", actor:"owner" });
   const response = NextResponse.json({ ok: true });
   response.cookies.set(SESSION_COOKIE, "", {
     httpOnly: true,

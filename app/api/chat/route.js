@@ -1,6 +1,7 @@
-import { isAuthenticated } from "../auth/session.js";
+import { isAuthenticatedAsync } from "../auth/session.js";
 import { readJsonLimited, requestBodyTooLargeResponse } from "../../../lib/requestBody.mjs";
-import { checkRateLimit, rateLimitResponse } from "../../../lib/rateLimit.mjs";
+import { checkRateLimitAsync, rateLimitResponse } from "../../../lib/rateLimit.mjs";
+import { auditEvent } from "../../../lib/auditLog.mjs";
 
 const CHAT_MAX_REQUEST_BYTES = 3 * 1024 * 1024;
 const CHAT_RATE_WINDOW_MS = 60_000;
@@ -219,10 +220,12 @@ function providerApiKey(overrideKey, envName) {
 }
 
 export async function POST(request) {
-  if (!isAuthenticated(request)) {
+  if (!await isAuthenticatedAsync(request)) {
+    await auditEvent(request, { type:"chat.auth_failed", status:"blocked" });
     return Response.json({ error: "未登录" }, { status: 401 });
   }
-  if (!checkRateLimit({ request, namespace:"chat", limit:CHAT_RATE_LIMIT, windowMs:CHAT_RATE_WINDOW_MS })) {
+  if (!await checkRateLimitAsync({ request, namespace:"chat", limit:CHAT_RATE_LIMIT, windowMs:CHAT_RATE_WINDOW_MS })) {
+    await auditEvent(request, { type:"chat.rate_limited", status:"blocked" });
     return rateLimitResponse("Chat rate limit exceeded");
   }
 
@@ -242,9 +245,11 @@ export async function POST(request) {
   }
 
   if (modelKey === "claude") {
+    await auditEvent(request, { type:"chat.model_request", status:"ok", target:"claude" });
     return callAnthropic(systemPrompt, messages, apiKeys?.anthropic, effectiveOptions);
   }
   if (modelKey === "gemma31" || modelKey === "gemma26" || modelKey === "flash") {
+    await auditEvent(request, { type:"chat.model_request", status:"ok", target:modelKey });
     return callGoogle(modelKey, systemPrompt, messages, apiKeys?.google, effectiveOptions);
   }
 

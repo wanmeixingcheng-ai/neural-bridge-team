@@ -1,7 +1,8 @@
-import { isAuthenticated } from "../auth/session.js";
+import { isAuthenticatedAsync } from "../auth/session.js";
 import { readJsonLimited, requestBodyTooLargeResponse } from "../../../lib/requestBody.mjs";
 import { containsSensitiveSecret, sensitiveContentResponse } from "../../../lib/secretPolicy.mjs";
-import { checkRateLimit, rateLimitResponse } from "../../../lib/rateLimit.mjs";
+import { checkRateLimitAsync, rateLimitResponse } from "../../../lib/rateLimit.mjs";
+import { auditEvent } from "../../../lib/auditLog.mjs";
 
 const SAVE_FILE_MAX_REQUEST_BYTES = 256 * 1024;
 const SAVE_FILE_RATE_WINDOW_MS = 60_000;
@@ -15,10 +16,12 @@ function safeTitle(text) {
 }
 
 export async function POST(request) {
-  if (!isAuthenticated(request)) {
+  if (!await isAuthenticatedAsync(request)) {
+    await auditEvent(request, { type:"save_file.auth_failed", status:"blocked" });
     return Response.json({ ok: false, error: "未登录" }, { status: 401 });
   }
-  if (!checkRateLimit({ request, namespace:"save-file", limit:SAVE_FILE_RATE_LIMIT, windowMs:SAVE_FILE_RATE_WINDOW_MS })) {
+  if (!await checkRateLimitAsync({ request, namespace:"save-file", limit:SAVE_FILE_RATE_LIMIT, windowMs:SAVE_FILE_RATE_WINDOW_MS })) {
+    await auditEvent(request, { type:"save_file.rate_limited", status:"blocked" });
     return rateLimitResponse("Save rate limit exceeded");
   }
 
@@ -35,6 +38,7 @@ export async function POST(request) {
   const content = body.content || "";
 
   if (process.env.ENABLE_GITHUB_SAVE_TRANSIT !== "true") {
+    await auditEvent(request, { type:"save_file.github_transit_disabled", status:"blocked" });
     return Response.json({
       ok: false,
       forwarded: false,
@@ -43,6 +47,7 @@ export async function POST(request) {
   }
 
   if (body.confirmGithubTransit !== true) {
+    await auditEvent(request, { type:"save_file.github_transit_unconfirmed", status:"blocked" });
     return Response.json({
       ok: false,
       forwarded: false,
@@ -54,6 +59,7 @@ export async function POST(request) {
     return Response.json({ ok: false, error: "没有可保存内容" }, { status: 400 });
   }
   if (containsSensitiveSecret(`${member}\n${content}`)) {
+    await auditEvent(request, { type:"save_file.secret_blocked", status:"blocked" });
     return sensitiveContentResponse();
   }
 
@@ -90,5 +96,6 @@ export async function POST(request) {
     return Response.json({ ok: false, error: data.message || `GitHub failed: ${response.status}` }, { status: 502 });
   }
 
+  await auditEvent(request, { type:"save_file.forwarded", status:"ok", target:"github", metadata:{ saveId } });
   return Response.json({ ok: true, saveId, issueUrl: data.html_url });
 }

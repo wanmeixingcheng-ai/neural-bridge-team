@@ -1,5 +1,7 @@
-import { isAuthenticated } from "../auth/session.js";
+import { isAuthenticatedAsync } from "../auth/session.js";
 import { readJsonLimited, requestBodyTooLargeResponse } from "../../../lib/requestBody.mjs";
+import { checkRateLimitAsync } from "../../../lib/rateLimit.mjs";
+import { auditEvent } from "../../../lib/auditLog.mjs";
 import { lookup } from "node:dns/promises";
 import net from "node:net";
 
@@ -8,24 +10,6 @@ const MAX_RESPONSE_BYTES = 1_000_000;
 const FETCH_TIMEOUT_MS = 10000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
-const fetchBuckets = globalThis.__nbFetchUrlBuckets || new Map();
-globalThis.__nbFetchUrlBuckets = fetchBuckets;
-
-function requestKey(request) {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || request.headers.get("x-real-ip") || "unknown";
-}
-
-function checkRateLimit(key, now = Date.now()) {
-  const bucket = fetchBuckets.get(key);
-  if (!bucket || now - bucket.startedAt > RATE_WINDOW_MS) {
-    fetchBuckets.set(key, { startedAt: now, count: 1 });
-    return true;
-  }
-  bucket.count += 1;
-  return bucket.count <= RATE_LIMIT;
-}
-
 function isBlockedIp(ip) {
   if (!ip) return true;
   if (ip === "::1" || ip === "0:0:0:0:0:0:0:1") return true;
@@ -155,10 +139,12 @@ function extractText(html) {
 }
 
 export async function POST(request) {
-  if (!isAuthenticated(request)) {
+  if (!await isAuthenticatedAsync(request)) {
+    await auditEvent(request, { type:"fetch_url.auth_failed", status:"blocked" });
     return Response.json({ error: "未登录" }, { status: 401 });
   }
-  if (!checkRateLimit(requestKey(request))) {
+  if (!await checkRateLimitAsync({ request, namespace:"fetch-url", limit:RATE_LIMIT, windowMs:RATE_WINDOW_MS })) {
+    await auditEvent(request, { type:"fetch_url.rate_limited", status:"blocked" });
     return Response.json({ error: "URL fetch rate limit exceeded" }, { status: 429 });
   }
 
@@ -190,6 +176,7 @@ export async function POST(request) {
     }
     const raw = await readLimitedText(res);
     const text = contentType.includes("html") ? extractText(raw) : raw.replace(/\s+/g, " ").trim();
+    await auditEvent(request, { type:"fetch_url.success", status:"ok", target:finalUrl.hostname });
     return Response.json({
       url: finalUrl.toString(),
       title: raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, " ").trim() || url,
@@ -197,6 +184,7 @@ export async function POST(request) {
       truncated: text.length > 12000,
     });
   } catch {
+    await auditEvent(request, { type:"fetch_url.failed", status:"failed" });
     return Response.json({ error: "URL fetch failed" }, { status: 500 });
   }
 }
