@@ -7,6 +7,7 @@ import net from "node:net";
 
 const FETCH_URL_MAX_REQUEST_BYTES = 8 * 1024;
 const MAX_RESPONSE_BYTES = 1_000_000;
+const MAX_HTML_EXTRACT_BYTES = 200_000;
 const FETCH_TIMEOUT_MS = 10000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
@@ -124,7 +125,7 @@ async function safeFetch(url) {
 }
 
 function extractText(html) {
-  return html
+  return html.slice(0, MAX_HTML_EXTRACT_BYTES)
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")

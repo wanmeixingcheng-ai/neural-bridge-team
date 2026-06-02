@@ -4,6 +4,8 @@ import { redis } from "../../../lib/externalStore.mjs";
 export const SESSION_COOKIE = "nb_session";
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 export const REMEMBER_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const revokedSessions = globalThis.__nbRevokedSessions || new Map();
+globalThis.__nbRevokedSessions = revokedSessions;
 
 function secret() {
   return process.env.APP_AUTH_SECRET || "";
@@ -65,6 +67,10 @@ export function createSessionToken(ttlSeconds = SESSION_TTL_SECONDS) {
 }
 
 export function verifySessionToken(token) {
+  const hash = tokenHash(token);
+  const revokedUntil = hash ? revokedSessions.get(hash) : 0;
+  if (revokedUntil && revokedUntil > Date.now()) return false;
+  if (revokedUntil && revokedUntil <= Date.now()) revokedSessions.delete(hash);
   const parsed = parseSessionToken(token);
   if (!parsed) return false;
   const { value, signature } = parsed;
@@ -124,9 +130,13 @@ export async function persistSessionToken(token, ttlSeconds = SESSION_TTL_SECOND
 }
 
 export async function revokeSessionToken(token) {
+  const hash = tokenHash(token);
+  if (hash) {
+    revokedSessions.set(hash, Date.now() + REMEMBER_SESSION_TTL_SECONDS * 1000);
+  }
   const store = redis();
   if (!store || !token) return false;
-  await store.del(`session:${tokenHash(token)}`);
+  await store.del(`session:${hash}`);
   return true;
 }
 

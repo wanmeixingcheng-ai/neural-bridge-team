@@ -145,8 +145,23 @@ function runClaude({ systemPrompt, messages, options = {} }) {
       }
       reject(new Error(stderr.trim() || `Claude exited with code ${code}`));
     });
-    child.stdin.write(prompt);
-    child.stdin.end();
+    child.stdin.on("error", error => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    const stdinTimeout = setTimeout(() => {
+      child.kill();
+      reject(new Error("Claude Bridge stdin timeout"));
+    }, Number(process.env.CLAUDE_BRIDGE_STDIN_TIMEOUT_MS || 10000));
+    child.stdin.write(prompt, error => {
+      clearTimeout(stdinTimeout);
+      if (error) {
+        child.kill();
+        reject(error);
+        return;
+      }
+      child.stdin.end();
+    });
   });
 }
 

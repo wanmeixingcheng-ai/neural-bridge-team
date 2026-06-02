@@ -63,12 +63,7 @@ export async function POST(request) {
   }
   const configError = codexDispatchConfigError();
   if (configError) {
-    await auditEvent(request, {
-      type:"codex_task.forwarded",
-      status:"ok",
-      target:"github",
-      metadata:{ taskId, issueUrl:data.html_url, pendingApproval:!autoRunEnabled },
-    });
+    await auditEvent(request, { type:"codex_task.config_error", status:"blocked", metadata:{ error:configError } });
     return Response.json({
       ok: false,
       forwarded: false,
@@ -137,6 +132,12 @@ export async function POST(request) {
       );
     }
 
+    await auditEvent(request, {
+      type:"codex_task.forwarded",
+      status:"ok",
+      target:"github",
+      metadata:{ taskId, issueUrl:data.html_url, pendingApproval:!autoRunEnabled },
+    });
     return Response.json({
       ok: true,
       taskId,

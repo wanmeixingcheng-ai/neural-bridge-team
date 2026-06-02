@@ -210,6 +210,10 @@ function toPrompt(systemPrompt, messages, lang = "zh") {
 }
 
 function clientApiKeysEnabled() {
+  if (process.env.NODE_ENV === "production" && process.env.ENABLE_CLIENT_API_KEYS === "true") {
+    console.warn("ENABLE_CLIENT_API_KEYS=true is unsafe in production; ignoring client-supplied provider keys.");
+    return false;
+  }
   if (process.env.ENABLE_CLIENT_API_KEYS === "true") return true;
   return process.env.NODE_ENV !== "production" && process.env.ENABLE_CLIENT_API_KEYS !== "false";
 }
