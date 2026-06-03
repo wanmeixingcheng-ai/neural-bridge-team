@@ -1,7 +1,11 @@
-import { connection } from "next/server";
-import TeamWorkspaceShell from "../components/TeamWorkspaceShell";
+"use client";
 
-export default async function Home() {
-  await connection();
-  return <TeamWorkspaceShell />;
+import dynamic from "next/dynamic";
+
+const TeamWorkspace = dynamic(() => import("../components/TeamWorkspace"), {
+  ssr: false,
+});
+
+export default function Home() {
+  return <TeamWorkspace />;
 }
