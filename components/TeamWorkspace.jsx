@@ -55,6 +55,9 @@ import {
   urlsToPrompt,
 } from "../lib/modelGateway.mjs";
 import {
+  clearMemoryConflictMetadata,
+} from "../lib/memoryPolicy.mjs";
+import {
   clearWorkflowState,
   loadWorkflowState,
   saveWorkflowState,
@@ -2166,7 +2169,12 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
               {["artifact", "member_output"].includes(item.type) && <span style={{ color:item.type === "artifact" ? T.purple : T.blue, background:item.type === "artifact" ? `${T.purple}14` : `${T.blue}14`, borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>{item.type === "artifact" ? label("产物", "成果物", "Artifact") : label("成员", "メンバー", "Member")}</span>}
             </div>
             <div style={{ color:T.muted, fontSize:"10.5px", margin:"4px 0" }}>[{item.type}] {item.updatedAt?.slice(0,10)} · {item.status} · importance {item.importance || 1}{item.metadata?.sourceDocId ? ` · ${label("可入文档库", "文書庫連携", "indexable")}` : ""}</div>
-            {item.metadata?.conflict && <div style={{ color:T.red, background:"#ef444415", border:"1px solid #ef444430", borderRadius:"7px", padding:"6px 7px", fontSize:"10.5px", lineHeight:1.45, marginBottom:"7px" }}>{label("可能冲突：", "競合の可能性：", "Possible conflict: ")}{item.metadata.conflict.title || item.metadata.conflict.memoryId}</div>}
+            {item.metadata?.conflict && (
+              <div style={{ color:T.red, background:"#ef444415", border:"1px solid #ef444430", borderRadius:"7px", padding:"6px 7px", fontSize:"10.5px", lineHeight:1.45, marginBottom:"7px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
+                <span>{label("可能冲突：", "競合の可能性：", "Possible conflict: ")}{item.metadata.conflict.title || item.metadata.conflict.memoryId}</span>
+                <button onClick={async()=>{ await updateProjectMemory(item.id, { metadata:clearMemoryConflictMetadata(item.metadata) }); await refresh(); }} style={{ border:`1px solid ${T.red}40`, background:T.surface, color:T.red, borderRadius:"7px", padding:"4px 7px", fontSize:"10px", cursor:"pointer", whiteSpace:"nowrap" }}>{label("确认保留", "確認して保持", "Keep reviewed")}</button>
+              </div>
+            )}
             <div style={{ color:T.text, fontSize:"11.5px", lineHeight:1.55, whiteSpace:"pre-wrap", maxHeight:"96px", overflow:"hidden" }}>{item.summary || item.content}</div>
             <div style={{ display:"flex", gap:"6px", marginTop:"8px", flexWrap:"wrap" }}>
               {item.status !== "approved" && <button onClick={async()=>{ await approveProjectMemory(item); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.green, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{item.metadata?.sourceDocId ? label("批准并入库", "承認して文書化", "Approve + index") : label("批准", "承認", "Approve")}</button>}

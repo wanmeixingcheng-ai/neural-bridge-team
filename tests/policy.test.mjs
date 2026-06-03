@@ -19,6 +19,7 @@ import {
 import {
   MEMORY_CANDIDATE_TTL_MS,
   MEMORY_SHORT_TERM_TTL_MS,
+  clearMemoryConflictMetadata,
   compactSummary,
   detectMemoryConflict,
   hasExplicitMemoryInstruction,
@@ -93,4 +94,15 @@ test("memory conflict detector flags opposing rules and decisions", () => {
   assert.equal(privacyConflict.memoryId, "m1");
   assert.equal(automationConflict.memoryId, "m2");
   assert.equal(noConflict, null);
+});
+
+test("memory conflict review metadata clears conflict and keeps audit time", () => {
+  const reviewed = clearMemoryConflictMetadata({
+    source:"manual",
+    conflict:{ memoryId:"m1", title:"旧规则" },
+  });
+
+  assert.equal(reviewed.source, "manual");
+  assert.equal(reviewed.conflict, undefined);
+  assert.match(reviewed.conflictReviewedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
