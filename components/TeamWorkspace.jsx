@@ -2141,6 +2141,15 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
     const artifact = currentWorkflow.artifacts?.[index] || { title:currentWorkflow.title };
     await saveToLocalOutputs({ name:"Artifact", title:artifact.title || currentWorkflow.title }, markdown);
   };
+  const downloadCurrentAudit = async () => {
+    const markdown = formatWorkflowAuditMarkdown({
+      ...currentWorkflow,
+      title:currentWorkflow.title || title,
+      source:currentWorkflow.source || "active-workflow",
+      status:currentWorkflow.mode,
+    }, lang);
+    await saveToLocalOutputs({ name:"Audit", title:currentWorkflow.title || title }, markdown);
+  };
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -2156,6 +2165,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
         </div>
         <div style={{ color:T.text, fontSize:"12.5px", fontWeight:900, marginTop:"8px", lineHeight:1.45 }}>{currentWorkflow.title}</div>
         {currentWorkflow.phase && <div style={{ color:T.muted, fontSize:"11px", marginTop:"5px", lineHeight:1.5 }}>{currentWorkflow.phase}</div>}
+        {currentWorkflow.mode !== "idle" && (
+          <button type="button" onClick={downloadCurrentAudit} style={{ marginTop:"8px", border:`1px solid ${T.orange}55`, background:T.surface, color:T.orange, borderRadius:"7px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer" }}>
+            {lang==="ja" ? "監査保存" : lang==="en" ? "Download audit" : "下载审计"}
+          </button>
+        )}
         {progress.total > 0 && (
           <div style={{ marginTop:"10px" }}>
             <div style={{ height:"7px", background:T.card, borderRadius:"999px", overflow:"hidden", border:`1px solid ${T.border}` }}>
