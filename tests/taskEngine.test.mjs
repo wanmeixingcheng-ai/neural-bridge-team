@@ -6,6 +6,7 @@ import {
   buildWorkflowPlanEditPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowSkipPrompt,
+  buildWorkflowResumePrompt,
   buildWorkflowPlan,
   buildWorkflowConfirmationPrompt,
   emptyWorkflowState,
@@ -105,6 +106,24 @@ test("skip prompt preserves completed work and asks ARIA to integrate gaps", () 
   assert.match(prompt, /孙建国 · 开发审计/);
   assert.match(prompt, /已完成里程碑拆分/);
   assert.match(prompt, /最终可交付产物/);
+});
+
+test("resume prompt keeps completed outputs and lists remaining queue", () => {
+  const prompt = buildWorkflowResumePrompt({
+    task:"生成上线计划",
+    mode:"stopped",
+    members:[
+      { id:"pm", name:"林 美穂", title:"PM", status:"complete", summary:"已完成里程碑拆分" },
+      { id:"qa", name:"吴晓敏", title:"QA", status:"queued", task:"执行回归测试" },
+      { id:"audit", name:"孙建国", title:"开发审计", status:"failed", error:"模型繁忙" },
+    ],
+  }, "zh");
+
+  assert.match(prompt, /继续以下被停止或未完成/);
+  assert.match(prompt, /已完成里程碑拆分/);
+  assert.match(prompt, /吴晓敏 · QA: queued · 执行回归测试/);
+  assert.match(prompt, /孙建国 · 开发审计: failed · 模型繁忙/);
+  assert.match(prompt, /不要丢弃已完成成果/);
 });
 
 test("confirmation prompt resumes a reviewed high-risk workflow plan", () => {

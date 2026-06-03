@@ -17,6 +17,7 @@ import {
   buildWorkflowPlanEditPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowSkipPrompt,
+  buildWorkflowResumePrompt,
   buildWorkflowPlan,
   buildWorkflowConfirmationPrompt,
   extractPriorWorkflowResults,
@@ -2312,6 +2313,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
           </div>
         )}
         {currentWorkflow.error && <div style={{ color:T.red, fontSize:"11px", lineHeight:1.5, marginTop:"9px" }}>{currentWorkflow.error}</div>}
+        {canRetry && (
+          <button type="button" onClick={()=>onContinueWorkflow?.(buildWorkflowResumePrompt(currentWorkflow, lang))} style={{ width:"100%", marginTop:"10px", border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"8px", padding:"8px 10px", fontSize:"11px", fontWeight:900, cursor:"pointer" }}>
+            {lang === "ja" ? "残りを続行" : lang === "en" ? "Resume remaining" : "继续剩余队列"}
+          </button>
+        )}
         {canRetry && (
           <button type="button" onClick={()=>onRetryWorkflow?.(buildWorkflowRetryPrompt(currentWorkflow, lang))} style={{ width:"100%", marginTop:"10px", border:`1px solid ${T.red}55`, background:T.surface, color:T.red, borderRadius:"8px", padding:"8px 10px", fontSize:"11px", fontWeight:900, cursor:"pointer" }}>
             {lang === "ja" ? "失敗部分を再試行" : lang === "en" ? "Retry failed parts" : "重试失败部分"}
