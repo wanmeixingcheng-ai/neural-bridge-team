@@ -51,6 +51,11 @@ describe("workflowArchive", () => {
         strategy:"ARIA 自动调度 · 核心判断",
         steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"里程碑与风险拆解" }],
       },
+      modelUsage:{
+        external:true,
+        providers:["Google Gemini/Gemma"],
+        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+      },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
       artifacts: [{ title: "最终产物", content: "整合结论" }],
     }, "zh");
@@ -59,6 +64,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /## 任务/);
     assert.match(markdown, /## 调度计划/);
     assert.match(markdown, /里程碑与风险拆解/);
+    assert.match(markdown, /## 模型调用/);
+    assert.match(markdown, /Google Gemini\/Gemma/);
     assert.match(markdown, /林 美穂/);
     assert.match(markdown, /项目计划内容/);
     assert.match(markdown, /整合结论/);
@@ -89,6 +96,11 @@ describe("workflowArchive", () => {
         strategy:"ARIA 自动调度",
         steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解" }],
       },
+      modelUsage:{
+        external:true,
+        providers:["Google Gemini/Gemma"],
+        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+      },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
       artifacts: [{ title: "最终产物", content: "整合结论" }],
     }, "zh");
@@ -96,6 +108,7 @@ describe("workflowArchive", () => {
     assert.equal(payload.document.source, "workflow-archive:aria-workflow");
     assert.match(payload.document.title, /工作流产物/);
     assert.match(payload.document.text, /## 调度计划/);
+    assert.match(payload.document.text, /## 模型调用/);
     assert.match(payload.document.text, /## 成员成果/);
     assert.equal(payload.memory.status, "approved");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");

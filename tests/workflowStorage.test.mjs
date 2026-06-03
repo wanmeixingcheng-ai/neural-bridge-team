@@ -38,6 +38,15 @@ describe("workflowStorage", () => {
           purpose:"purpose".repeat(100),
         })),
       },
+      modelUsage:{
+        external:true,
+        providers:["Claude / Anthropic", "Google Gemini/Gemma"],
+        models:Array.from({ length:20 }, (_, index) => ({
+          modelKey:`model-${index}`,
+          provider:"p".repeat(300),
+          external:index % 2 === 0,
+        })),
+      },
       members: [{ id: "aria", name: "ARIA", summary: "x".repeat(3000) }],
       artifacts: [{ title: "产物", content: "y".repeat(12000) }],
       progress: { done: 1, total: 1 },
@@ -51,6 +60,9 @@ describe("workflowStorage", () => {
     assert.equal(restored.plan.steps.length, 24);
     assert.ok(restored.plan.strategy.length < 360);
     assert.ok(restored.plan.steps[0].purpose.length < 320);
+    assert.equal(restored.modelUsage.models.length, 12);
+    assert.equal(restored.modelUsage.external, true);
+    assert.ok(restored.modelUsage.models[0].provider.length <= 120);
     assert.ok(restored.members[0].summary.length < 1800);
     assert.ok(restored.artifacts[0].content.length < 8200);
   });

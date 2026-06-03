@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { detectInputLanguage, extractUrls, outboundProviderLabel } from "../lib/modelGateway.mjs";
+import { detectInputLanguage, extractUrls, modelProviderInfo, modelUsageSummary, outboundProviderLabel } from "../lib/modelGateway.mjs";
 
 describe("modelGateway", () => {
   it("detects the user input language", () => {
@@ -21,5 +21,14 @@ describe("modelGateway", () => {
     assert.equal(outboundProviderLabel("codex", {}), "");
     assert.equal(outboundProviderLabel("claude", { claudeBridge: { enabled: true } }), "Claude Bridge");
     assert.equal(outboundProviderLabel("gemma26", {}), "Google Gemini/Gemma");
+    assert.deepEqual(modelProviderInfo("codex", {}), { modelKey:"codex", provider:"", external:false });
+    assert.equal(modelProviderInfo("claude", {}).external, true);
+  });
+
+  it("summarizes unique model usage and external providers", () => {
+    const usage = modelUsageSummary(["claude", "claude", "gemma26", "codex"], {});
+    assert.deepEqual(usage.models.map(item => item.modelKey), ["claude", "gemma26", "codex"]);
+    assert.equal(usage.external, true);
+    assert.deepEqual(usage.providers, ["Claude / Anthropic", "Google Gemini/Gemma"]);
   });
 });

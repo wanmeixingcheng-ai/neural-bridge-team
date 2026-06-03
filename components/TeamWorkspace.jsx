@@ -49,6 +49,7 @@ import {
 import {
   callModel,
   detectInputLanguage,
+  modelUsageSummary,
   outboundProviderLabel,
   urlsToPrompt,
 } from "../lib/modelGateway.mjs";
@@ -1103,6 +1104,10 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           mode:integrateExisting ? "integrate" : "auto",
           lang:requestLanguage,
         });
+        const workflowModelUsage = modelUsageSummary([
+          ...workers.map(worker => controls.modelOverride || worker.model),
+          effectiveModel,
+        ], apiKeys);
         onWorkflowState?.({
           id:workflowId,
           title:firstUserTitle([{ role:"user", text:displayText }], member.name),
@@ -1117,6 +1122,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             ? priorResults.map((item, index) => ({ id:`prior-${index}`, name:item.member, title:item.title, model:item.model, status:"complete", task:"", summary:item.summary, error:"" }))
             : workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"queued", task:"", summary:"", error:"" })),
           plan:workflowPlan,
+          modelUsage:workflowModelUsage,
           artifacts:[],
           error:"",
           progress:integrateExisting ? { done:priorResults.length, total:priorResults.length } : { done:0, total:workers.length },
@@ -1194,6 +1200,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             language:requestLanguage,
             members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"complete" })),
             plan:workflowPlan,
+            modelUsage:workflowModelUsage,
             results,
             artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
           }).catch(() => {});
@@ -1418,6 +1425,10 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
       });
       const workflowId = `wf-${Date.now().toString(36)}`;
       const workflowPlan = buildWorkflowPlan({ taskText:text, workers, mode:"auto", lang:requestLanguage });
+      const workflowModelUsage = modelUsageSummary([
+        ...workers.map(member => controls.modelOverride || member.model),
+        controls.modelOverride || router.model,
+      ], apiKeys);
       onWorkflowState?.({
         id:workflowId,
         title:firstUserTitle([{ role:"user", text:displayText }], group.name),
@@ -1428,6 +1439,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         updatedAt:new Date().toISOString(),
         members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"queued", task:"", summary:"", error:"" })),
         plan:workflowPlan,
+        modelUsage:workflowModelUsage,
         artifacts:[],
         error:"",
         progress:{ done:0, total:workers.length },
@@ -1504,6 +1516,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           language:requestLanguage,
           members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"complete" })),
           plan:workflowPlan,
+          modelUsage:workflowModelUsage,
           results,
           artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
         }).catch(() => {});
@@ -1941,6 +1954,23 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               ))}
             </div>
             {queue.next && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"8px" }}>{lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一位："}{queue.next.name} · {queue.next.title}</div>}
+          </div>
+        )}
+        {!!currentWorkflow.modelUsage?.models?.length && (
+          <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "モデル呼び出し" : lang==="en" ? "Model calls" : "模型调用"}</div>
+            <div style={{ color:currentWorkflow.modelUsage.external ? T.orange : T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"4px" }}>
+              {currentWorkflow.modelUsage.external
+                ? (lang==="ja" ? "外部モデル提供元を使用します。" : lang==="en" ? "Uses external model providers." : "会使用外部模型提供商。")
+                : (lang==="ja" ? "外部モデル送信なし。" : lang==="en" ? "No external model provider." : "不涉及外部模型提供商。")}
+            </div>
+            <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"8px" }}>
+              {currentWorkflow.modelUsage.models.map(item => (
+                <span key={item.modelKey} style={{ border:`1px solid ${T.border}`, background:T.surface, color:item.external ? T.orange : T.muted, borderRadius:"999px", padding:"4px 7px", fontSize:"10px", fontWeight:900 }}>
+                  {item.modelKey}{item.provider ? ` · ${item.provider}` : ""}
+                </span>
+              ))}
+            </div>
           </div>
         )}
         {!!currentWorkflow.members?.length && (
