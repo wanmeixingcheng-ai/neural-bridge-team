@@ -171,8 +171,10 @@ describe("workflowArchive", () => {
       title: "综合报告",
       task: "分析项目",
       source: "aria-workflow",
+      members:[{ id:"pm", name:"林 美穂", title:"PM", model:"gemma26", status:"complete" }],
       plan: {
         strategy:"ARIA 自动调度",
+        protocol:{ intent:"分析项目", task_type:"product", priority:"high" },
         steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解" }],
       },
       modelUsage:{
@@ -180,6 +182,7 @@ describe("workflowArchive", () => {
         providers:["Google Gemini/Gemma"],
         models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
       },
+      quality:{ complete:true, missingMembers:[] },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
       artifacts: [{ title: "最终产物", content: "整合结论" }],
     }, "zh");
@@ -191,8 +194,15 @@ describe("workflowArchive", () => {
     assert.match(payload.document.text, /## 成员成果/);
     assert.equal(payload.memory.status, "approved");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");
+    assert.equal(payload.memory.metadata.status, "done");
+    assert.equal(payload.memory.metadata.taskType, "product");
+    assert.equal(payload.memory.metadata.priority, "high");
+    assert.equal(payload.memory.metadata.qualityComplete, true);
+    assert.deepEqual(payload.memory.metadata.members, ["林 美穂 · PM"]);
     assert.equal(payload.memory.metadata.artifactVersions[0].version, 1);
     assert.match(payload.memory.metadata.artifactVersions[0].hash, /^a-/);
+    assert.match(payload.memory.content, /taskType: product/);
+    assert.match(payload.memory.content, /qualityComplete: yes/);
     assert.match(payload.memory.content, /整合结论/);
   });
 
