@@ -62,6 +62,7 @@ import {
   artifactContentHash,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
+  buildWorkflowRecordDetails,
   deleteWorkflowArchive,
   formatWorkflowRecordMarkdown,
   listWorkflowRecords,
@@ -1865,6 +1866,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
         {records.map(record => {
           const artifact = record.artifacts?.[0];
           const selected = selectedId === record.id;
+          const details = selected ? buildWorkflowRecordDetails(record, lang) : null;
           return (
             <div key={record.id} style={{ border:`1px solid ${selected ? T.blue : T.border}`, background:selected ? T.surface : T.card, borderRadius:"8px", padding:"9px" }}>
               <button type="button" onClick={()=>setSelectedId(selected ? "" : record.id)} style={{ width:"100%", border:"none", background:"transparent", padding:0, cursor:"pointer", textAlign:"left" }}>
@@ -1877,6 +1879,35 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
               </button>
               {selected && (
                 <div style={{ marginTop:"9px", borderTop:`1px solid ${T.border}`, paddingTop:"8px" }}>
+                  {!!details?.overview?.length && (
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:"6px", marginBottom:"8px" }}>
+                      {details.overview.map(item => (
+                        <div key={item.label} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"6px", minWidth:0 }}>
+                          <div style={{ color:T.muted, fontSize:"9.5px", fontWeight:800 }}>{item.label}</div>
+                          <div style={{ color:T.text, fontSize:"10.5px", fontWeight:900, marginTop:"2px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.value || "-"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {details?.plan && (
+                    <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.plan.title}</div>
+                      <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"3px" }}>{details.plan.strategy}</div>
+                      <div style={{ color:T.text, fontSize:"10px", lineHeight:1.5, marginTop:"5px" }}>{details.plan.steps.join(" / ")}</div>
+                    </div>
+                  )}
+                  {details?.modelUsage && (
+                    <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.modelUsage.title}</div>
+                      <div style={{ color:details.modelUsage.external ? T.orange : T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"3px" }}>{details.modelUsage.lines.join(" / ")}</div>
+                    </div>
+                  )}
+                  {!!details?.artifacts?.length && (
+                    <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{label("产物版本", "成果物バージョン", "Artifact versions")}</div>
+                      <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.5, marginTop:"3px" }}>{details.artifacts.map(item => `${item.title} · ${item.meta}`).join(" / ")}</div>
+                    </div>
+                  )}
                   {!!record.results?.length && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.5 }}>{record.results.slice(0, 6).map(result => `${result.member} · ${result.title}`).join(" / ")}</div>}
                   <div style={{ display:"flex", gap:"7px", marginTop:"8px", flexWrap:"wrap" }}>
                     <button type="button" onClick={()=>downloadRecord(record)} style={{ border:"none", background:T.blue, color:"#fff", borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("下载完整记录", "完全記録を保存", "Download full record")}</button>

@@ -5,6 +5,7 @@ import {
   artifactContentHash,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
+  buildWorkflowRecordDetails,
   formatWorkflowRecordMarkdown,
   normalizeWorkflowRecord,
 } from "../lib/workflowArchive.mjs";
@@ -120,6 +121,31 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.artifactVersions[0].version, 1);
     assert.match(payload.memory.metadata.artifactVersions[0].hash, /^a-/);
     assert.match(payload.memory.content, /整合结论/);
+  });
+
+  it("builds compact workflow details for archive expansion", () => {
+    const details = buildWorkflowRecordDetails({
+      title:"综合报告",
+      task:"分析项目",
+      source:"aria-workflow",
+      members:[{ name:"林 美穂", title:"PM", model:"gemma26" }],
+      plan:{
+        strategy:"ARIA 自动调度",
+        steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解" }],
+      },
+      modelUsage:{
+        external:true,
+        providers:["Google Gemini/Gemma"],
+        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+      },
+      artifacts:[{ title:"最终产物", kind:"整合报告", content:"整合结论" }],
+    }, "zh");
+
+    assert.ok(details.overview.some(item => item.label === "状态"));
+    assert.equal(details.plan.steps[0], "1. 林 美穂 · PM");
+    assert.match(details.modelUsage.lines[0], /Google Gemini/);
+    assert.match(details.artifacts[0].title, /^v1/);
+    assert.match(details.artifacts[0].meta, /^整合报告 · a-/);
   });
 
   it("generates stable artifact content fingerprints", () => {
