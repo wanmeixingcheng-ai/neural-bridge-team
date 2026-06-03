@@ -20,6 +20,7 @@ import {
   MEMORY_CANDIDATE_TTL_MS,
   MEMORY_SHORT_TERM_TTL_MS,
   compactSummary,
+  detectMemoryConflict,
   hasExplicitMemoryInstruction,
   importanceScore,
   isCandidateExpired,
@@ -77,4 +78,19 @@ test("memory hash normalizes whitespace and importance scores risk decisions hig
   assert.equal(memoryHash("a   b"), memoryHash("a b"));
   assert.equal(compactSummary("x".repeat(430)).length, 423);
   assert.ok(importanceScore({ type:"risk", content:"必须处理隐私风险" }) > importanceScore({ type:"note", content:"普通记录" }));
+});
+
+test("memory conflict detector flags opposing rules and decisions", () => {
+  const existing = [
+    { id:"m1", title:"隐私规则", type:"rule", status:"approved", content:"业务数据必须优先本地处理。" },
+    { id:"m2", title:"执行规则", type:"rule", status:"approved", content:"Codex 任务需要人工审批。" },
+  ];
+
+  const privacyConflict = detectMemoryConflict({ title:"新规则", content:"业务数据可以上云处理。" }, existing);
+  const automationConflict = detectMemoryConflict({ title:"新规则", content:"Codex 任务自动执行。" }, existing);
+  const noConflict = detectMemoryConflict({ title:"补充", content:"移动端布局必须保持稳定。" }, existing);
+
+  assert.equal(privacyConflict.memoryId, "m1");
+  assert.equal(automationConflict.memoryId, "m2");
+  assert.equal(noConflict, null);
 });
