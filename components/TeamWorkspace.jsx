@@ -255,6 +255,32 @@ function summarizeForWorkflow(text) {
   return `${text || ""}`.replace(/\s+/g, " ").trim().slice(0, 220);
 }
 
+function recentConversationContext(messages = [], limit = 8) {
+  const recent = messages
+    .filter(message => message?.text?.trim())
+    .slice(-limit)
+    .map(message => `${message.role === "user" ? "用户" : "助手"}：${message.text}`)
+    .join("\n\n");
+  return recent ? `\n\n当前对话上下文：\n${recent}` : "";
+}
+
+function extractPriorWorkflowResults(messages = []) {
+  return messages
+    .filter(message => message?.role === "ai" && /^【.+? · .+?】/.test(message.text || ""))
+    .map(message => {
+      const match = `${message.text}`.match(/^【(.+?) · (.+?)】\n([\s\S]*)$/);
+      if (!match) return null;
+      const [, member, title, text] = match;
+      if (member === "ARIA" && /整合产物|Integrated output|統合成果/.test(title)) return null;
+      return { member, title, model:"", text, summary:summarizeForWorkflow(text) };
+    })
+    .filter(Boolean);
+}
+
+function wantsPriorIntegration(text) {
+  return taskMatches(text, ["整合", "汇总", "总结", "完整", "发完整", "前面", "刚才", "上面", "成员成果", "他们的成果", "继续", "不对", "没有看到", "integrate", "summary", "previous"]);
+}
+
 function parsePlannerJson(text) {
   const raw = `${text || ""}`.trim();
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
@@ -1889,10 +1915,13 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
       const requestLanguage = detectInputLanguage(text, lang);
       setMessages(displayNext);
       if (member.id === "aria") {
-        const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}`;
-        const workers = await planWorkflowMembersWithModel({
+        const conversationContext = recentConversationContext(messages);
+        const priorResults = extractPriorWorkflowResults(messages);
+        const integrateExisting = priorResults.length > 0 && wantsPriorIntegration(text);
+        const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}${conversationContext}`;
+        const workers = integrateExisting ? [] : await planWorkflowMembersWithModel({
           router:{ ...member, model:effectiveModel },
-          taskText:text,
+          taskText:`${text}${conversationContext}`,
           members:allMembers,
           apiKeys,
           controls,
@@ -1900,26 +1929,32 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           signal:controller.signal,
         });
         const workflowId = `wf-${Date.now().toString(36)}`;
-        const results = [];
+        const results = integrateExisting ? [...priorResults] : [];
         onWorkflowState?.({
           id:workflowId,
           title:firstUserTitle([{ role:"user", text:displayText }], member.name),
-          mode:"planning",
-          phase:lang === "ja" ? "ARIA が担当メンバーを選定中" : lang === "en" ? "ARIA is selecting members" : "ARIA 正在选择执行成员",
+          mode:integrateExisting ? "summarizing" : "planning",
+          phase:integrateExisting
+            ? (lang === "ja" ? "ARIA が既存メンバー成果を統合中" : lang === "en" ? "ARIA is integrating existing member outputs" : "ARIA 正在整合已有成员成果")
+            : (lang === "ja" ? "ARIA が担当メンバーを選定中" : lang === "en" ? "ARIA is selecting members" : "ARIA 正在选择执行成员"),
           startedAt:new Date().toISOString(),
           updatedAt:new Date().toISOString(),
-          members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"queued", task:"", summary:"", error:"" })),
+          members:integrateExisting
+            ? priorResults.map((item, index) => ({ id:`prior-${index}`, name:item.member, title:item.title, model:item.model, status:"complete", task:"", summary:item.summary, error:"" }))
+            : workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"queued", task:"", summary:"", error:"" })),
           artifacts:[],
           error:"",
-          progress:{ done:0, total:workers.length },
+          progress:integrateExisting ? { done:priorResults.length, total:priorResults.length } : { done:0, total:workers.length },
         });
         setMessages(m => [...m, {
           role:"ai",
-          text:lang==="ja"
-            ? `ARIA 自動調度を開始しました。担当：${workers.map(item => item.name).join("、")}`
-            : lang==="en"
-              ? `ARIA automatic dispatch started. Assigned members: ${workers.map(item => item.name).join(", ")}`
-              : `ARIA 已启动自动调度。执行成员：${workers.map(item => item.name).join("、")}`,
+          text:integrateExisting
+            ? (lang==="ja" ? `ARIA は既存のメンバー成果 ${priorResults.length} 件を統合します。` : lang==="en" ? `ARIA will integrate ${priorResults.length} existing member outputs.` : `ARIA 将整合当前对话中的 ${priorResults.length} 条已有成员成果。`)
+            : (lang==="ja"
+                ? `ARIA 自動調度を開始しました。担当：${workers.map(item => item.name).join("、")}`
+                : lang==="en"
+                  ? `ARIA automatic dispatch started. Assigned members: ${workers.map(item => item.name).join(", ")}`
+                  : `ARIA 已启动自动调度。执行成员：${workers.map(item => item.name).join("、")}`),
         }]);
         for (const worker of workers) {
           if (controller.signal.aborted) break;
@@ -1957,6 +1992,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
 你是自动生产工作流的总调度。请把以下成员成果整合成最终产物。
 总任务：
 ${text}
+${conversationContext}
 
 成员成果：
 ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join("\n\n")}
@@ -1964,7 +2000,8 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
 输出要求：
 1. 直接给最终结论和可执行下一步。
 2. 合并重复内容，保留冲突和风险。
-3. 不要自我介绍，不要展示内部推理。`;
+3. 如果用户在追问“是否完整/不对/继续”，必须基于上方已有成员成果重新给出完整整合版。
+4. 不要自我介绍，不要展示内部推理。`;
           let finalText = "";
           try {
             finalText = await callModel(effectiveModel, member.systemPrompt, [{ role:"user", text:integrationPrompt }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
