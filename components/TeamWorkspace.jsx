@@ -192,6 +192,19 @@ function chooseWorkflowMembers(group, taskText) {
     if (member && !selected.some(item => item.id === member.id)) selected.push(member);
   };
 
+  if (taskMatches(taskText, ["全员", "全体", "大家", "所有人", "所有成员", "全部成员", "所有角色", "全部角色", "所有群组", "各群组", "整个团队", "全团队", "团队全部", "每个成员", "一起协作", "all members", "everyone", "whole team"])) {
+    return members;
+  }
+  if (taskMatches(taskText, ["核心群组", "核心参谋", "第一层", "参谋", "管理层", "产品战略", "核心成员"])) {
+    return members.filter(member => member.layer === 0 || member.layer === 1);
+  }
+  if (taskMatches(taskText, ["执行群组", "技术群组", "开发群组", "专项执行", "第二层", "技术组", "开发组", "工程组", "工程师", "开发成员", "技术部", "开发部", "代码执行", "codex"])) {
+    return members.filter(member => member.layer === 2);
+  }
+  if (taskMatches(taskText, ["商业群组", "支撑群组", "文案法务财务", "第三层", "商业支撑", "法务财务", "文案组", "财务组", "法务组", "市场商务"])) {
+    return members.filter(member => member.layer === 3);
+  }
+
   add("aria");
   const wantsDev = taskMatches(taskText, ["开发", "代码", "修复", "部署", "接口", "前端", "后端", "pwa", "indexeddb", "bug", "deploy", "api"]);
   const wantsProduct = taskMatches(taskText, ["产品", "功能", "需求", "prd", "体验", "流程", "方案", "计划"]);
@@ -1723,7 +1736,7 @@ function confirmOutboundContext({ lang, modelKey, apiKeys, hasAttachments, hasWe
   return true;
 }
 
-function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activeSession, lang }) {
+function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activeSession, lang, allMembers = TEAM, onWorkflowState }) {
   const [controls, setControls] = useState({ thinkingMode:"off", modelOverride:"", reasoningLevel:"medium" });
   const effectiveModel = controls.modelOverride || member.model;
   const model = MODELS[effectiveModel] || MODELS[member.model];
@@ -1813,15 +1826,120 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
       const modelNext = [...messages, { role:"user", text:`${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}`, images }];
       const requestLanguage = detectInputLanguage(text, lang);
       setMessages(displayNext);
+      if (member.id === "aria") {
+        const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}`;
+        const workers = chooseWorkflowMembers({ members:allMembers }, text);
+        const workflowId = `wf-${Date.now().toString(36)}`;
+        const results = [];
+        onWorkflowState?.({
+          id:workflowId,
+          title:firstUserTitle([{ role:"user", text:displayText }], member.name),
+          mode:"planning",
+          phase:lang === "ja" ? "ARIA が担当メンバーを選定中" : lang === "en" ? "ARIA is selecting members" : "ARIA 正在选择执行成员",
+          startedAt:new Date().toISOString(),
+          updatedAt:new Date().toISOString(),
+          members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"queued", task:"", summary:"", error:"" })),
+          artifacts:[],
+          error:"",
+          progress:{ done:0, total:workers.length },
+        });
+        setMessages(m => [...m, {
+          role:"ai",
+          text:lang==="ja"
+            ? `ARIA 自動調度を開始しました。担当：${workers.map(item => item.name).join("、")}`
+            : lang==="en"
+              ? `ARIA automatic dispatch started. Assigned members: ${workers.map(item => item.name).join(", ")}`
+              : `ARIA 已启动自动调度。执行成员：${workers.map(item => item.name).join("、")}`,
+        }]);
+        for (const worker of workers) {
+          if (controller.signal.aborted) break;
+          const memberTask = memberWorkflowTask(worker, modelText, results, requestLanguage);
+          onWorkflowState?.(state => ({
+            ...state,
+            mode:"running",
+            phase:`${worker.name} · ${worker.title}`,
+            updatedAt:new Date().toISOString(),
+            members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
+          }));
+          const workerModel = controls.modelOverride || worker.model;
+          const reply = await callModel(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+          const safeReply = reply || (lang === "en" ? "No response." : lang === "ja" ? "応答がありません。" : "无响应");
+          results.push({ member:worker.name, title:worker.title, model:workerModel, text:safeReply, summary:summarizeForWorkflow(safeReply) });
+          setMessages(m => [...m, { role:"ai", text:`【${worker.name} · ${worker.title}】\n${safeReply}` }]);
+          onWorkflowState?.(state => ({
+            ...state,
+            mode:"running",
+            phase:lang === "ja" ? "次の担当へ引き継ぎ中" : lang === "en" ? "Handing off to next member" : "正在移交下一位成员",
+            updatedAt:new Date().toISOString(),
+            members:state.members.map(item => item.id === worker.id ? { ...item, status:"complete", summary:summarizeForWorkflow(safeReply) } : item),
+            progress:{ done:state.members.filter(item => item.status === "complete").length + 1, total:state.members.length },
+          }));
+          await learnFromExchange({ member:worker, userText:text, reply:safeReply, lang:requestLanguage });
+        }
+        if (!controller.signal.aborted && results.length) {
+          onWorkflowState?.(state => ({
+            ...state,
+            mode:"summarizing",
+            phase:lang === "ja" ? "ARIA が成果を統合中" : lang === "en" ? "ARIA is integrating results" : "ARIA 正在整合产物",
+            updatedAt:new Date().toISOString(),
+          }));
+          const integrationPrompt = `${requestLanguage === "en" ? "Reply only in English." : requestLanguage === "ja" ? "日本語だけで回答してください。" : "只用中文回复。"}
+你是自动生产工作流的总调度。请把以下成员成果整合成最终产物。
+总任务：
+${text}
+
+成员成果：
+${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join("\n\n")}
+
+输出要求：
+1. 直接给最终结论和可执行下一步。
+2. 合并重复内容，保留冲突和风险。
+3. 不要自我介绍，不要展示内部推理。`;
+          let finalText = "";
+          try {
+            finalText = await callModel(effectiveModel, member.systemPrompt, [{ role:"user", text:integrationPrompt }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+          } catch {
+            finalText = `${lang === "ja" ? "統合モデルの呼び出しに失敗したため、メンバー成果をローカルで整理しました。" : lang === "en" ? "The integration model failed, so member results were organized locally." : "整合模型调用失败，已在本地整理成员成果。"}\n\n${results.map(item => `## ${item.member} · ${item.title}\n${item.text}`).join("\n\n")}`;
+          }
+          const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
+          setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}` }]);
+          onWorkflowState?.(state => ({
+            ...state,
+            mode:"done",
+            phase:lang === "ja" ? "成果物生成完了" : lang === "en" ? "Output generated" : "产物已生成",
+            updatedAt:new Date().toISOString(),
+            artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
+            progress:{ done:state.members.length, total:state.members.length },
+          }));
+        }
+        return;
+      }
       const reply = await callModel(effectiveModel, member.systemPrompt, modelNext, apiKeys, { ...controls, language:requestLanguage }, controller.signal);
       setMessages(m => [...m, { role:"ai", text:reply || "无响应" }]);
       await learnFromExchange({ member, userText:text, reply, lang:requestLanguage });
     } catch (e) {
       if (e.name === "AbortError") {
+        if (member.id === "aria") {
+          onWorkflowState?.(state => ({
+            ...state,
+            mode:"stopped",
+            phase:lang==="ja" ? "ユーザーが停止しました" : lang==="en" ? "Stopped by user" : "用户已停止",
+            updatedAt:new Date().toISOString(),
+          }));
+        }
         setNotice(lang === "ja" ? "生成を停止しました。" : lang === "en" ? "Generation stopped." : "已停止生成。");
         setLoading(false);
         abortRef.current = null;
         return;
+      }
+      if (member.id === "aria") {
+        onWorkflowState?.(state => ({
+          ...state,
+          mode:"failed",
+          phase:t(lang, "requestFailed"),
+          error:e.message || t(lang, "unknownError"),
+          updatedAt:new Date().toISOString(),
+        }));
       }
       setError(e.message || t(lang, "requestFailed"));
     } finally {
@@ -2988,7 +3106,7 @@ export default function App() {
           ? <InfoPanel item={activeInfo} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} lang={lang} />
           : activeGroup
             ? <GroupChat key={activeGroup.id} group={activeGroup} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} onWorkflowState={setWorkflowState} />
-            : <WorkspaceChat key={selected.id} member={selected} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} />}
+            : <WorkspaceChat key={selected.id} member={selected} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} allMembers={members} onWorkflowState={setWorkflowState} />}
         <RightWorkPanel open={rightPanelOpen} onToggle={()=>setRightPanelOpen(v=>!v)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} />
       </div>
       <MobileWorkDrawer open={mobileWorkOpen} onClose={()=>setMobileWorkOpen(false)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} />
