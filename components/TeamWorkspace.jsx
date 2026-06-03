@@ -2126,6 +2126,15 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
     await refresh();
   };
 
+  const bulkReviewConflicts = async () => {
+    const conflicted = memories.filter(memoryHasConflict);
+    for (const item of conflicted) {
+      await updateProjectMemory(item.id, { metadata:clearMemoryConflictMetadata(item.metadata) });
+    }
+    setMessage(label(`已确认保留 ${conflicted.length} 条冲突记忆。`, `${conflicted.length} 件の競合記憶を確認して保持しました。`, `Kept ${conflicted.length} reviewed conflict memories.`));
+    await refresh();
+  };
+
   const exportAll = async () => {
     const payload = await exportKnowledgeLibrary();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
@@ -2267,6 +2276,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
               <button onClick={addMemory} style={{ border:"none", background:T.blue, color:"#fff", borderRadius:"8px", padding:"8px 12px", fontSize:"12px", fontWeight:900, cursor:"pointer" }}>{label("加入已批准记忆", "承認済みに追加", "Add approved")}</button>
               <button onClick={async()=>{ const count = await enforceMemoryRetention(); setMessage(label(`已按 TTL/容量归档 ${count} 条短期或待确认记忆。`, `${count} 件の短期/候補記憶を TTL/容量ルールでアーカイブしました。`, `Archived ${count} short-term/candidate memories by TTL/capacity rules.`)); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"8px", padding:"8px 12px", fontSize:"12px", fontWeight:900, cursor:"pointer" }}>{label("执行 TTL/容量清理", "TTL/容量整理", "Run TTL/cap cleanup")}</button>
               <button onClick={async()=>{ const count = await archiveLowValueMemories(); setMessage(label(`已归档 ${count} 条低价值候选记忆。`, `${count} 件の低価値候補記憶をアーカイブしました。`, `Archived ${count} low-value candidate memories.`)); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"8px", padding:"8px 12px", fontSize:"12px", fontWeight:900, cursor:"pointer" }}>{label("归档低价值候选", "低価値候補を整理", "Archive low-value candidates")}</button>
+              {!!conflictCount && <button onClick={bulkReviewConflicts} style={{ border:`1px solid ${T.red}40`, background:"#ef444415", color:T.red, borderRadius:"8px", padding:"8px 12px", fontSize:"12px", fontWeight:900, cursor:"pointer" }}>{label("批量确认冲突", "競合を一括確認", "Review conflicts")}</button>}
             </div>
             {renderMemoryGroup(label("长期记忆", "長期記憶", "Long-term memory"), approvedMemories, "approved")}
             {renderMemoryGroup(label("短期记忆", "短期記憶", "Short-term memory"), shortTermMemories, "short_term")}
