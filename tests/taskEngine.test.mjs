@@ -12,6 +12,7 @@ import {
   normalizeWorkflowProtocol,
   parsePlannerJson,
   plannerRequiredMemberIds,
+  planWorkflowDispatchWithModel,
   planWorkflowMembersWithModel,
   recentConversationContext,
   wantsPriorIntegration,
@@ -182,4 +183,32 @@ test("model planner accepts the structured planning protocol member field", asyn
 
   assert.deepEqual(workers.map(item => item.id), ["aria", "cto", "fe", "qa"]);
   assert.deepEqual(plannerRequiredMemberIds({ required_members:["fe"], memberIds:["qa"] }), ["fe"]);
+});
+
+test("model planner dispatch returns workers with normalized protocol", async () => {
+  const dispatch = await planWorkflowDispatchWithModel({
+    router:{ model:"claude", systemPrompt:"router" },
+    taskText:"请修复移动端并部署",
+    members,
+    apiKeys:{},
+    controls:{},
+    language:"zh",
+    signal:undefined,
+    callModel:async () => JSON.stringify({
+      target:"custom",
+      intent:"修复移动端并部署",
+      task_type:"development",
+      priority:"high",
+      required_members:["aria", "fe", "qa"],
+      subtasks:["修复布局", "测试构建"],
+      expected_outputs:["部署验证"],
+      risks:["移动端回归"],
+      needs_user_confirmation:false,
+    }),
+  });
+
+  assert.deepEqual(dispatch.workers.map(item => item.id), ["aria", "fe", "qa"]);
+  assert.equal(dispatch.protocol.intent, "修复移动端并部署");
+  assert.equal(dispatch.protocol.priority, "high");
+  assert.deepEqual(dispatch.protocol.expected_outputs, ["部署验证"]);
 });

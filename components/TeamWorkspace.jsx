@@ -19,7 +19,7 @@ import {
   buildWorkflowPlan,
   extractPriorWorkflowResults,
   memberWorkflowTask,
-  planWorkflowMembersWithModel,
+  planWorkflowDispatchWithModel,
   recentConversationContext,
   summarizeForWorkflow,
   wantsPriorIntegration,
@@ -1095,7 +1095,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
         const priorResults = extractPriorWorkflowResults(messages);
         const integrateExisting = priorResults.length > 0 && wantsPriorIntegration(text);
         const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}${conversationContext}`;
-        const workers = integrateExisting ? [] : await planWorkflowMembersWithModel({
+        const dispatch = integrateExisting ? { workers:[], protocol:null } : await planWorkflowDispatchWithModel({
           router:{ ...member, model:effectiveModel },
           taskText:`${text}${conversationContext}`,
           members:allMembers,
@@ -1105,6 +1105,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           signal:controller.signal,
           callModel,
         });
+        const workers = dispatch.workers;
         const workflowId = `wf-${Date.now().toString(36)}`;
         const results = integrateExisting ? [...priorResults] : [];
         const workflowPlan = buildWorkflowPlan({
@@ -1112,6 +1113,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           workers:integrateExisting ? priorResults.map((item, index) => ({ id:`prior-${index}`, name:item.member, title:item.title, model:item.model, layer:1 })) : workers,
           mode:integrateExisting ? "integrate" : "auto",
           lang:requestLanguage,
+          protocol:dispatch.protocol,
         });
         const workflowModelUsage = modelUsageSummary([
           ...workers.map(worker => controls.modelOverride || worker.model),
@@ -1423,7 +1425,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
     const results = [];
     try {
       const router = group.members.find(item => item.id === "aria") || group.members[0];
-      const workers = await planWorkflowMembersWithModel({
+      const dispatch = await planWorkflowDispatchWithModel({
         router:{ ...router, model:controls.modelOverride || router.model },
         taskText:text,
         members:group.members,
@@ -1433,8 +1435,9 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         signal:controller.signal,
         callModel,
       });
+      const workers = dispatch.workers;
       const workflowId = `wf-${Date.now().toString(36)}`;
-      const workflowPlan = buildWorkflowPlan({ taskText:text, workers, mode:"auto", lang:requestLanguage });
+      const workflowPlan = buildWorkflowPlan({ taskText:text, workers, mode:"auto", lang:requestLanguage, protocol:dispatch.protocol });
       const workflowModelUsage = modelUsageSummary([
         ...workers.map(member => controls.modelOverride || member.model),
         controls.modelOverride || router.model,
