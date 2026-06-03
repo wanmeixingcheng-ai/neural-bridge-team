@@ -83,6 +83,7 @@ describe("workflowArchive", () => {
     assert.match(markdown, /里程碑与风险拆解/);
     assert.match(markdown, /## 模型调用/);
     assert.match(markdown, /Google Gemini\/Gemma/);
+    assert.match(markdown, /任务文本、相关上下文/);
     assert.match(markdown, /### v1 · 最终产物/);
     assert.match(markdown, /指纹/);
     assert.match(markdown, /林 美穂/);

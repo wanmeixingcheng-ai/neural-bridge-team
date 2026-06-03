@@ -26,6 +26,7 @@ import {
   wantsPriorIntegration,
   workflowQueueSummary,
   workflowStatusLabel,
+  workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
 import {
   approveProjectMemory,
@@ -2099,9 +2100,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
           <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
             <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "モデル呼び出し" : lang==="en" ? "Model calls" : "模型调用"}</div>
             <div style={{ color:currentWorkflow.modelUsage.external ? T.orange : T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"4px" }}>
-              {currentWorkflow.modelUsage.external
-                ? (lang==="ja" ? "外部モデル提供元を使用します。" : lang==="en" ? "Uses external model providers." : "会使用外部模型提供商。")
-                : (lang==="ja" ? "外部モデル送信なし。" : lang==="en" ? "No external model provider." : "不涉及外部模型提供商。")}
+              {workflowExternalDisclosureLines(currentWorkflow.modelUsage, lang).join(" ")}
             </div>
             <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"8px" }}>
               {currentWorkflow.modelUsage.models.map(item => (

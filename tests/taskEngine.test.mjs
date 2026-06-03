@@ -19,6 +19,7 @@ import {
   wantsPriorIntegration,
   workflowQueueSummary,
   workflowRequiresConfirmation,
+  workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
 
 const members = [
@@ -82,6 +83,7 @@ test("confirmation prompt resumes a reviewed high-risk workflow plan", () => {
   const prompt = buildWorkflowConfirmationPrompt({
     task:"部署生产版本",
     mode:"waiting_confirmation",
+    modelUsage:{ external:true, providers:["Google Gemini/Gemma"], models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }] },
     plan:{
       protocol:{ intent:"部署生产版本", task_type:"development", priority:"high", expected_outputs:["部署验证"], risks:["生产回归"] },
       steps:[
@@ -97,6 +99,7 @@ test("confirmation prompt resumes a reviewed high-risk workflow plan", () => {
   assert.match(prompt, /执行构建/);
   assert.match(prompt, /部署验证/);
   assert.match(prompt, /生产回归/);
+  assert.match(prompt, /Google Gemini\/Gemma/);
 });
 
 test("workflow plan explains dispatch order without changing selected workers", () => {
@@ -142,6 +145,7 @@ test("workflow protocol normalizes ARIA planning fields", () => {
   assert.equal(inferWorkflowTaskType("请研究产品定价和开发成本"), "mixed");
   assert.equal(workflowRequiresConfirmation("请部署到 Vercel"), true);
   assert.equal(workflowRequiresConfirmation("整理普通会议纪要"), false);
+  assert.match(workflowExternalDisclosureLines({ external:true, providers:["Claude / Anthropic"], models:[{ modelKey:"claude", external:true }] }, "zh").join("\n"), /Claude \/ Anthropic/);
 });
 
 test("workflow plan edit prompt turns the current plan into an editable handoff", () => {
