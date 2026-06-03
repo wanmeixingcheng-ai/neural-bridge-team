@@ -26,6 +26,7 @@ import {
   importanceScore,
   isCandidateExpired,
   isMemoryExpired,
+  memoryHasConflict,
   memoryHash,
   normalizeMemoryItem,
 } from "../lib/memoryPolicy.mjs";
@@ -105,4 +106,10 @@ test("memory conflict review metadata clears conflict and keeps audit time", () 
   assert.equal(reviewed.source, "manual");
   assert.equal(reviewed.conflict, undefined);
   assert.match(reviewed.conflictReviewedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("memory conflict predicate only matches conflict metadata", () => {
+  assert.equal(memoryHasConflict({ metadata:{ conflict:{ memoryId:"m1" } } }), true);
+  assert.equal(memoryHasConflict({ metadata:{ conflictReviewedAt:"2026-01-01T00:00:00.000Z" } }), false);
+  assert.equal(memoryHasConflict({}), false);
 });
