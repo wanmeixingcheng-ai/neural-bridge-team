@@ -1135,6 +1135,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           ...workers.map(worker => controls.modelOverride || worker.model),
           effectiveModel,
         ], apiKeys);
+        workflowModelUsage.localOnlyMode = !!apiKeys.localOnlyMode;
         const needsConfirmation = !integrateExisting && workflowPlan.protocol?.needs_user_confirmation;
         onWorkflowState?.({
           id:workflowId,
@@ -1492,6 +1493,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         ...workers.map(member => controls.modelOverride || member.model),
         controls.modelOverride || router.model,
       ], apiKeys);
+      workflowModelUsage.localOnlyMode = !!apiKeys.localOnlyMode;
       const needsConfirmation = workflowPlan.protocol?.needs_user_confirmation;
       onWorkflowState?.({
         id:workflowId,

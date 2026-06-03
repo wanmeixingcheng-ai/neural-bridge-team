@@ -68,6 +68,7 @@ describe("workflowArchive", () => {
       },
       modelUsage:{
         external:true,
+        localOnlyMode:true,
         providers:["Google Gemini/Gemma"],
         models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
       },
@@ -86,6 +87,7 @@ describe("workflowArchive", () => {
     assert.match(markdown, /里程碑与风险拆解/);
     assert.match(markdown, /## 模型调用/);
     assert.match(markdown, /Google Gemini\/Gemma/);
+    assert.equal(normalizeWorkflowRecord({ modelUsage:{ external:true, localOnlyMode:true, models:[{ modelKey:"claude" }] } }).modelUsage.localOnlyMode, true);
     assert.match(markdown, /任务文本、相关上下文/);
     assert.match(markdown, /## 质量检查/);
     assert.match(markdown, /吴晓敏 · QA/);

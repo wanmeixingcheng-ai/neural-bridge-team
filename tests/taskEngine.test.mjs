@@ -277,6 +277,16 @@ test("workflow permission checklist flags risky production actions", () => {
   assert.equal(checklist.entries.find(item => item.id === "codex-dispatch").status, "admin_required");
   assert.equal(checklist.entries.find(item => item.id === "deployment").status, "admin_required");
   assert.equal(workflowPermissionChecklist({ task:"整理会议纪要", modelUsage:{ external:false } }, "zh").blocked, false);
+
+  const localOnly = workflowPermissionChecklist({
+    task:"部署到 Vercel",
+    members:[{ id:"fe", model:"codex" }],
+    modelUsage:{ external:true, localOnlyMode:true },
+  }, "zh");
+  assert.equal(localOnly.blocked, true);
+  assert.equal(localOnly.entries.find(item => item.id === "external-models").status, "blocked_by_local_only");
+  assert.equal(localOnly.entries.find(item => item.id === "codex-dispatch").status, "blocked_by_local_only");
+  assert.equal(localOnly.entries.find(item => item.id === "deployment").status, "blocked_by_local_only");
 });
 
 test("workflow output QA checklist checks artifacts and member outputs", () => {
@@ -316,6 +326,17 @@ test("workflow tool call checklist flags tool permissions and states", () => {
   assert.equal(checklist.entries.find(item => item.id === "web-fetch").status, "needs_confirmation");
   assert.equal(checklist.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
   assert.equal(checklist.entries.find(item => item.id === "vercel-deploy").status, "needs_admin");
+
+  const localOnly = workflowToolCallChecklist({
+    task:"读取 https://example.com 后部署到 Vercel",
+    members:[{ id:"fe", model:"codex" }],
+    modelUsage:{ external:true, localOnlyMode:true, models:[{ modelKey:"claude" }] },
+  }, "zh");
+  assert.equal(localOnly.needsAttention, true);
+  assert.equal(localOnly.entries.find(item => item.id === "model-gateway").status, "blocked_by_local_only");
+  assert.equal(localOnly.entries.find(item => item.id === "web-fetch").status, "blocked_by_local_only");
+  assert.equal(localOnly.entries.find(item => item.id === "codex-dispatch").status, "blocked_by_local_only");
+  assert.equal(localOnly.entries.find(item => item.id === "vercel-deploy").status, "blocked_by_local_only");
 });
 
 test("workflow quality check flags missing member outputs", () => {

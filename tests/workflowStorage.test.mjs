@@ -55,6 +55,7 @@ describe("workflowStorage", () => {
       },
       modelUsage:{
         external:true,
+        localOnlyMode:true,
         providers:["Claude / Anthropic", "Google Gemini/Gemma"],
         models:Array.from({ length:20 }, (_, index) => ({
           modelKey:`model-${index}`,
@@ -87,6 +88,7 @@ describe("workflowStorage", () => {
     assert.ok(restored.plan.steps[0].acceptanceCriteria.length < 540);
     assert.equal(restored.modelUsage.models.length, 12);
     assert.equal(restored.modelUsage.external, true);
+    assert.equal(restored.modelUsage.localOnlyMode, true);
     assert.ok(restored.modelUsage.models[0].provider.length <= 120);
     assert.equal(restored.quality.complete, false);
     assert.equal(restored.quality.missingMembers.length, 24);
