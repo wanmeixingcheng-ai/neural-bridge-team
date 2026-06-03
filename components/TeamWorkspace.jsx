@@ -17,6 +17,7 @@ import {
   buildWorkflowPlanEditPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowPlan,
+  buildWorkflowConfirmationPrompt,
   extractPriorWorkflowResults,
   memberWorkflowTask,
   planWorkflowDispatchWithModel,
@@ -1986,6 +1987,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const modeColor = workflowModeColor(currentWorkflow.mode);
   const progress = currentWorkflow.progress || { done:0, total:0 };
   const canRetry = ["failed", "stopped"].includes(currentWorkflow.mode);
+  const canConfirm = currentWorkflow.mode === "waiting_confirmation";
   const queue = workflowQueueSummary(currentWorkflow.members);
   const protocol = currentWorkflow.plan?.protocol || null;
   return (
@@ -2108,6 +2110,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
         {canRetry && (
           <button type="button" onClick={()=>onRetryWorkflow?.(buildWorkflowRetryPrompt(currentWorkflow, lang))} style={{ width:"100%", marginTop:"10px", border:`1px solid ${T.red}55`, background:T.surface, color:T.red, borderRadius:"8px", padding:"8px 10px", fontSize:"11px", fontWeight:900, cursor:"pointer" }}>
             {lang === "ja" ? "失敗部分を再試行" : lang === "en" ? "Retry failed parts" : "重试失败部分"}
+          </button>
+        )}
+        {canConfirm && (
+          <button type="button" onClick={()=>onContinueWorkflow?.(buildWorkflowConfirmationPrompt(currentWorkflow, lang))} style={{ width:"100%", marginTop:"10px", border:`1px solid ${T.yellow}70`, background:T.surface, color:T.yellow, borderRadius:"8px", padding:"8px 10px", fontSize:"11px", fontWeight:900, cursor:"pointer" }}>
+            {lang === "ja" ? "確認して続行" : lang === "en" ? "Confirm and continue" : "确认继续"}
           </button>
         )}
       </div>

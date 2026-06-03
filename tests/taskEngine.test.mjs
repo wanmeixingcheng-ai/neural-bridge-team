@@ -6,6 +6,7 @@ import {
   buildWorkflowPlanEditPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowPlan,
+  buildWorkflowConfirmationPrompt,
   emptyWorkflowState,
   extractPriorWorkflowResults,
   inferWorkflowTaskType,
@@ -75,6 +76,27 @@ test("retry prompt preserves completed work and failed member context", () => {
   assert.match(prompt, /吴晓敏/);
   assert.match(prompt, /测试模型超时/);
   assert.match(prompt, /已完成里程碑拆分/);
+});
+
+test("confirmation prompt resumes a reviewed high-risk workflow plan", () => {
+  const prompt = buildWorkflowConfirmationPrompt({
+    task:"部署生产版本",
+    mode:"waiting_confirmation",
+    plan:{
+      protocol:{ intent:"部署生产版本", task_type:"development", priority:"high", expected_outputs:["部署验证"], risks:["生产回归"] },
+      steps:[
+        { order:1, member:"陈志远", title:"前端工程师", model:"codex", subtask:"执行构建", output:"部署包", acceptanceCriteria:"构建通过" },
+        { order:2, member:"吴晓敏", title:"QA", model:"gemma26", subtask:"验证生产站点", output:"验证结果", acceptanceCriteria:"返回 200" },
+      ],
+    },
+  }, "zh");
+
+  assert.match(prompt, /已确认继续执行/);
+  assert.match(prompt, /部署生产版本/);
+  assert.match(prompt, /陈志远 · 前端工程师/);
+  assert.match(prompt, /执行构建/);
+  assert.match(prompt, /部署验证/);
+  assert.match(prompt, /生产回归/);
 });
 
 test("workflow plan explains dispatch order without changing selected workers", () => {
