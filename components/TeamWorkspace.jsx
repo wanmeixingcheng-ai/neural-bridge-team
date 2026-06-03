@@ -1965,17 +1965,23 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     onContinue?.(buildWorkflowSkipPrompt(record, lang));
     setNotice(label("已放入 ARIA 输入框，可跳过缺失成员并整合。", "ARIA の入力欄に入れました。不足メンバーをスキップして統合できます。", "Placed in ARIA input to skip missing members and integrate."));
   };
-  const rememberRecord = async (record) => {
+  const rememberRecord = async (record, approvalState = "approved") => {
     setSavingId(record.id);
     try {
-      const payload = buildWorkflowKnowledgePayload(record, lang);
+      const approved = approvalState === "approved";
+      const payload = buildWorkflowKnowledgePayload(record, lang, {
+        memoryStatus:approved ? "approved" : "candidate",
+        documentStatus:approved ? "approved" : "candidate",
+      });
       const doc = await putKnowledgeDocument(payload.document);
-      await updateKnowledgeDocument(doc.id, { status:"approved", archived:false });
+      if (approved) await updateKnowledgeDocument(doc.id, { status:"approved", archived:false });
       await putProjectMemory({
         ...payload.memory,
         metadata:{ ...payload.memory.metadata, sourceDocId:doc.id },
       });
-      setNotice(label("已加入知识库和长期记忆。", "知識庫と長期記憶に追加しました。", "Added to knowledge and long-term memory."));
+      setNotice(approved
+        ? label("已加入知识库和长期记忆。", "知識庫と長期記憶に追加しました。", "Added to knowledge and long-term memory.")
+        : label("已加入待确认知识和候选记忆。", "候補知識と候補記憶に追加しました。", "Added as candidate knowledge and memory."));
     } catch (e) {
       setNotice(e.message || label("加入知识库失败。", "知識庫への追加に失敗しました。", "Failed to add to knowledge."));
     } finally {
@@ -2071,7 +2077,8 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                     <button type="button" onClick={()=>rerunRecord(record)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("复跑", "再実行", "Rerun")}</button>
                     {canRecover && <button type="button" onClick={()=>recoverRecord(record)} style={{ border:`1px solid ${T.red}45`, background:T.surface, color:T.red, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("恢复", "復旧", "Recover")}</button>}
                     {canRecover && <button type="button" onClick={()=>skipRecord(record)} style={{ border:`1px solid ${T.yellow}55`, background:T.surface, color:T.yellow, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("跳过整合", "スキップ統合", "Skip integrate")}</button>}
-                    <button type="button" disabled={savingId === record.id} onClick={()=>rememberRecord(record)} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingId === record.id ? T.faint : T.green, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{savingId === record.id ? label("入库中", "保存中", "Saving") : label("加入知识库", "知識庫へ", "Add to knowledge")}</button>
+                    <button type="button" disabled={savingId === record.id} onClick={()=>rememberRecord(record, "candidate")} style={{ border:`1px solid ${T.yellow}55`, background:T.surface, color:savingId === record.id ? T.faint : T.yellow, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{label("待确认入库", "候補保存", "Add candidate")}</button>
+                    <button type="button" disabled={savingId === record.id} onClick={()=>rememberRecord(record, "approved")} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingId === record.id ? T.faint : T.green, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{savingId === record.id ? label("入库中", "保存中", "Saving") : label("批准入库", "承認保存", "Approve + add")}</button>
                     {record.status !== "archived" && <button type="button" disabled={savingId === record.id} onClick={()=>archiveRecord(record)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:savingId === record.id ? T.faint : T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{label("归档记录", "アーカイブ", "Archive")}</button>}
                     <button type="button" onClick={()=>setSelectedId("")} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("收起", "閉じる", "Collapse")}</button>
                   </div>

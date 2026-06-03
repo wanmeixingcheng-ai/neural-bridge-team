@@ -207,11 +207,14 @@ describe("workflowArchive", () => {
     }, "zh");
 
     assert.equal(payload.document.source, "workflow-archive:aria-workflow");
+    assert.equal(payload.document.status, "approved");
     assert.match(payload.document.title, /工作流产物/);
     assert.match(payload.document.text, /## 调度计划/);
     assert.match(payload.document.text, /## 模型调用/);
     assert.match(payload.document.text, /## 成员成果/);
     assert.equal(payload.memory.status, "approved");
+    assert.equal(payload.memory.metadata.approvalState, "approved");
+    assert.equal(payload.memory.metadata.documentState, "approved");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");
     assert.equal(payload.memory.metadata.status, "done");
     assert.equal(payload.memory.metadata.taskType, "product");
@@ -223,6 +226,23 @@ describe("workflowArchive", () => {
     assert.match(payload.memory.content, /taskType: product/);
     assert.match(payload.memory.content, /qualityComplete: yes/);
     assert.match(payload.memory.content, /整合结论/);
+  });
+
+  it("builds a candidate knowledge payload for manual approval", () => {
+    const payload = buildWorkflowKnowledgePayload({
+      id:"wf-candidate",
+      title:"候选报告",
+      task:"分析项目",
+      source:"aria-workflow",
+      members:[{ id:"pm", name:"林 美穂", title:"PM", model:"gemma26", status:"complete" }],
+      artifacts:[{ title:"最终产物", content:"候选结论" }],
+    }, "zh", { memoryStatus:"candidate", documentStatus:"candidate" });
+
+    assert.equal(payload.document.status, "candidate");
+    assert.equal(payload.memory.status, "candidate");
+    assert.equal(payload.memory.metadata.approvalState, "candidate");
+    assert.equal(payload.memory.metadata.documentState, "candidate");
+    assert.equal(payload.memory.metadata.workflowRecordId, "wf-candidate");
   });
 
   it("builds compact workflow details for archive expansion", () => {
