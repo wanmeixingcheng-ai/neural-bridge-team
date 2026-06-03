@@ -26,6 +26,7 @@ import {
   wantsPriorIntegration,
   workflowQueueSummary,
   workflowFailureReassignmentPlan,
+  workflowLifecycleSteps,
   workflowQualityCheck,
   workflowStatusLabel,
   workflowExternalDisclosureLines,
@@ -2047,6 +2048,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const protocol = currentWorkflow.plan?.protocol || null;
   const quality = currentWorkflow.quality || null;
   const reassignment = currentWorkflow.mode === "failed" ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
+  const lifecycle = workflowLifecycleSteps(currentWorkflow.mode, lang);
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -2068,6 +2070,18 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               <div style={{ width:`${Math.min(100, Math.round((progress.done / progress.total) * 100))}%`, height:"100%", background:modeColor, transition:"width .2s ease" }} />
             </div>
             <div style={{ color:T.muted, fontSize:"10.5px", marginTop:"5px" }}>{progress.done} / {progress.total}</div>
+          </div>
+        )}
+        {currentWorkflow.mode !== "idle" && (
+          <div style={{ display:"flex", gap:"5px", flexWrap:"wrap", marginTop:"10px" }}>
+            {lifecycle.map(step => {
+              const color = step.state === "current" ? modeColor : step.state === "complete" ? T.green : T.muted;
+              return (
+                <span key={step.status} style={{ border:`1px solid ${color}35`, background:step.state === "pending" ? T.surface : `${color}12`, color, borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>
+                  {step.label}
+                </span>
+              );
+            })}
           </div>
         )}
         {currentWorkflow.plan?.steps?.length > 0 && (

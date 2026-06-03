@@ -21,6 +21,7 @@ import {
   workflowRequiresConfirmation,
   workflowExternalDisclosureLines,
   workflowFailureReassignmentPlan,
+  workflowLifecycleSteps,
   workflowQualityCheck,
 } from "../lib/taskEngine.mjs";
 
@@ -185,6 +186,16 @@ test("workflow queue summary tracks member execution states", () => {
   assert.equal(queue.queued, 1);
   assert.equal(queue.failed, 1);
   assert.equal(queue.next.id, "qa");
+});
+
+test("workflow lifecycle steps expose the production task state machine", () => {
+  const running = workflowLifecycleSteps("summarizing", "zh");
+  assert.deepEqual(running.map(item => item.status), ["planning", "dispatched", "running", "waiting_confirmation", "done", "failed", "archived"]);
+  assert.equal(running.find(item => item.status === "running").state, "current");
+  assert.equal(running.find(item => item.status === "dispatched").state, "complete");
+  assert.equal(workflowLifecycleSteps("done", "en").find(item => item.status === "done").state, "complete");
+  assert.equal(workflowLifecycleSteps("failed", "zh").find(item => item.status === "failed").state, "current");
+  assert.equal(workflowLifecycleSteps("archived", "zh").find(item => item.status === "archived").state, "complete");
 });
 
 test("workflow quality check flags missing member outputs", () => {
