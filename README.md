@@ -40,3 +40,5 @@ npm test
 生产环境变量在 Vercel Dashboard 或 CLI 中配置，不提交到仓库。
 
 当前部署提交使用 GitHub noreply author email，以满足 Vercel Git author 校验。
+
+GitHub App 已连接到 `wanmeixingcheng-ai/neural-bridge-team`，后续推送由 Vercel 自动部署。
