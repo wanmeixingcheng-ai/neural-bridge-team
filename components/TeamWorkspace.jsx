@@ -255,6 +255,68 @@ function summarizeForWorkflow(text) {
   return `${text || ""}`.replace(/\s+/g, " ").trim().slice(0, 220);
 }
 
+function parsePlannerJson(text) {
+  const raw = `${text || ""}`.trim();
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const candidate = fenced || raw.match(/\{[\s\S]*\}/)?.[0] || raw;
+  return JSON.parse(candidate);
+}
+
+async function planWorkflowMembersWithModel({ router, taskText, members, apiKeys, controls, language, signal }) {
+  const roster = members.map(member => ({
+    id:member.id,
+    name:member.name,
+    title:member.title,
+    layer:member.layer,
+    model:member.model,
+    tags:member.tags || [],
+  }));
+  const prompt = `${language === "en" ? "Reply with JSON only." : language === "ja" ? "JSONのみで回答してください。" : "只输出 JSON。"}
+你是 Neural Bridge 的任务调度器。请根据用户任务，自主判断应该调度哪些成员或群组。
+
+用户任务：
+${taskText}
+
+可调度成员：
+${JSON.stringify(roster, null, 2)}
+
+群组规则：
+- core：layer 0 和 layer 1
+- exec：layer 2
+- business：layer 3
+- all：所有成员
+- custom：只选择你认为必要的 memberIds
+
+输出 JSON，禁止输出解释文字：
+{
+  "target": "core | exec | business | all | custom",
+  "memberIds": ["aria"],
+  "reason": "一句话说明调度依据"
+}
+
+约束：
+1. 不要为了省 token 而漏掉必要成员。
+2. 普通任务优先选择少量关键成员。
+3. 用户明确要求全员/所有群组/大家协作时，target 必须为 all。
+4. 用户明确要求技术/开发/Codex 时，至少包含 layer 2 的相关工程成员。
+5. 用户明确要求法务/财务/文案/商业支撑时，选择 layer 3 相关成员。`;
+  try {
+    const raw = await callModel(router.model, router.systemPrompt, [{ role:"user", text:prompt }], apiKeys, { ...controls, language }, signal);
+    const plan = parsePlannerJson(raw);
+    const byId = new Map(members.map(member => [member.id, member]));
+    if (plan?.target === "all") return members;
+    if (plan?.target === "core") return members.filter(member => member.layer === 0 || member.layer === 1);
+    if (plan?.target === "exec") return members.filter(member => member.layer === 2);
+    if (plan?.target === "business") return members.filter(member => member.layer === 3);
+    const planned = Array.isArray(plan?.memberIds)
+      ? plan.memberIds.map(id => byId.get(id)).filter(Boolean)
+      : [];
+    return planned.length ? planned : chooseWorkflowMembers({ members }, taskText);
+  } catch {
+    return chooseWorkflowMembers({ members }, taskText);
+  }
+}
+
 // ─── TEAM DATA ────────────────────────────────────────────────────────────────
 const TEAM = [
   {
@@ -1828,7 +1890,15 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
       setMessages(displayNext);
       if (member.id === "aria") {
         const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}`;
-        const workers = chooseWorkflowMembers({ members:allMembers }, text);
+        const workers = await planWorkflowMembersWithModel({
+          router:{ ...member, model:effectiveModel },
+          taskText:text,
+          members:allMembers,
+          apiKeys,
+          controls,
+          language:requestLanguage,
+          signal:controller.signal,
+        });
         const workflowId = `wf-${Date.now().toString(36)}`;
         const results = [];
         onWorkflowState?.({
@@ -2094,20 +2164,6 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
     const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}`;
     const requestLanguage = detectInputLanguage(text, lang);
     const base = [...messages, { role:"user", member:lang==="en" ? "You" : lang==="ja" ? "あなた" : "你", text:displayText }];
-    const workers = chooseWorkflowMembers(group, text);
-    const workflowId = `wf-${Date.now().toString(36)}`;
-    onWorkflowState?.({
-      id:workflowId,
-      title:firstUserTitle([{ role:"user", text:displayText }], group.name),
-      mode:"planning",
-      phase:lang === "ja" ? "担当メンバーを選定中" : lang === "en" ? "Selecting members" : "正在选择执行成员",
-      startedAt:new Date().toISOString(),
-      updatedAt:new Date().toISOString(),
-      members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"queued", task:"", summary:"", error:"" })),
-      artifacts:[],
-      error:"",
-      progress:{ done:0, total:workers.length },
-    });
     if (!sessionRef.current) {
       sessionRef.current = {
         id:`group-${group.id}-${Date.now().toString(36)}`,
@@ -2124,6 +2180,29 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
     let currentMember = null;
     const results = [];
     try {
+      const router = group.members.find(item => item.id === "aria") || group.members[0];
+      const workers = await planWorkflowMembersWithModel({
+        router:{ ...router, model:controls.modelOverride || router.model },
+        taskText:text,
+        members:group.members,
+        apiKeys,
+        controls,
+        language:requestLanguage,
+        signal:controller.signal,
+      });
+      const workflowId = `wf-${Date.now().toString(36)}`;
+      onWorkflowState?.({
+        id:workflowId,
+        title:firstUserTitle([{ role:"user", text:displayText }], group.name),
+        mode:"planning",
+        phase:lang === "ja" ? "担当メンバーを選定中" : lang === "en" ? "Selecting members" : "正在选择执行成员",
+        startedAt:new Date().toISOString(),
+        updatedAt:new Date().toISOString(),
+        members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"queued", task:"", summary:"", error:"" })),
+        artifacts:[],
+        error:"",
+        progress:{ done:0, total:workers.length },
+      });
       setMessages(m => [...m, {
         role:"ai",
         member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统",
