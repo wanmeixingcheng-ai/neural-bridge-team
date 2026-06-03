@@ -26,3 +26,15 @@ npm run dev
 ```bash
 npm test
 ```
+
+## Vercel 部署
+
+项目使用显式 `vercel.json` 配置：
+
+- Node.js 固定为 `22.x`
+- 安装命令：`npm ci`
+- 构建命令：`npm run build`
+- 输出目录：`.next`
+- 区域：`hnd1`
+
+生产环境变量在 Vercel Dashboard 或 CLI 中配置，不提交到仓库。
