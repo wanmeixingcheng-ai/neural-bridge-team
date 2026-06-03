@@ -30,6 +30,7 @@ import {
   workflowLifecycleSteps,
   workflowPermissionChecklist,
   workflowQualityCheck,
+  workflowOutputQaChecklist,
   workflowStatusLabel,
   workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
@@ -2081,6 +2082,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const lifecycle = workflowLifecycleSteps(currentWorkflow.mode, lang);
   const auditSummary = currentWorkflow.mode !== "idle" ? workflowAuditSummary(currentWorkflow, lang) : null;
   const permissionChecklist = currentWorkflow.mode !== "idle" ? workflowPermissionChecklist(currentWorkflow, lang) : null;
+  const outputQa = currentWorkflow.mode !== "idle" ? workflowOutputQaChecklist(currentWorkflow, lang) : null;
   const downloadCurrentArtifact = async (index = 0) => {
     const markdown = formatWorkflowArtifactMarkdown(currentWorkflow, index, lang);
     const artifact = currentWorkflow.artifacts?.[index] || { title:currentWorkflow.title };
@@ -2184,6 +2186,19 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               {quality.complete
                 ? (lang==="ja" ? "全担当メンバーの成果があります。" : lang==="en" ? "All assigned member outputs are present." : "所有分派成员都有成果。")
                 : `${lang==="ja" ? "不足：" : lang==="en" ? "Missing: " : "缺失："}${quality.missingMembers?.map(item => `${item.name} · ${item.title}`).join(" / ") || "-"}`}
+            </div>
+          </div>
+        )}
+        {outputQa && (
+          <div style={{ marginTop:"10px", border:`1px solid ${outputQa.passed ? T.green : T.yellow}40`, background:outputQa.passed ? "#10b98110" : "#f59e0b10", borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:outputQa.passed ? T.green : T.yellow, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "成果物QA" : lang==="en" ? "Output QA" : "产物 QA"}</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:"6px", marginTop:"7px" }}>
+              {outputQa.checks.map(check => (
+                <div key={check.id} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"7px", padding:"6px", minWidth:0 }}>
+                  <div style={{ color:check.passed ? T.green : T.yellow, fontSize:"10px", fontWeight:900, whiteSpace:"nowrap" }}>{check.label}</div>
+                  <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{check.detail}</div>
+                </div>
+              ))}
             </div>
           </div>
         )}

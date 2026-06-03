@@ -24,6 +24,7 @@ import {
   workflowAuditSummary,
   workflowLifecycleSteps,
   workflowPermissionChecklist,
+  workflowOutputQaChecklist,
   workflowQualityCheck,
 } from "../lib/taskEngine.mjs";
 
@@ -237,6 +238,28 @@ test("workflow permission checklist flags risky production actions", () => {
   assert.equal(checklist.entries.find(item => item.id === "codex-dispatch").status, "admin_required");
   assert.equal(checklist.entries.find(item => item.id === "deployment").status, "admin_required");
   assert.equal(workflowPermissionChecklist({ task:"整理会议纪要", modelUsage:{ external:false } }, "zh").blocked, false);
+});
+
+test("workflow output QA checklist checks artifacts and member outputs", () => {
+  const pass = workflowOutputQaChecklist({
+    language:"zh",
+    members:[{ status:"complete" }],
+    artifacts:[{ content:"最终产物" }],
+    modelUsage:{ models:[{ modelKey:"gemma26" }] },
+    quality:{ complete:true, missingMembers:[] },
+  }, "zh");
+  assert.equal(pass.passed, true);
+
+  const fail = workflowOutputQaChecklist({
+    members:[{ status:"failed" }],
+    artifacts:[],
+    modelUsage:{ models:[] },
+    quality:{ complete:false, missingMembers:[{ id:"qa" }] },
+  }, "zh");
+  assert.equal(fail.passed, false);
+  assert.equal(fail.checks.find(item => item.id === "artifact-present").passed, false);
+  assert.equal(fail.checks.find(item => item.id === "member-outputs").passed, false);
+  assert.equal(fail.checks.find(item => item.id === "model-disclosure").passed, false);
 });
 
 test("workflow quality check flags missing member outputs", () => {
