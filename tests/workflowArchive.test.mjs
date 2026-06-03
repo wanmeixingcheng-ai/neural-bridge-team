@@ -55,6 +55,7 @@ describe("workflowArchive", () => {
       members: [{ id: "pm", name: "林 美穂", title: "PM", model: "gemma26" }],
       plan: {
         strategy:"ARIA 自动调度 · 核心判断",
+        protocol:{ intent:"分析项目", task_type:"product", priority:"high", expected_outputs:["报告"], risks:["范围不清"] },
         steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"里程碑与风险拆解" }],
       },
       modelUsage:{
@@ -69,6 +70,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /# 综合报告/);
     assert.match(markdown, /## 任务/);
     assert.match(markdown, /## 调度计划/);
+    assert.match(markdown, /意图: 分析项目/);
+    assert.match(markdown, /预期产物: 报告/);
     assert.match(markdown, /里程碑与风险拆解/);
     assert.match(markdown, /## 模型调用/);
     assert.match(markdown, /Google Gemini\/Gemma/);
@@ -168,6 +171,7 @@ describe("workflowArchive", () => {
       members:[{ name:"林 美穂", title:"PM", model:"gemma26" }],
       plan:{
         strategy:"ARIA 自动调度",
+        protocol:{ intent:"分析项目", task_type:"product", priority:"high", expected_outputs:["报告"], risks:["范围不清"] },
         steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解" }],
       },
       modelUsage:{
@@ -180,6 +184,7 @@ describe("workflowArchive", () => {
 
     assert.ok(details.overview.some(item => item.label === "状态"));
     assert.equal(details.plan.steps[0], "1. 林 美穂 · PM");
+    assert.equal(details.plan.protocol.priority, "high");
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
     assert.match(details.artifacts[0].title, /^v1/);
     assert.match(details.artifacts[0].meta, /^整合报告 · a-/);

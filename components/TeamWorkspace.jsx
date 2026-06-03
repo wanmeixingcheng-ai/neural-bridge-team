@@ -1915,6 +1915,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                         <button type="button" onClick={()=>{ onContinue?.(buildWorkflowPlanEditPrompt(record, lang)); setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input.")); }} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("调整", "調整", "Edit")}</button>
                       </div>
                       <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"3px" }}>{details.plan.strategy}</div>
+                      {details.plan.protocol?.intent && <div style={{ color:T.text, fontSize:"10px", lineHeight:1.45, marginTop:"4px" }}>{details.plan.protocol.intent} · {details.plan.protocol.task_type} · {details.plan.protocol.priority}</div>}
                       <div style={{ color:T.text, fontSize:"10px", lineHeight:1.5, marginTop:"5px" }}>{details.plan.steps.join(" / ")}</div>
                     </div>
                   )}
@@ -1955,6 +1956,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const progress = currentWorkflow.progress || { done:0, total:0 };
   const canRetry = ["failed", "stopped"].includes(currentWorkflow.mode);
   const queue = workflowQueueSummary(currentWorkflow.members);
+  const protocol = currentWorkflow.plan?.protocol || null;
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -1985,6 +1987,18 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               <button type="button" onClick={()=>onContinueWorkflow?.(buildWorkflowPlanEditPrompt(currentWorkflow, lang))} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "調整" : lang==="en" ? "Edit" : "调整"}</button>
             </div>
             <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"4px" }}>{currentWorkflow.plan.strategy}</div>
+            {protocol && (
+              <div style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"7px", padding:"7px", marginTop:"7px" }}>
+                <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", alignItems:"center" }}>
+                  <span style={{ color:T.blue, background:T.blueGlow, borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900 }}>{protocol.task_type}</span>
+                  <span style={{ color:protocol.priority === "high" ? T.red : protocol.priority === "low" ? T.muted : T.orange, background:T.card, border:`1px solid ${T.border}`, borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900 }}>{protocol.priority}</span>
+                  {protocol.needs_user_confirmation && <span style={{ color:T.red, background:"#ef444415", borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900 }}>{lang==="ja" ? "確認待ち" : lang==="en" ? "Needs confirmation" : "需确认"}</span>}
+                </div>
+                {protocol.intent && <div style={{ color:T.text, fontSize:"10.5px", lineHeight:1.45, marginTop:"6px" }}>{protocol.intent}</div>}
+                {!!protocol.expected_outputs?.length && <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"5px" }}>{lang==="ja" ? "成果物：" : lang==="en" ? "Outputs: " : "产物："}{protocol.expected_outputs.join(" / ")}</div>}
+                {!!protocol.risks?.length && <div style={{ color:T.red, fontSize:"10px", lineHeight:1.45, marginTop:"4px" }}>{lang==="ja" ? "リスク：" : lang==="en" ? "Risks: " : "风险："}{protocol.risks.join(" / ")}</div>}
+              </div>
+            )}
             <div style={{ display:"flex", flexDirection:"column", gap:"6px", marginTop:"8px" }}>
               {currentWorkflow.plan.steps.slice(0, 8).map(step => (
                 <div key={`${step.order}-${step.memberId || step.member}`} style={{ display:"grid", gridTemplateColumns:"22px minmax(0,1fr)", gap:"6px", alignItems:"start" }}>
