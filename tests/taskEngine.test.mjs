@@ -21,6 +21,7 @@ import {
   workflowRequiresConfirmation,
   workflowExternalDisclosureLines,
   workflowFailureReassignmentPlan,
+  workflowAuditSummary,
   workflowLifecycleSteps,
   workflowQualityCheck,
 } from "../lib/taskEngine.mjs";
@@ -196,6 +197,28 @@ test("workflow lifecycle steps expose the production task state machine", () => 
   assert.equal(workflowLifecycleSteps("done", "en").find(item => item.status === "done").state, "complete");
   assert.equal(workflowLifecycleSteps("failed", "zh").find(item => item.status === "failed").state, "current");
   assert.equal(workflowLifecycleSteps("archived", "zh").find(item => item.status === "archived").state, "complete");
+});
+
+test("workflow audit summary exposes external paths and control status", () => {
+  const summary = workflowAuditSummary({
+    mode:"waiting_confirmation",
+    members:[{ id:"aria" }, { id:"qa" }],
+    artifacts:[{ title:"报告" }],
+    plan:{ protocol:{ needs_user_confirmation:true } },
+    modelUsage:{
+      external:true,
+      providers:["Claude / Anthropic"],
+      models:[{ modelKey:"claude", provider:"Claude / Anthropic", external:true }],
+    },
+    quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏" }] },
+  }, "zh");
+
+  assert.equal(summary.external, true);
+  assert.equal(summary.requiresConfirmation, true);
+  assert.match(summary.lines.join("\n"), /Claude \/ Anthropic/);
+  assert.match(summary.lines.join("\n"), /高风险确认: 需要/);
+  assert.match(summary.lines.join("\n"), /成果检查: 有缺失/);
+  assert.deepEqual(summary.models, ["claude · Claude / Anthropic"]);
 });
 
 test("workflow quality check flags missing member outputs", () => {

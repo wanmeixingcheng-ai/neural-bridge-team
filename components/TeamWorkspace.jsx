@@ -26,6 +26,7 @@ import {
   wantsPriorIntegration,
   workflowQueueSummary,
   workflowFailureReassignmentPlan,
+  workflowAuditSummary,
   workflowLifecycleSteps,
   workflowQualityCheck,
   workflowStatusLabel,
@@ -2063,6 +2064,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const quality = currentWorkflow.quality || null;
   const reassignment = currentWorkflow.mode === "failed" ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
   const lifecycle = workflowLifecycleSteps(currentWorkflow.mode, lang);
+  const auditSummary = currentWorkflow.mode !== "idle" ? workflowAuditSummary(currentWorkflow, lang) : null;
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -2176,6 +2178,15 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                 </div>
               ))}
             </div>
+          </div>
+        )}
+        {auditSummary && (
+          <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+              <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "監査サマリー" : lang==="en" ? "Audit summary" : "审计摘要"}</div>
+              <span style={{ color:auditSummary.external ? T.orange : T.muted, fontSize:"9.5px", fontWeight:900 }}>{auditSummary.external ? (lang==="ja" ? "外部送信あり" : lang==="en" ? "External" : "有外发") : (lang==="ja" ? "ローカル中心" : lang==="en" ? "Local-first" : "本地优先")}</span>
+            </div>
+            <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.55, marginTop:"5px" }}>{auditSummary.lines.join(" / ")}</div>
           </div>
         )}
         {!!currentWorkflow.modelUsage?.models?.length && (
