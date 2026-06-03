@@ -2481,6 +2481,17 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
               {["artifact", "member_output"].includes(item.type) && <span style={{ color:item.type === "artifact" ? T.purple : T.blue, background:item.type === "artifact" ? `${T.purple}14` : `${T.blue}14`, borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>{item.type === "artifact" ? label("产物", "成果物", "Artifact") : label("成员", "メンバー", "Member")}</span>}
             </div>
             <div style={{ color:T.muted, fontSize:"10.5px", margin:"4px 0" }}>[{item.type}] {item.updatedAt?.slice(0,10)} · {item.status} · importance {item.importance || 1}{item.metadata?.sourceDocId ? ` · ${label("可入文档库", "文書庫連携", "indexable")}` : ""}</div>
+            {item.metadata?.workflowRecordId && (
+              <div style={{ color:T.muted, background:T.surface, border:`1px solid ${T.border}`, borderRadius:"7px", padding:"6px 7px", fontSize:"10px", lineHeight:1.45, marginBottom:"7px" }}>
+                {[
+                  `${label("工作流", "ワークフロー", "Workflow")}: ${item.metadata.workflowRecordId}`,
+                  item.metadata.taskType ? `${label("类型", "種別", "Type")}: ${item.metadata.taskType}` : "",
+                  item.metadata.priority ? `${label("优先级", "優先度", "Priority")}: ${item.metadata.priority}` : "",
+                  item.metadata.qualityComplete !== null && item.metadata.qualityComplete !== undefined ? `${label("质量", "品質", "Quality")}: ${item.metadata.qualityComplete ? label("完整", "完全", "complete") : label("有缺失", "不足あり", "missing")}` : "",
+                  item.metadata.members?.length ? `${label("成员", "メンバー", "Members")}: ${item.metadata.members.length}` : "",
+                ].filter(Boolean).join(" · ")}
+              </div>
+            )}
             {item.metadata?.conflict && (
               <div style={{ color:T.red, background:"#ef444415", border:"1px solid #ef444430", borderRadius:"7px", padding:"6px 7px", fontSize:"10.5px", lineHeight:1.45, marginBottom:"7px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
                 <span>{label("可能冲突：", "競合の可能性：", "Possible conflict: ")}{item.metadata.conflict.title || item.metadata.conflict.memoryId}</span>
