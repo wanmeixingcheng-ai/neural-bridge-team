@@ -68,6 +68,7 @@ import {
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
+  buildWorkflowRerunPrompt,
   deleteWorkflowArchive,
   formatWorkflowRecordMarkdown,
   listWorkflowRecords,
@@ -1846,6 +1847,10 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     onContinue?.(buildWorkflowContinuationPrompt(record, lang));
     setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input."));
   };
+  const rerunRecord = (record) => {
+    onContinue?.(buildWorkflowRerunPrompt(record, lang));
+    setNotice(label("已放入 ARIA 输入框，可直接复跑。", "ARIA の入力欄に入れました。再実行できます。", "Placed in ARIA input for rerun."));
+  };
   const rememberRecord = async (record) => {
     setSavingId(record.id);
     try {
@@ -1920,6 +1925,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                   <div style={{ display:"flex", gap:"7px", marginTop:"8px", flexWrap:"wrap" }}>
                     <button type="button" onClick={()=>downloadRecord(record)} style={{ border:"none", background:T.blue, color:"#fff", borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("下载完整记录", "完全記録を保存", "Download full record")}</button>
                     <button type="button" onClick={()=>continueRecord(record)} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("继续任务", "続行", "Continue")}</button>
+                    <button type="button" onClick={()=>rerunRecord(record)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("复跑", "再実行", "Rerun")}</button>
                     <button type="button" disabled={savingId === record.id} onClick={()=>rememberRecord(record)} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingId === record.id ? T.faint : T.green, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{savingId === record.id ? label("入库中", "保存中", "Saving") : label("加入知识库", "知識庫へ", "Add to knowledge")}</button>
                     <button type="button" onClick={()=>setSelectedId("")} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("收起", "閉じる", "Collapse")}</button>
                   </div>

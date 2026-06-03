@@ -6,6 +6,7 @@ import {
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
+  buildWorkflowRerunPrompt,
   formatWorkflowRecordMarkdown,
   normalizeWorkflowRecord,
 } from "../lib/workflowArchive.mjs";
@@ -90,6 +91,21 @@ describe("workflowArchive", () => {
     assert.match(prompt, /整合结论/);
     assert.match(prompt, /林 美穂 · PM/);
     assert.match(prompt, /调度哪些成员/);
+  });
+
+  it("builds a rerun prompt that preserves the objective but requests fresh dispatch", () => {
+    const prompt = buildWorkflowRerunPrompt({
+      title: "综合报告",
+      task: "分析项目",
+      plan: { strategy:"ARIA 自动调度 · 先产品后工程" },
+      results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
+    }, "zh");
+
+    assert.match(prompt, /复跑以下历史工作流/);
+    assert.match(prompt, /分析项目/);
+    assert.match(prompt, /先产品后工程/);
+    assert.match(prompt, /启动新的 ARIA 调度/);
+    assert.match(prompt, /林 美穂 · PM/);
   });
 
   it("builds an approved knowledge payload from a workflow record", () => {
