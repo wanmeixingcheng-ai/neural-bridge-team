@@ -14,6 +14,7 @@ import {
 } from "../lib/attachmentPolicy.mjs";
 import {
   emptyWorkflowState,
+  buildWorkflowPlanEditPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowPlan,
   extractPriorWorkflowResults,
@@ -1891,7 +1892,10 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                   )}
                   {details?.plan && (
                     <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
-                      <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.plan.title}</div>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+                        <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.plan.title}</div>
+                        <button type="button" onClick={()=>{ onContinue?.(buildWorkflowPlanEditPrompt(record, lang)); setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input.")); }} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("调整", "調整", "Edit")}</button>
+                      </div>
                       <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"3px" }}>{details.plan.strategy}</div>
                       <div style={{ color:T.text, fontSize:"10px", lineHeight:1.5, marginTop:"5px" }}>{details.plan.steps.join(" / ")}</div>
                     </div>
@@ -1956,7 +1960,10 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
         )}
         {currentWorkflow.plan?.steps?.length > 0 && (
           <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
-            <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "調度計画" : lang==="en" ? "Dispatch plan" : "调度计划"}</div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+              <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "調度計画" : lang==="en" ? "Dispatch plan" : "调度计划"}</div>
+              <button type="button" onClick={()=>onContinueWorkflow?.(buildWorkflowPlanEditPrompt(currentWorkflow, lang))} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "調整" : lang==="en" ? "Edit" : "调整"}</button>
+            </div>
             <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"4px" }}>{currentWorkflow.plan.strategy}</div>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px", marginTop:"8px" }}>
               {currentWorkflow.plan.steps.slice(0, 8).map(step => (

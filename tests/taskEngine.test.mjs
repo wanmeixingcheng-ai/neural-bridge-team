@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   chooseWorkflowMembers,
+  buildWorkflowPlanEditPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowPlan,
   emptyWorkflowState,
@@ -79,6 +80,25 @@ test("workflow plan explains dispatch order without changing selected workers", 
   assert.equal(plan.steps[0].order, 1);
   assert.match(plan.strategy, /ARIA 自动调度/);
   assert.ok(plan.steps.some(step => step.memberId === "fe"));
+});
+
+test("workflow plan edit prompt turns the current plan into an editable handoff", () => {
+  const prompt = buildWorkflowPlanEditPrompt({
+    task:"开发工作流记录详情",
+    plan:{
+      strategy:"ARIA 自动调度 · 执行落地",
+      steps:[
+        { order:1, member:"山本 剛", title:"CTO", model:"claude", purpose:"架构约束" },
+        { order:2, member:"陈志远", title:"前端工程师", model:"codex", purpose:"界面实现" },
+      ],
+    },
+  }, "zh");
+
+  assert.match(prompt, /进行调整/);
+  assert.match(prompt, /开发工作流记录详情/);
+  assert.match(prompt, /ARIA 自动调度/);
+  assert.match(prompt, /1\. 山本 剛/);
+  assert.match(prompt, /增删成员/);
 });
 
 test("workflow queue summary tracks member execution states", () => {
