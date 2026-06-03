@@ -5,6 +5,7 @@ import {
   chooseWorkflowMembers,
   buildWorkflowPlanEditPrompt,
   buildWorkflowRetryPrompt,
+  buildWorkflowSkipPrompt,
   buildWorkflowPlan,
   buildWorkflowConfirmationPrompt,
   emptyWorkflowState,
@@ -86,6 +87,24 @@ test("retry prompt preserves completed work and failed member context", () => {
   assert.match(prompt, /建议改派/);
   assert.match(prompt, /gemma26/);
   assert.match(prompt, /已完成里程碑拆分/);
+});
+
+test("skip prompt preserves completed work and asks ARIA to integrate gaps", () => {
+  const prompt = buildWorkflowSkipPrompt({
+    task:"生成上线计划",
+    mode:"failed",
+    members:[
+      { id:"pm", name:"林 美穂", title:"PM", status:"complete", summary:"已完成里程碑拆分" },
+      { id:"qa", name:"吴晓敏", title:"QA", status:"failed", error:"测试模型超时" },
+      { id:"audit", name:"孙建国", title:"开发审计", status:"queued" },
+    ],
+  }, "zh");
+
+  assert.match(prompt, /跳过以下未完成或失败成员/);
+  assert.match(prompt, /吴晓敏 · QA/);
+  assert.match(prompt, /孙建国 · 开发审计/);
+  assert.match(prompt, /已完成里程碑拆分/);
+  assert.match(prompt, /最终可交付产物/);
 });
 
 test("confirmation prompt resumes a reviewed high-risk workflow plan", () => {
