@@ -230,7 +230,7 @@ describe("workflowArchive", () => {
       title:"综合报告",
       task:"分析项目",
       source:"aria-workflow",
-      members:[{ name:"林 美穂", title:"PM", model:"gemma26" }],
+      members:[{ name:"林 美穂", title:"PM", model:"gemma26" }, { name:"陈志远", title:"前端工程师", model:"codex" }],
       plan:{
         strategy:"ARIA 自动调度",
         protocol:{ intent:"分析项目", task_type:"product", priority:"high", expected_outputs:["报告"], risks:["范围不清"] },
@@ -250,6 +250,8 @@ describe("workflowArchive", () => {
     assert.equal(details.plan.protocol.priority, "high");
     assert.equal(details.quality.complete, false);
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
+    assert.equal(details.toolCalls.needsAttention, true);
+    assert.equal(details.toolCalls.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
     assert.match(details.artifacts[0].title, /^v1/);
     assert.match(details.artifacts[0].meta, /^整合报告 · a-/);
   });
