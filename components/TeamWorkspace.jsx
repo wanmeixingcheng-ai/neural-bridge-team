@@ -28,6 +28,7 @@ import {
   workflowFailureReassignmentPlan,
   workflowAuditSummary,
   workflowLifecycleSteps,
+  workflowPermissionChecklist,
   workflowQualityCheck,
   workflowStatusLabel,
   workflowExternalDisclosureLines,
@@ -2065,6 +2066,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const reassignment = currentWorkflow.mode === "failed" ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
   const lifecycle = workflowLifecycleSteps(currentWorkflow.mode, lang);
   const auditSummary = currentWorkflow.mode !== "idle" ? workflowAuditSummary(currentWorkflow, lang) : null;
+  const permissionChecklist = currentWorkflow.mode !== "idle" ? workflowPermissionChecklist(currentWorkflow, lang) : null;
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -2187,6 +2189,22 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               <span style={{ color:auditSummary.external ? T.orange : T.muted, fontSize:"9.5px", fontWeight:900 }}>{auditSummary.external ? (lang==="ja" ? "外部送信あり" : lang==="en" ? "External" : "有外发") : (lang==="ja" ? "ローカル中心" : lang==="en" ? "Local-first" : "本地优先")}</span>
             </div>
             <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.55, marginTop:"5px" }}>{auditSummary.lines.join(" / ")}</div>
+          </div>
+        )}
+        {permissionChecklist && (
+          <div style={{ marginTop:"10px", border:`1px solid ${permissionChecklist.blocked ? T.yellow : T.border}`, background:permissionChecklist.blocked ? "#f59e0b10" : T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:permissionChecklist.blocked ? T.yellow : T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "権限チェック" : lang==="en" ? "Permission checklist" : "权限检查"}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"7px" }}>
+              {permissionChecklist.entries.map(entry => {
+                const color = entry.status === "ok" ? T.green : entry.status === "needs_disclosure" ? T.orange : T.yellow;
+                return (
+                  <div key={entry.id} style={{ color:T.text, fontSize:"10.2px", lineHeight:1.45 }}>
+                    <span style={{ color, fontWeight:900 }}>{entry.label}</span>
+                    <span style={{ color:T.muted }}> · {entry.detail}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
         {!!currentWorkflow.modelUsage?.models?.length && (

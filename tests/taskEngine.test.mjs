@@ -23,6 +23,7 @@ import {
   workflowFailureReassignmentPlan,
   workflowAuditSummary,
   workflowLifecycleSteps,
+  workflowPermissionChecklist,
   workflowQualityCheck,
 } from "../lib/taskEngine.mjs";
 
@@ -219,6 +220,23 @@ test("workflow audit summary exposes external paths and control status", () => {
   assert.match(summary.lines.join("\n"), /高风险确认: 需要/);
   assert.match(summary.lines.join("\n"), /成果检查: 有缺失/);
   assert.deepEqual(summary.models, ["claude · Claude / Anthropic"]);
+});
+
+test("workflow permission checklist flags risky production actions", () => {
+  const checklist = workflowPermissionChecklist({
+    task:"请部署到 Vercel 并投递 Codex",
+    mode:"waiting_confirmation",
+    members:[{ id:"fe", model:"codex" }],
+    plan:{ protocol:{ needs_user_confirmation:true } },
+    modelUsage:{ external:true, providers:["Google Gemini/Gemma"] },
+  }, "zh");
+
+  assert.equal(checklist.blocked, true);
+  assert.equal(checklist.entries.find(item => item.id === "external-models").status, "needs_disclosure");
+  assert.equal(checklist.entries.find(item => item.id === "high-risk-confirmation").status, "needs_confirmation");
+  assert.equal(checklist.entries.find(item => item.id === "codex-dispatch").status, "admin_required");
+  assert.equal(checklist.entries.find(item => item.id === "deployment").status, "admin_required");
+  assert.equal(workflowPermissionChecklist({ task:"整理会议纪要", modelUsage:{ external:false } }, "zh").blocked, false);
 });
 
 test("workflow quality check flags missing member outputs", () => {
