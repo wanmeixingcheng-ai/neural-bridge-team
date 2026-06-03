@@ -22,6 +22,7 @@ import {
   recentConversationContext,
   summarizeForWorkflow,
   wantsPriorIntegration,
+  workflowQueueSummary,
   workflowStatusLabel,
 } from "../lib/taskEngine.mjs";
 import {
@@ -1882,6 +1883,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const modeColor = workflowModeColor(currentWorkflow.mode);
   const progress = currentWorkflow.progress || { done:0, total:0 };
   const canRetry = ["failed", "stopped"].includes(currentWorkflow.mode);
+  const queue = workflowQueueSummary(currentWorkflow.members);
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -1920,6 +1922,25 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                 </div>
               ))}
             </div>
+          </div>
+        )}
+        {queue.total > 0 && (
+          <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "メンバータスクキュー" : lang==="en" ? "Member task queue" : "成员任务队列"}</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,minmax(0,1fr))", gap:"6px", marginTop:"8px" }}>
+              {[
+                [lang==="ja" ? "待機" : lang==="en" ? "Queued" : "待执行", queue.queued, T.muted],
+                [lang==="ja" ? "実行" : lang==="en" ? "Working" : "执行中", queue.working, T.blue],
+                [lang==="ja" ? "完了" : lang==="en" ? "Done" : "已完成", queue.complete, T.green],
+                [lang==="ja" ? "失敗" : lang==="en" ? "Failed" : "失败", queue.failed, T.red],
+              ].map(([name, value, color]) => (
+                <div key={name} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"7px", padding:"6px", minWidth:0 }}>
+                  <div style={{ color, fontSize:"12px", fontWeight:900, textAlign:"center" }}>{value}</div>
+                  <div style={{ color:T.muted, fontSize:"9.5px", marginTop:"2px", textAlign:"center", whiteSpace:"nowrap" }}>{name}</div>
+                </div>
+              ))}
+            </div>
+            {queue.next && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"8px" }}>{lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一位："}{queue.next.name} · {queue.next.title}</div>}
           </div>
         )}
         {!!currentWorkflow.members?.length && (

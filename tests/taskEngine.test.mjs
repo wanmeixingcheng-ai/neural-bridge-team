@@ -11,6 +11,7 @@ import {
   planWorkflowMembersWithModel,
   recentConversationContext,
   wantsPriorIntegration,
+  workflowQueueSummary,
 } from "../lib/taskEngine.mjs";
 
 const members = [
@@ -78,6 +79,22 @@ test("workflow plan explains dispatch order without changing selected workers", 
   assert.equal(plan.steps[0].order, 1);
   assert.match(plan.strategy, /ARIA 自动调度/);
   assert.ok(plan.steps.some(step => step.memberId === "fe"));
+});
+
+test("workflow queue summary tracks member execution states", () => {
+  const queue = workflowQueueSummary([
+    { id:"pm", name:"林 美穂", title:"PM", status:"complete" },
+    { id:"qa", name:"吴晓敏", title:"QA", status:"working" },
+    { id:"fe", name:"陈志远", title:"前端工程师", status:"queued" },
+    { id:"audit", name:"佐藤 健", title:"安全审计", status:"failed" },
+  ]);
+
+  assert.equal(queue.total, 4);
+  assert.equal(queue.complete, 1);
+  assert.equal(queue.working, 1);
+  assert.equal(queue.queued, 1);
+  assert.equal(queue.failed, 1);
+  assert.equal(queue.next.id, "qa");
 });
 
 test("model planner JSON can be fenced and dispatch selected members", async () => {
