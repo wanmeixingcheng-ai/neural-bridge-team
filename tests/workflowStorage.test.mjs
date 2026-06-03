@@ -48,6 +48,7 @@ describe("workflowStorage", () => {
         })),
       },
       members: [{ id: "aria", name: "ARIA", summary: "x".repeat(3000) }],
+      quality:{ complete:false, missingMembers:Array.from({ length:30 }, (_, index) => ({ id:`m-${index}`, name:"n".repeat(300), title:"t".repeat(300) })) },
       artifacts: [{ title: "产物", content: "y".repeat(12000) }],
       progress: { done: 1, total: 1 },
     }, "zh", storage);
@@ -63,6 +64,9 @@ describe("workflowStorage", () => {
     assert.equal(restored.modelUsage.models.length, 12);
     assert.equal(restored.modelUsage.external, true);
     assert.ok(restored.modelUsage.models[0].provider.length <= 120);
+    assert.equal(restored.quality.complete, false);
+    assert.equal(restored.quality.missingMembers.length, 24);
+    assert.ok(restored.quality.missingMembers[0].name.length <= 120);
     assert.equal(restored.artifacts[0].version, 1);
     assert.match(restored.artifacts[0].hash, /^a-/);
     assert.ok(restored.members[0].summary.length < 1800);

@@ -25,6 +25,7 @@ import {
   summarizeForWorkflow,
   wantsPriorIntegration,
   workflowQueueSummary,
+  workflowQualityCheck,
   workflowStatusLabel,
   workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
@@ -1207,11 +1208,15 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           await learnFromExchange({ member:worker, userText:text, reply:safeReply, lang:requestLanguage });
         }
         if (!controller.signal.aborted && results.length) {
+          const quality = workflowQualityCheck(workers, results);
           onWorkflowState?.(state => ({
             ...state,
             mode:"summarizing",
-            phase:lang === "ja" ? "ARIA が成果を統合中" : lang === "en" ? "ARIA is integrating results" : "ARIA 正在整合产物",
+            phase:quality.complete
+              ? (lang === "ja" ? "ARIA が成果を統合中" : lang === "en" ? "ARIA is integrating results" : "ARIA 正在整合产物")
+              : (lang === "ja" ? "一部メンバー成果が不足、ARIA が補完統合中" : lang === "en" ? "Some member outputs are missing; ARIA is integrating with gaps noted" : "部分成员成果缺失，ARIA 正在带缺口整合"),
             updatedAt:new Date().toISOString(),
+            quality,
           }));
           const integrationPrompt = `${requestLanguage === "en" ? "Reply only in English." : requestLanguage === "ja" ? "日本語だけで回答してください。" : "只用中文回复。"}
 你是自动生产工作流的总调度。请把以下成员成果整合成最终产物。
@@ -1246,6 +1251,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"complete" })),
             plan:workflowPlan,
             modelUsage:workflowModelUsage,
+            quality,
             results,
             artifacts:[artifact],
           }).catch(() => {});
@@ -1256,6 +1262,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             phase:lang === "ja" ? "成果物生成完了" : lang === "en" ? "Output generated" : "产物已生成",
             updatedAt:new Date().toISOString(),
             artifacts:[artifact],
+            quality,
             progress:{ done:state.members.length, total:state.members.length },
           }));
         }
@@ -1555,11 +1562,15 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         await learnFromExchange({ member, userText:text, reply, lang:requestLanguage });
       }
       if (!controller.signal.aborted && results.length) {
+        const quality = workflowQualityCheck(workers, results);
         onWorkflowState?.(state => ({
           ...state,
           mode:"summarizing",
-          phase:lang === "ja" ? "ARIA が成果を統合中" : lang === "en" ? "ARIA is integrating results" : "ARIA 正在整合产物",
+          phase:quality.complete
+            ? (lang === "ja" ? "ARIA が成果を統合中" : lang === "en" ? "ARIA is integrating results" : "ARIA 正在整合产物")
+            : (lang === "ja" ? "一部メンバー成果が不足、ARIA が補完統合中" : lang === "en" ? "Some member outputs are missing; ARIA is integrating with gaps noted" : "部分成员成果缺失，ARIA 正在带缺口整合"),
           updatedAt:new Date().toISOString(),
+          quality,
         }));
         const aria = group.members.find(member => member.id === "aria") || workers[0];
         const integrationPrompt = `${requestLanguage === "en" ? "Reply only in English." : requestLanguage === "ja" ? "日本語だけで回答してください。" : "只用中文回复。"}
@@ -1593,6 +1604,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"complete" })),
           plan:workflowPlan,
           modelUsage:workflowModelUsage,
+          quality,
           results,
           artifacts:[artifact],
         }).catch(() => {});
@@ -1603,6 +1615,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           phase:lang === "ja" ? "成果物生成完了" : lang === "en" ? "Output generated" : "产物已生成",
           updatedAt:new Date().toISOString(),
           artifacts:[artifact],
+          quality,
           progress:{ done:state.members.length, total:state.members.length },
         }));
       }
@@ -2031,6 +2044,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const canConfirm = currentWorkflow.mode === "waiting_confirmation";
   const queue = workflowQueueSummary(currentWorkflow.members);
   const protocol = currentWorkflow.plan?.protocol || null;
+  const quality = currentWorkflow.quality || null;
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -2108,6 +2122,16 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               ))}
             </div>
             {queue.next && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"8px" }}>{lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一位："}{queue.next.name} · {queue.next.title}</div>}
+          </div>
+        )}
+        {quality && (
+          <div style={{ marginTop:"10px", border:`1px solid ${quality.complete ? T.green : T.red}40`, background:quality.complete ? "#10b98112" : "#ef444415", borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:quality.complete ? T.green : T.red, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "成果チェック" : lang==="en" ? "Output check" : "成果检查"}</div>
+            <div style={{ color:T.text, fontSize:"10.5px", lineHeight:1.45, marginTop:"4px" }}>
+              {quality.complete
+                ? (lang==="ja" ? "全担当メンバーの成果があります。" : lang==="en" ? "All assigned member outputs are present." : "所有分派成员都有成果。")
+                : `${lang==="ja" ? "不足：" : lang==="en" ? "Missing: " : "缺失："}${quality.missingMembers?.map(item => `${item.name} · ${item.title}`).join(" / ") || "-"}`}
+            </div>
           </div>
         )}
         {!!currentWorkflow.modelUsage?.models?.length && (

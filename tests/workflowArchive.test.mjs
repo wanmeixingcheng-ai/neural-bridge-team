@@ -69,6 +69,7 @@ describe("workflowArchive", () => {
         providers:["Google Gemini/Gemma"],
         models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
       },
+      quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
       artifacts: [{ title: "最终产物", content: "整合结论" }],
     }, "zh");
@@ -84,6 +85,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /## 模型调用/);
     assert.match(markdown, /Google Gemini\/Gemma/);
     assert.match(markdown, /任务文本、相关上下文/);
+    assert.match(markdown, /## 质量检查/);
+    assert.match(markdown, /吴晓敏 · QA/);
     assert.match(markdown, /### v1 · 最终产物/);
     assert.match(markdown, /指纹/);
     assert.match(markdown, /林 美穂/);
@@ -208,12 +211,14 @@ describe("workflowArchive", () => {
         providers:["Google Gemini/Gemma"],
         models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
       },
+      quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
       artifacts:[{ title:"最终产物", kind:"整合报告", content:"整合结论" }],
     }, "zh");
 
     assert.ok(details.overview.some(item => item.label === "状态"));
     assert.equal(details.plan.steps[0], "1. 林 美穂 · PM");
     assert.equal(details.plan.protocol.priority, "high");
+    assert.equal(details.quality.complete, false);
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
     assert.match(details.artifacts[0].title, /^v1/);
     assert.match(details.artifacts[0].meta, /^整合报告 · a-/);

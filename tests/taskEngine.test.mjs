@@ -20,6 +20,7 @@ import {
   workflowQueueSummary,
   workflowRequiresConfirmation,
   workflowExternalDisclosureLines,
+  workflowQualityCheck,
 } from "../lib/taskEngine.mjs";
 
 const members = [
@@ -181,6 +182,19 @@ test("workflow queue summary tracks member execution states", () => {
   assert.equal(queue.queued, 1);
   assert.equal(queue.failed, 1);
   assert.equal(queue.next.id, "qa");
+});
+
+test("workflow quality check flags missing member outputs", () => {
+  const quality = workflowQualityCheck([
+    { id:"pm", name:"林 美穂", title:"PM" },
+    { id:"qa", name:"吴晓敏", title:"QA" },
+  ], [
+    { member:"林 美穂", title:"PM", text:"计划" },
+  ]);
+
+  assert.equal(quality.complete, false);
+  assert.deepEqual(quality.missingMembers.map(item => item.id), ["qa"]);
+  assert.equal(workflowQualityCheck([{ name:"林 美穂", title:"PM" }], [{ member:"林 美穂" }]).complete, true);
 });
 
 test("model planner JSON can be fenced and dispatch selected members", async () => {
