@@ -62,6 +62,7 @@ import {
   callModel,
   detectInputLanguage,
   localOnlyBlockMessage,
+  modelProviderInfo,
   modelUsageSummary,
   outboundBlockedByLocalOnly,
   outboundProviderLabel,
@@ -1011,6 +1012,15 @@ function confirmOutboundContext({ lang, modelKey, apiKeys, hasAttachments, hasWe
   return true;
 }
 
+function modelMessageMeta(modelKey, apiKeys = {}) {
+  const info = modelProviderInfo(modelKey, apiKeys);
+  return {
+    model:info.modelKey || modelKey || "",
+    provider:info.provider || "",
+    external:!!info.external,
+  };
+}
+
 function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activeSession, lang, allMembers = TEAM, onWorkflowState, draftPrompt }) {
   const [controls, setControls] = useState({ thinkingMode:"off", modelOverride:"", reasoningLevel:"medium" });
   const effectiveModel = controls.modelOverride || member.model;
@@ -1207,7 +1217,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           const reply = await callModel(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
           const safeReply = reply || (lang === "en" ? "No response." : lang === "ja" ? "応答がありません。" : "无响应");
           results.push({ member:worker.name, title:worker.title, model:workerModel, text:safeReply, summary:summarizeForWorkflow(safeReply) });
-          setMessages(m => [...m, { role:"ai", text:`【${worker.name} · ${worker.title}】\n${safeReply}` }]);
+          setMessages(m => [...m, { role:"ai", text:`【${worker.name} · ${worker.title}】\n${safeReply}`, ...modelMessageMeta(workerModel, apiKeys) }]);
           onWorkflowState?.(state => ({
             ...state,
             mode:"running",
@@ -1266,7 +1276,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             results,
             artifacts:[artifact],
           }).catch(() => {});
-          setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}` }]);
+          setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}`, ...modelMessageMeta(effectiveModel, apiKeys) }]);
           onWorkflowState?.(state => ({
             ...state,
             mode:"done",
@@ -1280,7 +1290,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
         return;
       }
       const reply = await callModel(effectiveModel, member.systemPrompt, modelNext, apiKeys, { ...controls, language:requestLanguage }, controller.signal);
-      setMessages(m => [...m, { role:"ai", text:reply || "无响应" }]);
+      setMessages(m => [...m, { role:"ai", text:reply || "无响应", ...modelMessageMeta(effectiveModel, apiKeys) }]);
       await learnFromExchange({ member, userText:text, reply, lang:requestLanguage });
     } catch (e) {
       if (e.name === "AbortError") {
@@ -1355,6 +1365,11 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           <div key={i} style={{ display:"flex", justifyContent:msg.role==="user"?"flex-end":"flex-start", gap:"10px" }}>
             {msg.role==="ai" && <div style={{ width:28, height:28, borderRadius:"8px", background:`${model.color}18`, color:model.color, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{member.emoji}</div>}
             <div style={{ maxWidth:"min(760px, 82%)", background:msg.role==="user"?T.blue:T.surface, color:msg.role==="user"?"#fff":T.text, border:`1px solid ${msg.role==="user"?T.blue:T.border}`, borderRadius:msg.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px", padding:"12px 15px", fontSize:"13.5px", lineHeight:1.75, whiteSpace:"pre-wrap" }}>
+              {msg.role==="ai" && msg.model && (
+                <div style={{ color:msg.external ? T.orange : T.muted, fontSize:"10.5px", fontWeight:900, marginBottom:"5px" }}>
+                  {msg.model}{msg.provider ? ` · ${msg.provider}` : ""}{msg.external ? ` · ${lang==="ja" ? "外部" : lang==="en" ? "external" : "外发"}` : ""}
+                </div>
+              )}
               {msg.text}
               {msg.role==="ai" && i>0 && msg.text && (
                 <div style={{ marginTop:"10px", display:"flex", justifyContent:"flex-end", gap:"7px" }}>
@@ -1562,7 +1577,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         const reply = await callModel(effectiveModel, member.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
         const safeReply = reply || (lang === "en" ? "No response." : lang === "ja" ? "応答がありません。" : "无响应");
         results.push({ member:member.name, title:member.title, model:effectiveModel, text:safeReply, summary:summarizeForWorkflow(safeReply) });
-        setMessages(m => [...m, { role:"ai", member:member.name, title:member.title, model:effectiveModel, emoji:member.emoji, text:safeReply }]);
+        setMessages(m => [...m, { role:"ai", member:member.name, title:member.title, emoji:member.emoji, text:safeReply, ...modelMessageMeta(effectiveModel, apiKeys) }]);
         onWorkflowState?.(state => ({
           ...state,
           mode:"running",
@@ -1620,7 +1635,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           results,
           artifacts:[artifact],
         }).catch(() => {});
-        setMessages(m => [...m, { role:"ai", member:"ARIA", title:lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物", model:aria.model, emoji:aria.emoji || "◎", text:finalText }]);
+        setMessages(m => [...m, { role:"ai", member:"ARIA", title:lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物", emoji:aria.emoji || "◎", text:finalText, ...modelMessageMeta(controls.modelOverride || aria.model, apiKeys) }]);
         onWorkflowState?.(state => ({
           ...state,
           mode:"done",
@@ -1652,7 +1667,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           const copy = [...m];
           const last = copy[copy.length - 1];
           if (last?.role === "ai" && last.member === currentMember?.name && !last.text) copy.pop();
-          copy.push({ role:"ai", member:currentMember?.name || "系统", title:currentMember?.title, model:currentMember?.model, emoji:currentMember?.emoji, text:`${t(lang, "requestFailed")}：${e.message || t(lang, "unknownError")}` });
+          copy.push({ role:"ai", member:currentMember?.name || "系统", title:currentMember?.title, emoji:currentMember?.emoji, text:`${t(lang, "requestFailed")}：${e.message || t(lang, "unknownError")}`, ...modelMessageMeta(currentMember?.model, apiKeys) });
           return copy;
         });
         onWorkflowState?.(state => ({
@@ -1704,7 +1719,12 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             <div key={i} style={{ display:"flex", justifyContent:msg.role==="user"?"flex-end":"flex-start", gap:"10px" }}>
               {msg.role==="ai" && <div style={{ width:28, height:28, borderRadius:"8px", background:`${model.color}18`, color:model.color, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{msg.emoji || "◎"}</div>}
               <div style={{ maxWidth:"min(760px, 82%)", background:msg.role==="user"?T.blue:T.surface, color:msg.role==="user"?"#fff":T.text, border:`1px solid ${msg.role==="user"?T.blue:T.border}`, borderRadius:msg.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px", padding:"12px 15px", fontSize:"13.5px", lineHeight:1.75, whiteSpace:"pre-wrap" }}>
-                {msg.role==="ai" && <div style={{ color:model.color, fontSize:"11px", fontWeight:900, marginBottom:"5px" }}>{msg.member}{msg.title?` · ${msg.title}`:""}</div>}
+                {msg.role==="ai" && (
+                  <div style={{ color:model.color, fontSize:"11px", fontWeight:900, marginBottom:"5px" }}>
+                    {msg.member}{msg.title?` · ${msg.title}`:""}
+                    {msg.model ? ` · ${msg.model}` : ""}{msg.provider ? ` · ${msg.provider}` : ""}{msg.external ? ` · ${lang==="ja" ? "外部" : lang==="en" ? "external" : "外发"}` : ""}
+                  </div>
+                )}
                 {msg.text}
                 {msg.role==="ai" && i>0 && msg.text && <div style={{ marginTop:"10px", display:"flex", justifyContent:"flex-end", gap:"7px" }}><button onClick={()=>speakText(msg.text, lang)} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"5px 9px", fontSize:"10.5px", cursor:"pointer" }}>{lang==="ja" ? "読み上げ" : lang==="en" ? "Speak" : "朗读"}</button><button title={lang==="ja" ? "ブラウザのダウンロード機能でローカル保存します。GitHub キューは使用しません。" : lang==="en" ? "Saved through the browser download channel. The GitHub queue is not used." : "通过浏览器下载保存到本机，不经过 GitHub 队列。"} onClick={()=>saveGroupMessage(msg)} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"5px 9px", fontSize:"10.5px", cursor:"pointer" }}>{t(lang, "saveLocal")}</button></div>}
               </div>
