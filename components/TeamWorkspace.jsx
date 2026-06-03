@@ -56,6 +56,7 @@ import {
 } from "../lib/workflowStorage.mjs";
 import {
   deleteWorkflowArchive,
+  formatWorkflowRecordMarkdown,
   listWorkflowRecords,
   saveWorkflowRecord,
 } from "../lib/workflowArchive.mjs";
@@ -1783,25 +1784,45 @@ function InfoPanel({ item, onMenu, onWorkPanel, lang }) {
 
 function WorkflowArchiveList({ lang, refreshKey }) {
   const [records, setRecords] = useState([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [notice, setNotice] = useState("");
   useEffect(() => {
     listWorkflowRecords({ limit:5 }).then(setRecords).catch(() => setRecords([]));
   }, [refreshKey]);
   if (!records.length) return null;
   const label = (zh, ja, en) => lang === "ja" ? ja : lang === "en" ? en : zh;
+  const downloadRecord = async (record) => {
+    const markdown = formatWorkflowRecordMarkdown(record, lang);
+    const fileName = await saveToLocalOutputs({ name:"Workflow", title:record.title }, markdown);
+    setNotice(label(`已下载：${fileName}`, `ダウンロードしました：${fileName}`, `Downloaded: ${fileName}`));
+  };
   return (
     <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.surface, borderRadius:"10px", padding:"12px" }}>
       <div style={{ color:T.muted, fontSize:"10.5px", fontWeight:800 }}>{label("最近工作流记录", "最近のワークフロー記録", "Recent workflow records")}</div>
+      {notice && <div style={{ color:T.green, fontSize:"10.5px", lineHeight:1.45, marginTop:"7px" }}>{notice}</div>}
       <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"8px" }}>
         {records.map(record => {
           const artifact = record.artifacts?.[0];
+          const selected = selectedId === record.id;
           return (
-            <div key={record.id} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
-                <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{record.title}</div>
-                <div style={{ color:record.status === "done" ? T.green : T.muted, fontSize:"10px", fontWeight:900, whiteSpace:"nowrap" }}>{record.status}</div>
-              </div>
-              <div style={{ color:T.muted, fontSize:"10px", marginTop:"3px" }}>{record.members?.length || 0} {label("名成员", "名", "members")} · {record.source}</div>
-              {artifact?.content && <div style={{ color:T.text, fontSize:"10.8px", lineHeight:1.5, marginTop:"6px", maxHeight:"72px", overflow:"hidden", whiteSpace:"pre-wrap" }}>{artifact.content}</div>}
+            <div key={record.id} style={{ border:`1px solid ${selected ? T.blue : T.border}`, background:selected ? T.surface : T.card, borderRadius:"8px", padding:"9px" }}>
+              <button type="button" onClick={()=>setSelectedId(selected ? "" : record.id)} style={{ width:"100%", border:"none", background:"transparent", padding:0, cursor:"pointer", textAlign:"left" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+                  <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{record.title}</div>
+                  <div style={{ color:record.status === "done" ? T.green : T.muted, fontSize:"10px", fontWeight:900, whiteSpace:"nowrap" }}>{record.status}</div>
+                </div>
+                <div style={{ color:T.muted, fontSize:"10px", marginTop:"3px" }}>{record.members?.length || 0} {label("名成员", "名", "members")} · {record.source}</div>
+                {artifact?.content && <div style={{ color:T.text, fontSize:"10.8px", lineHeight:1.5, marginTop:"6px", maxHeight:selected ? "220px" : "72px", overflow:"hidden", whiteSpace:"pre-wrap" }}>{artifact.content}</div>}
+              </button>
+              {selected && (
+                <div style={{ marginTop:"9px", borderTop:`1px solid ${T.border}`, paddingTop:"8px" }}>
+                  {!!record.results?.length && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.5 }}>{record.results.slice(0, 6).map(result => `${result.member} · ${result.title}`).join(" / ")}</div>}
+                  <div style={{ display:"flex", gap:"7px", marginTop:"8px", flexWrap:"wrap" }}>
+                    <button type="button" onClick={()=>downloadRecord(record)} style={{ border:"none", background:T.blue, color:"#fff", borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("下载完整记录", "完全記録を保存", "Download full record")}</button>
+                    <button type="button" onClick={()=>setSelectedId("")} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("收起", "閉じる", "Collapse")}</button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
