@@ -15,6 +15,12 @@ const GOOGLE_MODEL_IDS = {
   flash: "gemini-2.5-flash",
 };
 
+const GOOGLE_MODEL_LABELS = {
+  gemma31: "Gemma 4 31B",
+  gemma26: "Gemma 4 26B",
+  flash: "Gemini 2.5 Flash",
+};
+
 function languageName(lang) {
   if (lang === "ja") return "日语";
   if (lang === "en") return "英语";
@@ -223,6 +229,29 @@ function providerApiKey(overrideKey, envName) {
   return process.env[envName];
 }
 
+function providerError(provider, message, status, modelLabel = "") {
+  const text = `${message || ""}`.trim();
+  const lower = text.toLowerCase();
+  const prefix = modelLabel ? `${provider}（${modelLabel}）` : provider;
+  if (!text) return `${prefix} 请求失败。`;
+  if (lower.includes("internal error encountered") || lower.includes("internal error")) {
+    return `${prefix} 服务端内部错误。通常是模型服务临时异常或该模型当前不可用，请稍后重试，或手动切换到 Gemini 2.5 Flash。`;
+  }
+  if (lower.includes("quota") || lower.includes("rate limit")) {
+    return `${prefix} 额度或频率限制不足：${text}`;
+  }
+  if (lower.includes("api key") || lower.includes("permission") || lower.includes("unauthorized") || status === 401 || status === 403) {
+    return `${prefix} API Key 或权限错误：${text}`;
+  }
+  if (lower.includes("not found") || lower.includes("not supported")) {
+    return `${prefix} 模型不可用或模型名称不受支持：${text}`;
+  }
+  if (lower.includes("high demand") || lower.includes("unavailable") || status === 503) {
+    return `${prefix} 当前繁忙或暂不可用：${text}`;
+  }
+  return `${prefix} 请求失败：${text}`;
+}
+
 export async function POST(request) {
   if (!await isAuthenticatedAsync(request)) {
     await auditEvent(request, { type:"chat.auth_failed", status:"blocked" });
@@ -317,7 +346,8 @@ async function callAnthropic(systemPrompt, messages, overrideKey, options = {}) 
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    return Response.json({ error: data.error?.message || "Anthropic request failed" }, { status: res.status || 500 });
+    const message = providerError("Anthropic Claude", data.error?.message || "Anthropic request failed", res.status);
+    return Response.json({ error: message }, { status: res.status || 500 });
   }
 
   const data = await res.json();
@@ -342,7 +372,10 @@ async function callGoogle(modelKey, systemPrompt, messages, overrideKey, options
     });
   }
 
-  return Response.json({ error: result.error || "Google request failed" }, { status: result.status || 500 });
+  return Response.json({
+    error: providerError("Google Gemini/Gemma", result.error || "Google request failed", result.status, GOOGLE_MODEL_LABELS[modelKey]),
+    actualModel: GOOGLE_MODEL_IDS[modelKey],
+  }, { status: result.status || 500 });
 }
 
 async function requestGoogleModel(modelKey, systemPrompt, messages, apiKey, options = {}) {
