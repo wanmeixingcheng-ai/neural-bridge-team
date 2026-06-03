@@ -78,13 +78,23 @@ test("retry prompt preserves completed work and failed member context", () => {
 
 test("workflow plan explains dispatch order without changing selected workers", () => {
   const selected = chooseWorkflowMembers({ members }, "请开发并测试移动端布局");
-  const plan = buildWorkflowPlan({ taskText:"请开发并测试移动端布局", workers:selected, lang:"zh" });
+  const plan = buildWorkflowPlan({
+    taskText:"请开发并测试移动端布局",
+    workers:selected,
+    lang:"zh",
+    protocol:{ subtasks:["修复移动端布局", "执行构建测试"], expected_outputs:["可部署修复", "测试结果"], priority:"high" },
+  });
 
   assert.equal(plan.steps.length, selected.length);
   assert.equal(plan.steps[0].order, 1);
   assert.match(plan.strategy, /ARIA 自动调度/);
   assert.equal(plan.protocol.task_type, "development");
   assert.deepEqual(plan.protocol.required_members, selected.map(item => item.id));
+  assert.equal(plan.steps[0].subtask, "修复移动端布局");
+  assert.equal(plan.steps[0].output, "可部署修复");
+  assert.equal(plan.steps[0].deadline, "本轮立即完成");
+  assert.deepEqual(plan.steps[1].dependencies, [selected[0].id]);
+  assert.match(plan.steps[0].acceptanceCriteria, /可部署修复/);
   assert.ok(plan.steps.some(step => step.memberId === "fe"));
 });
 

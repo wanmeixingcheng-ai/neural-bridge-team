@@ -2007,6 +2007,10 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                   <div style={{ minWidth:0 }}>
                     <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{step.member} · {step.title}</div>
                     <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.4, marginTop:"2px" }}>{step.purpose}</div>
+                    {step.subtask && <div style={{ color:T.text, fontSize:"10px", lineHeight:1.4, marginTop:"3px" }}>{step.subtask}</div>}
+                    {step.output && <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "出力：" : lang==="en" ? "Output: " : "输出："}{step.output}</div>}
+                    {!!step.dependencies?.length && <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "依存：" : lang==="en" ? "Depends: " : "依赖："}{step.dependencies.join(" / ")}</div>}
+                    {step.acceptanceCriteria && <div style={{ color:T.green, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "受入：" : lang==="en" ? "Acceptance: " : "验收："}{step.acceptanceCriteria}</div>}
                   </div>
                 </div>
               ))}

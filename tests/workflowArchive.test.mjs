@@ -28,6 +28,10 @@ describe("workflowArchive", () => {
           title:"角色",
           model:"gemma31",
           purpose:"p".repeat(900),
+          subtask:"s".repeat(900),
+          output:"o".repeat(900),
+          dependencies:["prev"],
+          acceptanceCriteria:"a".repeat(900),
         })),
       },
       results: [{ member: "林 美穂", title: "PM", text: "r".repeat(9000) }],
@@ -40,6 +44,8 @@ describe("workflowArchive", () => {
     assert.equal(record.plan.steps.length, 24);
     assert.ok(record.plan.strategy.length < 600);
     assert.ok(record.plan.steps[0].purpose.length < 600);
+    assert.ok(record.plan.steps[0].subtask.length < 600);
+    assert.equal(record.plan.steps[0].dependencies[0], "prev");
     assert.equal(record.artifacts[0].version, 1);
     assert.match(record.artifacts[0].hash, /^a-/);
     assert.ok(record.members[0].summary.length < 1800);
@@ -56,7 +62,7 @@ describe("workflowArchive", () => {
       plan: {
         strategy:"ARIA 自动调度 · 核心判断",
         protocol:{ intent:"分析项目", task_type:"product", priority:"high", subtasks:["拆解目标", "复核风险"], expected_outputs:["报告"], risks:["范围不清"] },
-        steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"里程碑与风险拆解" }],
+        steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"里程碑与风险拆解", subtask:"拆解目标", output:"报告", acceptanceCriteria:"输出必须覆盖：报告" }],
       },
       modelUsage:{
         external:true,
@@ -73,6 +79,7 @@ describe("workflowArchive", () => {
     assert.match(markdown, /意图: 分析项目/);
     assert.match(markdown, /子任务: 拆解目标 \/ 复核风险/);
     assert.match(markdown, /预期产物: 报告/);
+    assert.match(markdown, /验收: 输出必须覆盖：报告/);
     assert.match(markdown, /里程碑与风险拆解/);
     assert.match(markdown, /## 模型调用/);
     assert.match(markdown, /Google Gemini\/Gemma/);
