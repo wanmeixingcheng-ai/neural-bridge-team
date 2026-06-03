@@ -11,6 +11,7 @@ import {
   inferWorkflowTaskType,
   normalizeWorkflowProtocol,
   parsePlannerJson,
+  plannerRequiredMemberIds,
   planWorkflowMembersWithModel,
   recentConversationContext,
   wantsPriorIntegration,
@@ -155,4 +156,30 @@ test("model planner JSON can be fenced and dispatch selected members", async () 
   });
   assert.deepEqual(workers.map(item => item.id), ["legal", "cto"]);
   assert.deepEqual(parsePlannerJson("```json\n{\"target\":\"all\"}\n```"), { target:"all" });
+});
+
+test("model planner accepts the structured planning protocol member field", async () => {
+  const workers = await planWorkflowMembersWithModel({
+    router:{ model:"claude", systemPrompt:"router" },
+    taskText:"请制定开发计划并检查风险",
+    members,
+    apiKeys:{},
+    controls:{},
+    language:"zh",
+    signal:undefined,
+    callModel:async () => JSON.stringify({
+      target:"custom",
+      intent:"开发计划和风险检查",
+      task_type:"development",
+      priority:"high",
+      required_members:["aria", "cto", "fe", "qa"],
+      subtasks:["拆分实现", "测试验证"],
+      expected_outputs:["开发计划"],
+      risks:["移动端回归"],
+      needs_user_confirmation:false,
+    }),
+  });
+
+  assert.deepEqual(workers.map(item => item.id), ["aria", "cto", "fe", "qa"]);
+  assert.deepEqual(plannerRequiredMemberIds({ required_members:["fe"], memberIds:["qa"] }), ["fe"]);
 });
