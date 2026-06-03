@@ -1192,6 +1192,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             status:"done",
             language:requestLanguage,
             members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"complete" })),
+            plan:workflowPlan,
             results,
             artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
           }).catch(() => {});
@@ -1501,6 +1502,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           status:"done",
           language:requestLanguage,
           members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"complete" })),
+          plan:workflowPlan,
           results,
           artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
         }).catch(() => {});
