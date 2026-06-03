@@ -1354,6 +1354,46 @@ async function autoCurateBrain({ member, userText, reply, lang }) {
   }
 }
 
+async function rememberWorkflowArtifact({ task, results = [], finalText, lang, source = "workflow" }) {
+  const title = firstUserTitle([{ role:"user", text:task }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
+  for (const item of results.slice(0, 12)) {
+    await putProjectMemory({
+      type:"member_output",
+      title:`${lang === "en" ? "Member output" : lang === "ja" ? "メンバー成果" : "成员产出"} · ${item.member}`,
+      content:[
+        `task: ${task}`,
+        `member: ${item.member}`,
+        `title: ${item.title}`,
+        "",
+        item.text,
+      ].join("\n"),
+      status:"candidate",
+    }).catch(() => {});
+  }
+  if (!finalText?.trim()) return;
+  const artifactText = [
+    `task: ${task}`,
+    `source: ${source}`,
+    "",
+    lang === "en" ? "Final integrated output:" : lang === "ja" ? "最終統合成果:" : "最终整合产物:",
+    finalText,
+    "",
+    lang === "en" ? "Member outputs:" : lang === "ja" ? "メンバー成果:" : "成员成果:",
+    results.map(item => `【${item.member} · ${item.title}】\n${item.text}`).join("\n\n"),
+  ].join("\n");
+  await putProjectMemory({
+    type:"artifact",
+    title:`${lang === "en" ? "Workflow artifact" : lang === "ja" ? "ワークフロー成果物" : "工作流产物"} · ${title}`,
+    content:artifactText,
+    status:"candidate",
+  }).catch(() => {});
+  await putKnowledgeDocument({
+    title:`${lang === "en" ? "Workflow artifact" : lang === "ja" ? "ワークフロー成果物" : "工作流产物"} - ${title}`,
+    source,
+    text:artifactText,
+  }).catch(() => {});
+}
+
 const KB_DB_NAME = "neural_bridge_library_kb";
 const KB_DB_VERSION = 2;
 const KB_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
@@ -2009,6 +2049,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             finalText = `${lang === "ja" ? "統合モデルの呼び出しに失敗したため、メンバー成果をローカルで整理しました。" : lang === "en" ? "The integration model failed, so member results were organized locally." : "整合模型调用失败，已在本地整理成员成果。"}\n\n${results.map(item => `## ${item.member} · ${item.title}\n${item.text}`).join("\n\n")}`;
           }
           const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
+          await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"aria-workflow" });
           setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}` }]);
           onWorkflowState?.(state => ({
             ...state,
@@ -2302,6 +2343,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           finalText = `${lang === "ja" ? "統合モデルの呼び出しに失敗したため、メンバー成果をローカルで整理しました。" : lang === "en" ? "The integration model failed, so member results were organized locally." : "整合模型调用失败，已在本地整理成员成果。"}\n\n${results.map(item => `## ${item.member} · ${item.title}\n${item.text}`).join("\n\n")}`;
         }
         const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
+        await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"group-workflow" });
         setMessages(m => [...m, { role:"ai", member:"ARIA", title:lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物", model:aria.model, emoji:aria.emoji || "◎", text:finalText }]);
         onWorkflowState?.(state => ({
           ...state,
