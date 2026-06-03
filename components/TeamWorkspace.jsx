@@ -192,7 +192,7 @@ const MODELS = {
 function workflowModeColor(mode) {
   if (mode === "done") return T.green;
   if (mode === "failed") return T.red;
-  if (mode === "stopped") return T.yellow;
+  if (mode === "stopped" || mode === "waiting_confirmation") return T.yellow;
   if (mode === "running" || mode === "summarizing" || mode === "planning") return T.blue;
   return T.muted;
 }
@@ -1119,12 +1119,15 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           ...workers.map(worker => controls.modelOverride || worker.model),
           effectiveModel,
         ], apiKeys);
+        const needsConfirmation = !integrateExisting && workflowPlan.protocol?.needs_user_confirmation;
         onWorkflowState?.({
           id:workflowId,
           title:firstUserTitle([{ role:"user", text:displayText }], member.name),
           task:text,
-          mode:integrateExisting ? "summarizing" : "planning",
-          phase:integrateExisting
+          mode:needsConfirmation ? "waiting_confirmation" : integrateExisting ? "summarizing" : "planning",
+          phase:needsConfirmation
+            ? (lang === "ja" ? "高リスク操作の確認待ち" : lang === "en" ? "Waiting for high-risk action confirmation" : "等待确认高风险操作")
+            : integrateExisting
             ? (lang === "ja" ? "ARIA が既存メンバー成果を統合中" : lang === "en" ? "ARIA is integrating existing member outputs" : "ARIA 正在整合已有成员成果")
             : (lang === "ja" ? "ARIA が担当メンバーを選定中" : lang === "en" ? "ARIA is selecting members" : "ARIA 正在选择执行成员"),
           startedAt:new Date().toISOString(),
@@ -1146,8 +1149,20 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
                 ? `ARIA 自動調度を開始しました。担当：${workers.map(item => item.name).join("、")}`
                 : lang==="en"
                   ? `ARIA automatic dispatch started. Assigned members: ${workers.map(item => item.name).join(", ")}`
-                  : `ARIA 已启动自动调度。执行成员：${workers.map(item => item.name).join("、")}`),
+            : `ARIA 已启动自动调度。执行成员：${workers.map(item => item.name).join("、")}`),
         }]);
+        if (needsConfirmation) {
+          setMessages(m => [...m, {
+            role:"ai",
+            text:lang==="ja"
+              ? "このタスクにはデプロイ、外部送信、削除、または投递操作が含まれる可能性があります。確認してから「确认继续」と送信してください。"
+              : lang==="en"
+                ? "This task may include deployment, external transfer, deletion, or task handoff. Review the plan, then send \"确认继续\" to proceed."
+                : "该任务可能包含部署、外发、删除或任务投递操作。请先检查计划，确认后发送“确认继续”。",
+          }]);
+          setLoading(false);
+          return;
+        }
         for (const worker of workers) {
           if (controller.signal.aborted) break;
           const memberTask = memberWorkflowTask(worker, modelText, results, requestLanguage);
@@ -1442,12 +1457,15 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         ...workers.map(member => controls.modelOverride || member.model),
         controls.modelOverride || router.model,
       ], apiKeys);
+      const needsConfirmation = workflowPlan.protocol?.needs_user_confirmation;
       onWorkflowState?.({
         id:workflowId,
         title:firstUserTitle([{ role:"user", text:displayText }], group.name),
         task:text,
-        mode:"planning",
-        phase:lang === "ja" ? "担当メンバーを選定中" : lang === "en" ? "Selecting members" : "正在选择执行成员",
+        mode:needsConfirmation ? "waiting_confirmation" : "planning",
+        phase:needsConfirmation
+          ? (lang === "ja" ? "高リスク操作の確認待ち" : lang === "en" ? "Waiting for high-risk action confirmation" : "等待确认高风险操作")
+          : lang === "ja" ? "担当メンバーを選定中" : lang === "en" ? "Selecting members" : "正在选择执行成员",
         startedAt:new Date().toISOString(),
         updatedAt:new Date().toISOString(),
         members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"queued", task:"", summary:"", error:"" })),
@@ -1466,6 +1484,19 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
             ? `Automatic workflow started. Assigned members: ${workers.map(item => item.name).join(", ")}`
             : `已启动自动工作流。执行成员：${workers.map(item => item.name).join("、")}`,
       }]);
+      if (needsConfirmation) {
+        setMessages(m => [...m, {
+          role:"ai",
+          member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统",
+          text:lang==="ja"
+            ? "このワークフローには高リスク操作が含まれる可能性があります。確認してから「确认继续」と送信してください。"
+            : lang==="en"
+              ? "This workflow may include high-risk actions. Review the plan, then send \"确认继续\" to proceed."
+              : "该工作流可能包含高风险操作。请先检查计划，确认后发送“确认继续”。",
+        }]);
+        setLoading(false);
+        return;
+      }
       for (const member of workers) {
         currentMember = member;
         if (controller.signal.aborted) break;

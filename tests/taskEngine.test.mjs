@@ -17,6 +17,7 @@ import {
   recentConversationContext,
   wantsPriorIntegration,
   workflowQueueSummary,
+  workflowRequiresConfirmation,
 } from "../lib/taskEngine.mjs";
 
 const members = [
@@ -117,6 +118,8 @@ test("workflow protocol normalizes ARIA planning fields", () => {
   assert.deepEqual(protocol.required_members, ["aria", "cto", "fe"]);
   assert.equal(protocol.subtasks.length, 2);
   assert.equal(inferWorkflowTaskType("请研究产品定价和开发成本"), "mixed");
+  assert.equal(workflowRequiresConfirmation("请部署到 Vercel"), true);
+  assert.equal(workflowRequiresConfirmation("整理普通会议纪要"), false);
 });
 
 test("workflow plan edit prompt turns the current plan into an editable handoff", () => {
