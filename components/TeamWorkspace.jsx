@@ -54,6 +54,11 @@ import {
   loadWorkflowState,
   saveWorkflowState,
 } from "../lib/workflowStorage.mjs";
+import {
+  deleteWorkflowArchive,
+  listWorkflowRecords,
+  saveWorkflowRecord,
+} from "../lib/workflowArchive.mjs";
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
 const T = {
@@ -1161,6 +1166,17 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           }
           const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
           await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"aria-workflow" });
+          await saveWorkflowRecord({
+            id:workflowId,
+            title:artifactTitle,
+            task:text,
+            source:"aria-workflow",
+            status:"done",
+            language:requestLanguage,
+            members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"complete" })),
+            results,
+            artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
+          }).catch(() => {});
           setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}` }]);
           onWorkflowState?.(state => ({
             ...state,
@@ -1456,6 +1472,17 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
         }
         const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
         await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"group-workflow" });
+        await saveWorkflowRecord({
+          id:workflowId,
+          title:artifactTitle,
+          task:text,
+          source:"group-workflow",
+          status:"done",
+          language:requestLanguage,
+          members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"complete" })),
+          results,
+          artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
+        }).catch(() => {});
         setMessages(m => [...m, { role:"ai", member:"ARIA", title:lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物", model:aria.model, emoji:aria.emoji || "◎", text:finalText }]);
         onWorkflowState?.(state => ({
           ...state,
@@ -1754,6 +1781,35 @@ function InfoPanel({ item, onMenu, onWorkPanel, lang }) {
   );
 }
 
+function WorkflowArchiveList({ lang, refreshKey }) {
+  const [records, setRecords] = useState([]);
+  useEffect(() => {
+    listWorkflowRecords({ limit:5 }).then(setRecords).catch(() => setRecords([]));
+  }, [refreshKey]);
+  if (!records.length) return null;
+  const label = (zh, ja, en) => lang === "ja" ? ja : lang === "en" ? en : zh;
+  return (
+    <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.surface, borderRadius:"10px", padding:"12px" }}>
+      <div style={{ color:T.muted, fontSize:"10.5px", fontWeight:800 }}>{label("最近工作流记录", "最近のワークフロー記録", "Recent workflow records")}</div>
+      <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"8px" }}>
+        {records.map(record => {
+          const artifact = record.artifacts?.[0];
+          return (
+            <div key={record.id} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+                <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{record.title}</div>
+                <div style={{ color:record.status === "done" ? T.green : T.muted, fontSize:"10px", fontWeight:900, whiteSpace:"nowrap" }}>{record.status}</div>
+              </div>
+              <div style={{ color:T.muted, fontSize:"10px", marginTop:"3px" }}>{record.members?.length || 0} {label("名成员", "名", "members")} · {record.source}</div>
+              {artifact?.content && <div style={{ color:T.text, fontSize:"10.8px", lineHeight:1.5, marginTop:"6px", maxHeight:"72px", overflow:"hidden", whiteSpace:"pre-wrap" }}>{artifact.content}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function WorkPanelContent({ title, subtitle, lang, workflow }) {
   const currentWorkflow = workflow || emptyWorkflowState(lang);
   const modeColor = workflowModeColor(currentWorkflow.mode);
@@ -1825,6 +1881,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow }) {
           </div>
         )}
       </div>
+      <WorkflowArchiveList lang={lang} refreshKey={`${currentWorkflow.id}-${currentWorkflow.mode}-${currentWorkflow.updatedAt}`} />
     </div>
   );
 }
@@ -2204,6 +2261,7 @@ export default function App() {
     localStorage.removeItem("nb_members");
     clearWorkflowState();
     await deleteKnowledgeDb().catch(() => {});
+    await deleteWorkflowArchive().catch(() => {});
     setChatHistory([]);
     setMembers(TEAM);
     setSelected(TEAM[0]);
