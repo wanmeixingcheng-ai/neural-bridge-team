@@ -49,6 +49,11 @@ import {
   outboundProviderLabel,
   urlsToPrompt,
 } from "../lib/modelGateway.mjs";
+import {
+  clearWorkflowState,
+  loadWorkflowState,
+  saveWorkflowState,
+} from "../lib/workflowStorage.mjs";
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
 const T = {
@@ -2105,7 +2110,7 @@ export default function App() {
   const [customIds, setCustomIds] = useState(["aria", "cto", "fe"]);
   const [chatHistory, setChatHistory] = useState([]);
   const lang = effectiveLanguage(settings.language);
-  const [workflowState, setWorkflowState] = useState(() => emptyWorkflowState(lang));
+  const [workflowState, setWorkflowState] = useState(() => loadWorkflowState(lang));
   const conversations = chatHistory.map(session => ({
     ...session,
     subtitle:session.subtitle || (session.kind === "group" ? t(lang, "groupChat") : ""),
@@ -2131,6 +2136,10 @@ export default function App() {
       setChatHistory(loadChatHistory());
     } catch {}
   }, []);
+
+  useEffect(() => {
+    saveWorkflowState(workflowState, lang);
+  }, [workflowState, lang]);
 
   useEffect(() => {
     fetch("/api/auth/session")
@@ -2193,6 +2202,7 @@ export default function App() {
     localStorage.removeItem(CHAT_HISTORY_KEY);
     localStorage.removeItem("nb_settings");
     localStorage.removeItem("nb_members");
+    clearWorkflowState();
     await deleteKnowledgeDb().catch(() => {});
     setChatHistory([]);
     setMembers(TEAM);
@@ -2201,6 +2211,7 @@ export default function App() {
     setActiveInfo(null);
     setActiveSession(null);
     setActiveKnowledge(false);
+    setWorkflowState(emptyWorkflowState(lang));
     setSettings({ username:"Neural Bridge Owner", language:"auto", apiKeys:{ anthropic:"", google:"" }, autoInjectKnowledge:false, claudeBridge:{ enabled:false, url:"http://127.0.0.1:8787", token:"" }, codexAdminToken:"" });
     setSettingsOpen(false);
   };
