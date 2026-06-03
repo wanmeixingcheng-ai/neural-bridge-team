@@ -9,6 +9,7 @@ import {
   buildWorkflowRecordDetails,
   buildWorkflowRecoveryPrompt,
   buildWorkflowRerunPrompt,
+  formatWorkflowArtifactMarkdown,
   formatWorkflowRecordMarkdown,
   normalizeWorkflowRecord,
 } from "../lib/workflowArchive.mjs";
@@ -92,6 +93,24 @@ describe("workflowArchive", () => {
     assert.match(markdown, /指纹/);
     assert.match(markdown, /林 美穂/);
     assert.match(markdown, /项目计划内容/);
+    assert.match(markdown, /整合结论/);
+  });
+
+  it("formats a single workflow artifact as markdown", () => {
+    const markdown = formatWorkflowArtifactMarkdown({
+      title:"综合报告",
+      task:"分析项目",
+      status:"done",
+      artifacts:[
+        { title:"最终产物", kind:"整合报告", version:2, hash:"a-test", content:"整合结论" },
+      ],
+    }, 0, "zh");
+
+    assert.match(markdown, /^# 最终产物/);
+    assert.match(markdown, /版本: v2/);
+    assert.match(markdown, /指纹: a-test/);
+    assert.match(markdown, /来源工作流: 综合报告/);
+    assert.match(markdown, /## 产物内容/);
     assert.match(markdown, /整合结论/);
   });
 

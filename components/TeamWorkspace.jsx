@@ -80,6 +80,7 @@ import {
   buildWorkflowRecoveryPrompt,
   buildWorkflowRerunPrompt,
   deleteWorkflowArchive,
+  formatWorkflowArtifactMarkdown,
   formatWorkflowRecordMarkdown,
   listWorkflowRecords,
   markWorkflowRecordArchived,
@@ -1938,6 +1939,12 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     const fileName = await saveToLocalOutputs({ name:"Workflow", title:record.title }, markdown);
     setNotice(label(`已下载：${fileName}`, `ダウンロードしました：${fileName}`, `Downloaded: ${fileName}`));
   };
+  const downloadArtifact = async (record, index = 0) => {
+    const markdown = formatWorkflowArtifactMarkdown(record, index, lang);
+    const artifact = record.artifacts?.[index] || record.artifacts?.[0] || { title:record.title };
+    const fileName = await saveToLocalOutputs({ name:"Artifact", title:artifact.title || record.title }, markdown);
+    setNotice(label(`已下载产物：${fileName}`, `成果物を保存しました：${fileName}`, `Downloaded artifact: ${fileName}`));
+  };
   const continueRecord = (record) => {
     onContinue?.(buildWorkflowContinuationPrompt(record, lang));
     setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input."));
@@ -2031,7 +2038,14 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                   {!!details?.artifacts?.length && (
                     <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{label("产物版本", "成果物バージョン", "Artifact versions")}</div>
-                      <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.5, marginTop:"3px" }}>{details.artifacts.map(item => `${item.title} · ${item.meta}`).join(" / ")}</div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"5px" }}>
+                        {details.artifacts.map((item, index) => (
+                          <div key={`${item.title}-${index}`} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"7px" }}>
+                            <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.5, minWidth:0 }}>{item.title} · {item.meta}</div>
+                            <button type="button" onClick={()=>downloadArtifact(record, index)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("下载", "保存", "Download")}</button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {!!record.results?.length && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.5 }}>{record.results.slice(0, 6).map(result => `${result.member} · ${result.title}`).join(" / ")}</div>}
@@ -2067,6 +2081,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const lifecycle = workflowLifecycleSteps(currentWorkflow.mode, lang);
   const auditSummary = currentWorkflow.mode !== "idle" ? workflowAuditSummary(currentWorkflow, lang) : null;
   const permissionChecklist = currentWorkflow.mode !== "idle" ? workflowPermissionChecklist(currentWorkflow, lang) : null;
+  const downloadCurrentArtifact = async (index = 0) => {
+    const markdown = formatWorkflowArtifactMarkdown(currentWorkflow, index, lang);
+    const artifact = currentWorkflow.artifacts?.[index] || { title:currentWorkflow.title };
+    await saveToLocalOutputs({ name:"Artifact", title:artifact.title || currentWorkflow.title }, markdown);
+  };
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -2262,7 +2281,10 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               <div key={`${artifact.title}-${index}`} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
                   <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artifact.title}</div>
-                  <div style={{ color:T.blue, background:T.surface, border:`1px solid ${T.border}`, borderRadius:"999px", padding:"2px 6px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>v{artifact.version || index + 1}</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
+                    <div style={{ color:T.blue, background:T.surface, border:`1px solid ${T.border}`, borderRadius:"999px", padding:"2px 6px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>v{artifact.version || index + 1}</div>
+                    <button type="button" onClick={()=>downloadCurrentArtifact(index)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "保存" : lang==="en" ? "Download" : "下载"}</button>
+                  </div>
                 </div>
                 <div style={{ color:T.muted, fontSize:"10.5px", marginTop:"3px" }}>{artifact.kind}{artifact.hash ? ` · ${artifact.hash}` : ""}</div>
                 <div style={{ color:T.text, fontSize:"10.8px", lineHeight:1.5, marginTop:"6px", maxHeight:"96px", overflow:"hidden", whiteSpace:"pre-wrap" }}>{artifact.content}</div>
