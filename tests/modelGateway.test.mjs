@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { detectInputLanguage, extractUrls, localOnlyBlockMessage, modelProviderInfo, modelUsageSummary, outboundBlockedByLocalOnly, outboundProviderLabel } from "../lib/modelGateway.mjs";
+import { detectInputLanguage, extractUrls, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, outboundBlockedByLocalOnly, outboundProviderLabel } from "../lib/modelGateway.mjs";
 
 describe("modelGateway", () => {
   it("detects the user input language", () => {
@@ -35,5 +35,24 @@ describe("modelGateway", () => {
     assert.deepEqual(usage.models.map(item => item.modelKey), ["claude", "gemma26", "codex"]);
     assert.equal(usage.external, true);
     assert.deepEqual(usage.providers, ["Claude / Anthropic", "Google Gemini/Gemma"]);
+  });
+
+  it("summarizes external configuration without exposing secrets", () => {
+    const summary = modelExternalConfigSummary({
+      anthropic:"sk-ant-secret",
+      google:"",
+      autoInjectKnowledge:true,
+      localOnlyMode:true,
+      claudeBridge:{ enabled:false },
+      codexAdminToken:"admin-secret",
+    });
+
+    assert.equal(summary.localOnlyMode, true);
+    assert.equal(summary.externalBlocked, true);
+    assert.equal(summary.externalConfigured, true);
+    assert.equal(summary.entries.find(entry => entry.id === "anthropic").configured, true);
+    assert.equal(summary.entries.find(entry => entry.id === "google").configured, false);
+    assert.equal(summary.entries.find(entry => entry.id === "knowledge").blocked, true);
+    assert.equal(JSON.stringify(summary).includes("secret"), false);
   });
 });

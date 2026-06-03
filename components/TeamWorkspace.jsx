@@ -62,6 +62,7 @@ import {
   callModel,
   detectInputLanguage,
   localOnlyBlockMessage,
+  modelExternalConfigSummary,
   modelProviderInfo,
   modelUsageSummary,
   outboundBlockedByLocalOnly,
@@ -1760,6 +1761,13 @@ function AppSettings({ open, settings, members, onSave, onMembersSave, onClearLo
   }, [settings, members, open]);
   if (!open) return null;
   const liveLang = effectiveLanguage(values.language || lang);
+  const externalConfig = modelExternalConfigSummary({
+    ...(values.apiKeys || {}),
+    autoInjectKnowledge:!!values.autoInjectKnowledge,
+    localOnlyMode:!!values.localOnlyMode,
+    claudeBridge:values.claudeBridge || {},
+    codexAdminToken:values.codexAdminToken || "",
+  });
   const updateMember = (id, patch) => {
     setDraftMembers(list => list.map(m => m.id === id ? { ...m, ...patch } : m));
   };
@@ -1805,6 +1813,27 @@ function AppSettings({ open, settings, members, onSave, onMembersSave, onClearLo
               : liveLang === "en"
                 ? "External paths include Vercel API, Anthropic/Google, Claude Bridge, web reading, GitHub Issue queues, and Vercel deployment. Review send confirmations before continuing."
                 : "主要外发路径包括 Vercel API、Anthropic/Google、Claude Bridge、网页读取、GitHub Issue 队列和 Vercel 部署。发送前请确认弹窗中的数据路径。"}
+          </div>
+          <div style={{ border:`1px solid ${externalConfig.localOnlyMode ? T.red : T.border}`, background:externalConfig.localOnlyMode ? "#ef444412" : T.card, borderRadius:"10px", padding:"10px 12px", marginBottom:"12px" }}>
+            <div style={{ color:externalConfig.localOnlyMode ? T.red : T.text, fontSize:"12px", fontWeight:900, marginBottom:"7px" }}>
+              {liveLang === "ja" ? "外部送信設定" : liveLang === "en" ? "External transfer settings" : "外发配置总览"}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))", gap:"6px" }}>
+              {externalConfig.entries.map(entry => {
+                const color = entry.blocked ? T.red : entry.configured ? T.orange : T.muted;
+                const state = entry.blocked
+                  ? (liveLang === "ja" ? "ブロック" : liveLang === "en" ? "blocked" : "已阻止")
+                  : entry.configured
+                    ? (liveLang === "ja" ? "設定済み" : liveLang === "en" ? "configured" : "已配置")
+                    : (liveLang === "ja" ? "未設定" : liveLang === "en" ? "not set" : "未配置");
+                return (
+                  <div key={entry.id} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"8px", padding:"7px", minWidth:0 }}>
+                    <div style={{ color:T.text, fontSize:"10.5px", fontWeight:900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.name}</div>
+                    <div style={{ color, fontSize:"10px", fontWeight:900, marginTop:"3px" }}>{state}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         {[
           ["anthropic", "Anthropic API Key", "sk-ant-..."],
