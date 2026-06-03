@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   archiveWorkflowRecordSnapshot,
   artifactContentHash,
+  buildWorkflowArtifactRevisionPrompt,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
@@ -196,6 +197,26 @@ describe("workflowArchive", () => {
     assert.match(prompt, /先产品后工程/);
     assert.match(prompt, /启动新的 ARIA 调度/);
     assert.match(prompt, /林 美穂 · PM/);
+  });
+
+  it("builds an artifact revision prompt for the next version", () => {
+    const prompt = buildWorkflowArtifactRevisionPrompt({
+      title:"综合报告",
+      task:"分析项目",
+      results:[{ member:"林 美穂", title:"PM", text:"范围和里程碑证据" }],
+      artifacts:[
+        { title:"最终产物", kind:"整合报告", version:2, hash:"a-v2", content:"v2 内容" },
+      ],
+    }, 0, "zh");
+
+    assert.match(prompt, /生成下一版本/);
+    assert.match(prompt, /原工作流: 综合报告/);
+    assert.match(prompt, /分析项目/);
+    assert.match(prompt, /v2 · 最终产物/);
+    assert.match(prompt, /a-v2/);
+    assert.match(prompt, /v2 内容/);
+    assert.match(prompt, /林 美穂 · PM/);
+    assert.match(prompt, /新版完整产物/);
   });
 
   it("builds a recovery prompt for failed workflow records", () => {

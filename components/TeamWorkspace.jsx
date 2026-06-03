@@ -79,6 +79,7 @@ import {
 } from "../lib/workflowStorage.mjs";
 import {
   artifactContentHash,
+  buildWorkflowArtifactRevisionPrompt,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
@@ -1993,6 +1994,10 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     onContinue?.(buildWorkflowSkipPrompt(record, lang));
     setNotice(label("已放入 ARIA 输入框，可跳过缺失成员并整合。", "ARIA の入力欄に入れました。不足メンバーをスキップして統合できます。", "Placed in ARIA input to skip missing members and integrate."));
   };
+  const reviseArtifact = (record, index = 0) => {
+    onContinue?.(buildWorkflowArtifactRevisionPrompt(record, index, lang));
+    setNotice(label("已放入 ARIA 输入框，可基于该版本生成下一版。", "ARIA の入力欄に入れました。この版を基に次版を生成できます。", "Placed in ARIA input to create the next version."));
+  };
   const rememberRecord = async (record, approvalState = "approved") => {
     setSavingId(record.id);
     try {
@@ -2092,7 +2097,10 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                         {details.artifacts.map((item, index) => (
                           <div key={`${item.title}-${index}`} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"7px" }}>
                             <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.5, minWidth:0 }}>{item.title} · {item.meta}</div>
-                            <button type="button" onClick={()=>downloadArtifact(record, index)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("下载", "保存", "Download")}</button>
+                            <div style={{ display:"flex", gap:"5px", flexShrink:0 }}>
+                              <button type="button" onClick={()=>reviseArtifact(record, index)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("修订", "改訂", "Revise")}</button>
+                              <button type="button" onClick={()=>downloadArtifact(record, index)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("下载", "保存", "Download")}</button>
+                            </div>
                           </div>
                         ))}
                       </div>
