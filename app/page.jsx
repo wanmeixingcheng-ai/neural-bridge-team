@@ -1,7 +1,7 @@
 import { connection } from "next/server";
-import TeamWorkspace from "../components/TeamWorkspace";
+import TeamWorkspaceShell from "../components/TeamWorkspaceShell";
 
 export default async function Home() {
   await connection();
-  return <TeamWorkspace />;
+  return <TeamWorkspaceShell />;
 }
