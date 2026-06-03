@@ -3092,8 +3092,8 @@ export default function App() {
         .nb-shell.panel-collapsed{grid-template-columns:310px minmax(0,1fr);}
         .nb-sidebar{display:flex;flex-direction:column;background:${T.surface};border-right:1px solid ${T.border};min-height:0;}
         .nb-chat{display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;min-width:0;min-height:0;}
-        .nb-work-panel{background:${T.surface};border-left:1px solid ${T.border};min-width:0;position:relative;display:flex;flex-direction:column;}
-        .nb-work-panel-body{padding:16px 14px;overflow-y:auto;}
+        .nb-work-panel{background:${T.surface};border-left:1px solid ${T.border};min-width:0;min-height:0;height:100%;position:relative;display:flex;flex-direction:column;overflow:hidden;}
+        .nb-work-panel-body{padding:16px 14px;overflow-y:auto;min-height:0;flex:1;overscroll-behavior:contain;}
         .nb-work-toggle{position:absolute;left:8px;top:12px;width:28px;height:28px;border:1px solid ${T.border};background:${T.card};color:${T.muted};border-radius:8px;font-size:20px;line-height:1;cursor:pointer;z-index:2;}
         .nb-work-panel.open .nb-work-toggle{left:auto;right:10px;}
         .nb-work-panel.collapsed{align-items:center;background:${T.card};}
