@@ -26,6 +26,7 @@ import {
   workflowPermissionChecklist,
   workflowOutputQaChecklist,
   workflowQualityCheck,
+  workflowToolCallChecklist,
 } from "../lib/taskEngine.mjs";
 
 const members = [
@@ -260,6 +261,23 @@ test("workflow output QA checklist checks artifacts and member outputs", () => {
   assert.equal(fail.checks.find(item => item.id === "artifact-present").passed, false);
   assert.equal(fail.checks.find(item => item.id === "member-outputs").passed, false);
   assert.equal(fail.checks.find(item => item.id === "model-disclosure").passed, false);
+});
+
+test("workflow tool call checklist flags tool permissions and states", () => {
+  const checklist = workflowToolCallChecklist({
+    task:"读取 https://example.com 后部署到 Vercel，并让 Codex 修复",
+    members:[{ id:"fe", model:"codex" }],
+    artifacts:[{ content:"产物" }],
+    plan:{ protocol:{ expected_outputs:["部署报告"] } },
+    modelUsage:{ external:true, models:[{ modelKey:"claude" }] },
+  }, "zh");
+
+  assert.equal(checklist.needsAttention, true);
+  assert.equal(checklist.entries.find(item => item.id === "model-gateway").status, "recorded");
+  assert.equal(checklist.entries.find(item => item.id === "knowledge").status, "available");
+  assert.equal(checklist.entries.find(item => item.id === "web-fetch").status, "needs_confirmation");
+  assert.equal(checklist.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
+  assert.equal(checklist.entries.find(item => item.id === "vercel-deploy").status, "needs_admin");
 });
 
 test("workflow quality check flags missing member outputs", () => {

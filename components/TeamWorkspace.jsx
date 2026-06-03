@@ -32,6 +32,7 @@ import {
   workflowQualityCheck,
   workflowOutputQaChecklist,
   workflowStatusLabel,
+  workflowToolCallChecklist,
   workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
 import {
@@ -2083,6 +2084,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const auditSummary = currentWorkflow.mode !== "idle" ? workflowAuditSummary(currentWorkflow, lang) : null;
   const permissionChecklist = currentWorkflow.mode !== "idle" ? workflowPermissionChecklist(currentWorkflow, lang) : null;
   const outputQa = currentWorkflow.mode !== "idle" ? workflowOutputQaChecklist(currentWorkflow, lang) : null;
+  const toolCalls = currentWorkflow.mode !== "idle" ? workflowToolCallChecklist(currentWorkflow, lang) : null;
   const downloadCurrentArtifact = async (index = 0) => {
     const markdown = formatWorkflowArtifactMarkdown(currentWorkflow, index, lang);
     const artifact = currentWorkflow.artifacts?.[index] || { title:currentWorkflow.title };
@@ -2235,6 +2237,25 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                   <div key={entry.id} style={{ color:T.text, fontSize:"10.2px", lineHeight:1.45 }}>
                     <span style={{ color, fontWeight:900 }}>{entry.label}</span>
                     <span style={{ color:T.muted }}> · {entry.detail}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {toolCalls && (
+          <div style={{ marginTop:"10px", border:`1px solid ${toolCalls.needsAttention ? T.orange : T.border}`, background:toolCalls.needsAttention ? "#f59e0b10" : T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:toolCalls.needsAttention ? T.orange : T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "ツール呼び出し" : lang==="en" ? "Tool calls" : "工具调用"}</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:"6px", marginTop:"7px" }}>
+              {toolCalls.entries.map(entry => {
+                const color = entry.status === "recorded" || entry.status === "available" ? T.green : entry.status === "not_needed" || entry.status === "optional" ? T.muted : T.orange;
+                return (
+                  <div key={entry.id} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"7px", padding:"6px", minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"5px" }}>
+                      <div style={{ color:T.text, fontSize:"10px", fontWeight:900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.name}</div>
+                      <span style={{ color, fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{entry.permission}</span>
+                    </div>
+                    <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{entry.detail}</div>
                   </div>
                 );
               })}
