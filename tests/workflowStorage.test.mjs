@@ -24,6 +24,7 @@ describe("workflowStorage", () => {
     saveWorkflowState({
       mode: "done",
       title: "任务",
+      task: "z".repeat(6000),
       members: [{ id: "aria", name: "ARIA", summary: "x".repeat(3000) }],
       artifacts: [{ title: "产物", content: "y".repeat(12000) }],
       progress: { done: 1, total: 1 },
@@ -33,6 +34,7 @@ describe("workflowStorage", () => {
     assert.ok(raw);
     const restored = loadWorkflowState("zh", storage);
     assert.equal(restored.mode, "done");
+    assert.ok(restored.task.length < 4200);
     assert.ok(restored.members[0].summary.length < 1800);
     assert.ok(restored.artifacts[0].content.length < 8200);
   });

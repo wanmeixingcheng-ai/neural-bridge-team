@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   chooseWorkflowMembers,
+  buildWorkflowRetryPrompt,
   emptyWorkflowState,
   extractPriorWorkflowResults,
   parsePlannerJson,
@@ -47,6 +48,25 @@ test("recent context preserves concise conversation history", () => {
   ]);
   assert.match(context, /当前对话上下文/);
   assert.match(context, /用户：请分析文档/);
+});
+
+test("retry prompt preserves completed work and failed member context", () => {
+  const prompt = buildWorkflowRetryPrompt({
+    task:"生成上线计划",
+    mode:"failed",
+    phase:"QA · 请求失败",
+    error:"model timeout",
+    members:[
+      { id:"pm", name:"林 美穂", title:"PM", status:"complete", summary:"已完成里程碑拆分" },
+      { id:"qa", name:"吴晓敏", title:"QA", status:"failed", error:"测试模型超时" },
+    ],
+  }, "zh");
+
+  assert.match(prompt, /不要从零开始/);
+  assert.match(prompt, /生成上线计划/);
+  assert.match(prompt, /吴晓敏/);
+  assert.match(prompt, /测试模型超时/);
+  assert.match(prompt, /已完成里程碑拆分/);
 });
 
 test("model planner JSON can be fenced and dispatch selected members", async () => {
