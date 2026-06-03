@@ -1381,16 +1381,17 @@ async function rememberWorkflowArtifact({ task, results = [], finalText, lang, s
     lang === "en" ? "Member outputs:" : lang === "ja" ? "メンバー成果:" : "成员成果:",
     results.map(item => `【${item.member} · ${item.title}】\n${item.text}`).join("\n\n"),
   ].join("\n");
+  const doc = await putKnowledgeDocument({
+    title:`${lang === "en" ? "Workflow artifact" : lang === "ja" ? "ワークフロー成果物" : "工作流产物"} - ${title}`,
+    source,
+    text:artifactText,
+  }).catch(() => null);
   await putProjectMemory({
     type:"artifact",
     title:`${lang === "en" ? "Workflow artifact" : lang === "ja" ? "ワークフロー成果物" : "工作流产物"} · ${title}`,
     content:artifactText,
     status:"candidate",
-  }).catch(() => {});
-  await putKnowledgeDocument({
-    title:`${lang === "en" ? "Workflow artifact" : lang === "ja" ? "ワークフロー成果物" : "工作流产物"} - ${title}`,
-    source,
-    text:artifactText,
+    metadata:{ sourceDocId:doc?.id || "", source },
   }).catch(() => {});
 }
 
@@ -1448,7 +1449,7 @@ async function findExistingMemory(content) {
   return items.find(item => item.hash === hash && item.status !== "archived") || null;
 }
 
-async function putProjectMemory({ type = "note", title, content, status = "candidate" }) {
+async function putProjectMemory({ type = "note", title, content, status = "candidate", metadata = {} }) {
   await enforceMemoryRetention().catch(() => {});
   const existing = await findExistingMemory(content);
   if (existing) {
@@ -1472,6 +1473,7 @@ async function putProjectMemory({ type = "note", title, content, status = "candi
     status:activeStatus,
     hash:memoryHash(content),
     project:"default",
+    metadata,
     archived:activeStatus === "archived",
     expiresAt:ttl ? new Date(now.getTime() + ttl).toISOString() : "",
     createdAt:now.toISOString(),
@@ -1548,6 +1550,14 @@ async function updateProjectMemory(id, patch) {
     tx.onerror = () => reject(tx.error);
   });
   db.close();
+}
+
+async function approveProjectMemory(item) {
+  await updateProjectMemory(item.id, { status:"approved", archived:false });
+  const sourceDocId = item.metadata?.sourceDocId;
+  if (sourceDocId) {
+    await updateKnowledgeDocument(sourceDocId, { status:"approved", archived:false }).catch(() => {});
+  }
 }
 
 async function exportKnowledgeLibrary() {
@@ -2754,7 +2764,8 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
 
   const bulkUpdateMemories = async (items, patch) => {
     for (const item of items) {
-      await updateProjectMemory(item.id, patch);
+      if (patch.status === "approved") await approveProjectMemory(item);
+      else await updateProjectMemory(item.id, patch);
     }
     await refresh();
   };
@@ -2798,7 +2809,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", marginBottom:"8px", flexWrap:"wrap" }}>
         <div style={{ color:T.text, fontSize:"12.5px", fontWeight:900 }}>{title}（{items.length}）</div>
         {!!items.length && <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
-          {kind !== "approved" && <button onClick={()=>bulkUpdateMemories(items, { status:"approved" })} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.green, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("批量批准", "一括承認", "Approve all")}</button>}
+          {kind !== "approved" && <button onClick={()=>bulkUpdateMemories(items, { status:"approved", archived:false })} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.green, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("批量批准", "一括承認", "Approve all")}</button>}
           <button onClick={()=>bulkUpdateMemories(items, { status:"archived", archived:true })} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.muted, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("批量归档", "一括アーカイブ", "Archive all")}</button>
           <button onClick={()=>bulkDeleteMemories(items)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.red, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("批量删除", "一括削除", "Delete all")}</button>
         </div>}
@@ -2806,11 +2817,14 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
       <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
         {items.slice(0, 8).map(item => (
           <div key={item.id} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"9px", padding:"10px" }}>
-            <div style={{ color:T.text, fontSize:"12px", fontWeight:900 }}>{item.title}</div>
-            <div style={{ color:T.muted, fontSize:"10.5px", margin:"4px 0" }}>[{item.type}] {item.updatedAt?.slice(0,10)} · {item.status} · importance {item.importance || 1}</div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+              <div style={{ color:T.text, fontSize:"12px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.title}</div>
+              {["artifact", "member_output"].includes(item.type) && <span style={{ color:item.type === "artifact" ? T.purple : T.blue, background:item.type === "artifact" ? `${T.purple}14` : `${T.blue}14`, borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>{item.type === "artifact" ? label("产物", "成果物", "Artifact") : label("成员", "メンバー", "Member")}</span>}
+            </div>
+            <div style={{ color:T.muted, fontSize:"10.5px", margin:"4px 0" }}>[{item.type}] {item.updatedAt?.slice(0,10)} · {item.status} · importance {item.importance || 1}{item.metadata?.sourceDocId ? ` · ${label("可入文档库", "文書庫連携", "indexable")}` : ""}</div>
             <div style={{ color:T.text, fontSize:"11.5px", lineHeight:1.55, whiteSpace:"pre-wrap", maxHeight:"96px", overflow:"hidden" }}>{item.summary || item.content}</div>
             <div style={{ display:"flex", gap:"6px", marginTop:"8px", flexWrap:"wrap" }}>
-              {item.status !== "approved" && <button onClick={async()=>{ await updateProjectMemory(item.id, { status:"approved" }); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.green, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("批准", "承認", "Approve")}</button>}
+              {item.status !== "approved" && <button onClick={async()=>{ await approveProjectMemory(item); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.green, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{item.metadata?.sourceDocId ? label("批准并入库", "承認して文書化", "Approve + index") : label("批准", "承認", "Approve")}</button>}
               {item.status !== "short_term" && <button onClick={async()=>{ await updateProjectMemory(item.id, { status:"short_term" }); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.muted, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("转短期", "短期へ", "Short-term")}</button>}
               {item.status !== "candidate" && <button onClick={async()=>{ await updateProjectMemory(item.id, { status:"candidate" }); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.muted, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("待确认", "候補へ", "Candidate")}</button>}
               <button onClick={async()=>{ await updateProjectMemory(item.id, { status:"archived", archived:true }); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.muted, borderRadius:"7px", padding:"5px 8px", fontSize:"10.5px", cursor:"pointer" }}>{label("归档", "アーカイブ", "Archive")}</button>
