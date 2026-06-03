@@ -38,3 +38,5 @@ npm test
 - 区域：`hnd1`
 
 生产环境变量在 Vercel Dashboard 或 CLI 中配置，不提交到仓库。
+
+当前部署提交使用 GitHub noreply author email，以满足 Vercel Git author 校验。
