@@ -1153,6 +1153,19 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             : `ARIA 已启动自动调度。执行成员：${workers.map(item => item.name).join("、")}`),
         }]);
         if (needsConfirmation) {
+          await saveWorkflowRecord({
+            id:workflowId,
+            title:firstUserTitle([{ role:"user", text:displayText }], member.name),
+            task:text,
+            source:"aria-workflow",
+            status:"waiting_confirmation",
+            language:requestLanguage,
+            members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"queued" })),
+            plan:workflowPlan,
+            modelUsage:workflowModelUsage,
+            results:[],
+            artifacts:[],
+          }).catch(() => {});
           setMessages(m => [...m, {
             role:"ai",
             text:lang==="ja"
@@ -1486,6 +1499,19 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
             : `已启动自动工作流。执行成员：${workers.map(item => item.name).join("、")}`,
       }]);
       if (needsConfirmation) {
+        await saveWorkflowRecord({
+          id:workflowId,
+          title:firstUserTitle([{ role:"user", text:displayText }], group.name),
+          task:text,
+          source:"group-workflow",
+          status:"waiting_confirmation",
+          language:requestLanguage,
+          members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"queued" })),
+          plan:workflowPlan,
+          modelUsage:workflowModelUsage,
+          results:[],
+          artifacts:[],
+        }).catch(() => {});
         setMessages(m => [...m, {
           role:"ai",
           member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统",

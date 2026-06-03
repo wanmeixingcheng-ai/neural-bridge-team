@@ -90,6 +90,26 @@ describe("workflowArchive", () => {
     assert.match(markdown, /整合结论/);
   });
 
+  it("formats waiting-confirmation records with their planning evidence", () => {
+    const markdown = formatWorkflowRecordMarkdown({
+      title:"部署确认",
+      task:"部署生产版本",
+      status:"waiting_confirmation",
+      source:"aria-workflow",
+      members:[{ name:"陈志远", title:"前端工程师", model:"codex", status:"queued" }],
+      plan:{
+        strategy:"ARIA 自动调度",
+        protocol:{ intent:"部署生产版本", task_type:"development", priority:"high", subtasks:["构建"], expected_outputs:["部署验证"], risks:["生产回归"], needs_user_confirmation:true },
+        steps:[{ order:1, member:"陈志远", title:"前端工程师", model:"codex", subtask:"构建", output:"部署包", acceptanceCriteria:"构建通过" }],
+      },
+    }, "zh");
+
+    assert.match(markdown, /waiting_confirmation/);
+    assert.match(markdown, /部署生产版本/);
+    assert.match(markdown, /子任务: 构建/);
+    assert.match(markdown, /风险: 生产回归/);
+  });
+
   it("builds a continuation prompt from prior workflow evidence", () => {
     const prompt = buildWorkflowContinuationPrompt({
       title: "综合报告",
