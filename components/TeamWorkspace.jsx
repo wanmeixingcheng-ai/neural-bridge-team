@@ -1995,6 +1995,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                   {protocol.needs_user_confirmation && <span style={{ color:T.red, background:"#ef444415", borderRadius:"999px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900 }}>{lang==="ja" ? "確認待ち" : lang==="en" ? "Needs confirmation" : "需确认"}</span>}
                 </div>
                 {protocol.intent && <div style={{ color:T.text, fontSize:"10.5px", lineHeight:1.45, marginTop:"6px" }}>{protocol.intent}</div>}
+                {!!protocol.subtasks?.length && <div style={{ color:T.text, fontSize:"10px", lineHeight:1.45, marginTop:"5px" }}>{lang==="ja" ? "サブタスク：" : lang==="en" ? "Subtasks: " : "子任务："}{protocol.subtasks.join(" / ")}</div>}
                 {!!protocol.expected_outputs?.length && <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"5px" }}>{lang==="ja" ? "成果物：" : lang==="en" ? "Outputs: " : "产物："}{protocol.expected_outputs.join(" / ")}</div>}
                 {!!protocol.risks?.length && <div style={{ color:T.red, fontSize:"10px", lineHeight:1.45, marginTop:"4px" }}>{lang==="ja" ? "リスク：" : lang==="en" ? "Risks: " : "风险："}{protocol.risks.join(" / ")}</div>}
               </div>

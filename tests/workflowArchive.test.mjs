@@ -55,7 +55,7 @@ describe("workflowArchive", () => {
       members: [{ id: "pm", name: "林 美穂", title: "PM", model: "gemma26" }],
       plan: {
         strategy:"ARIA 自动调度 · 核心判断",
-        protocol:{ intent:"分析项目", task_type:"product", priority:"high", expected_outputs:["报告"], risks:["范围不清"] },
+        protocol:{ intent:"分析项目", task_type:"product", priority:"high", subtasks:["拆解目标", "复核风险"], expected_outputs:["报告"], risks:["范围不清"] },
         steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"里程碑与风险拆解" }],
       },
       modelUsage:{
@@ -71,6 +71,7 @@ describe("workflowArchive", () => {
     assert.match(markdown, /## 任务/);
     assert.match(markdown, /## 调度计划/);
     assert.match(markdown, /意图: 分析项目/);
+    assert.match(markdown, /子任务: 拆解目标 \/ 复核风险/);
     assert.match(markdown, /预期产物: 报告/);
     assert.match(markdown, /里程碑与风险拆解/);
     assert.match(markdown, /## 模型调用/);
