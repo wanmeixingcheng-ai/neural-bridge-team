@@ -8,6 +8,8 @@ import {
   buildWorkflowPlan,
   emptyWorkflowState,
   extractPriorWorkflowResults,
+  inferWorkflowTaskType,
+  normalizeWorkflowProtocol,
   parsePlannerJson,
   planWorkflowMembersWithModel,
   recentConversationContext,
@@ -79,7 +81,30 @@ test("workflow plan explains dispatch order without changing selected workers", 
   assert.equal(plan.steps.length, selected.length);
   assert.equal(plan.steps[0].order, 1);
   assert.match(plan.strategy, /ARIA 自动调度/);
+  assert.equal(plan.protocol.task_type, "development");
+  assert.deepEqual(plan.protocol.required_members, selected.map(item => item.id));
   assert.ok(plan.steps.some(step => step.memberId === "fe"));
+});
+
+test("workflow protocol normalizes ARIA planning fields", () => {
+  const protocol = normalizeWorkflowProtocol({
+    intent:"修复生产部署问题",
+    task_type:"development",
+    priority:"high",
+    required_members:["aria", "cto", "fe"],
+    subtasks:["定位失败", "修复并测试"],
+    expected_outputs:["修复说明", "部署验证"],
+    risks:["生产回归"],
+    needs_user_confirmation:true,
+  }, { taskText:"修复 Vercel 部署", workers:members });
+
+  assert.equal(protocol.intent, "修复生产部署问题");
+  assert.equal(protocol.task_type, "development");
+  assert.equal(protocol.priority, "high");
+  assert.equal(protocol.needs_user_confirmation, true);
+  assert.deepEqual(protocol.required_members, ["aria", "cto", "fe"]);
+  assert.equal(protocol.subtasks.length, 2);
+  assert.equal(inferWorkflowTaskType("请研究产品定价和开发成本"), "mixed");
 });
 
 test("workflow plan edit prompt turns the current plan into an editable handoff", () => {
