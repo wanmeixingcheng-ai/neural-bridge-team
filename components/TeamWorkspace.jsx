@@ -25,6 +25,7 @@ import {
   summarizeForWorkflow,
   wantsPriorIntegration,
   workflowQueueSummary,
+  workflowFailureReassignmentPlan,
   workflowQualityCheck,
   workflowStatusLabel,
   workflowExternalDisclosureLines,
@@ -2045,6 +2046,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const queue = workflowQueueSummary(currentWorkflow.members);
   const protocol = currentWorkflow.plan?.protocol || null;
   const quality = currentWorkflow.quality || null;
+  const reassignment = currentWorkflow.mode === "failed" ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
   return (
     <div className="nb-work-panel-body">
       <div style={{ fontSize:"13px", fontWeight:900, color:T.text }}>{lang==="ja" ? "プレビュー / 状態" : lang==="en" ? "Preview / Status" : "预览 / 任务状态"}</div>
@@ -2131,6 +2133,20 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               {quality.complete
                 ? (lang==="ja" ? "全担当メンバーの成果があります。" : lang==="en" ? "All assigned member outputs are present." : "所有分派成员都有成果。")
                 : `${lang==="ja" ? "不足：" : lang==="en" ? "Missing: " : "缺失："}${quality.missingMembers?.map(item => `${item.name} · ${item.title}`).join(" / ") || "-"}`}
+            </div>
+          </div>
+        )}
+        {reassignment.needed && (
+          <div style={{ marginTop:"10px", border:`1px solid ${T.yellow}55`, background:"#f59e0b12", borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:T.yellow, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "自動再割当案" : lang==="en" ? "Fallback route" : "自动改派建议"}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:"6px", marginTop:"7px" }}>
+              {reassignment.actions.slice(0, 6).map(action => (
+                <div key={`${action.memberId}-${action.toModel}`} style={{ color:T.text, fontSize:"10.5px", lineHeight:1.45 }}>
+                  <strong>{action.name} · {action.title}</strong>
+                  <span style={{ color:T.muted }}>：{action.fromModel || "-"} → {action.toModel}</span>
+                  <div style={{ color:T.muted, marginTop:"2px" }}>{action.reason}</div>
+                </div>
+              ))}
             </div>
           </div>
         )}

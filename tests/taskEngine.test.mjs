@@ -20,6 +20,7 @@ import {
   workflowQueueSummary,
   workflowRequiresConfirmation,
   workflowExternalDisclosureLines,
+  workflowFailureReassignmentPlan,
   workflowQualityCheck,
 } from "../lib/taskEngine.mjs";
 
@@ -77,6 +78,8 @@ test("retry prompt preserves completed work and failed member context", () => {
   assert.match(prompt, /生成上线计划/);
   assert.match(prompt, /吴晓敏/);
   assert.match(prompt, /测试模型超时/);
+  assert.match(prompt, /建议改派/);
+  assert.match(prompt, /gemma26/);
   assert.match(prompt, /已完成里程碑拆分/);
 });
 
@@ -195,6 +198,18 @@ test("workflow quality check flags missing member outputs", () => {
   assert.equal(quality.complete, false);
   assert.deepEqual(quality.missingMembers.map(item => item.id), ["qa"]);
   assert.equal(workflowQualityCheck([{ name:"林 美穂", title:"PM" }], [{ member:"林 美穂" }]).complete, true);
+});
+
+test("workflow failure reassignment plan routes failed members to fallbacks", () => {
+  const plan = workflowFailureReassignmentPlan([
+    { id:"audit", name:"孙建国", title:"开发审计", model:"claude", status:"failed", error:"busy" },
+    { id:"fe", name:"陈志远", title:"前端工程师", model:"codex", status:"failed", error:"handoff failed" },
+    { id:"qa", name:"吴晓敏", title:"QA", model:"gemma26", status:"complete" },
+  ], "zh");
+
+  assert.equal(plan.needed, true);
+  assert.deepEqual(plan.actions.map(item => item.toModel), ["gemma26", "manual_confirmation"]);
+  assert.equal(workflowFailureReassignmentPlan([{ id:"qa", status:"complete" }], "zh").needed, false);
 });
 
 test("model planner JSON can be fenced and dispatch selected members", async () => {
