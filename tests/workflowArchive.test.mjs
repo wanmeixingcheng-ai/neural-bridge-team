@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  archiveWorkflowRecordSnapshot,
   artifactContentHash,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
@@ -222,6 +223,25 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
     assert.match(details.artifacts[0].title, /^v1/);
     assert.match(details.artifacts[0].meta, /^整合报告 · a-/);
+  });
+
+  it("archives a workflow record snapshot without losing evidence", () => {
+    const archived = archiveWorkflowRecordSnapshot({
+      id:"wf-archive",
+      title:"综合报告",
+      task:"分析项目",
+      status:"done",
+      members:[{ name:"林 美穂", title:"PM", status:"complete" }],
+      results:[{ member:"林 美穂", title:"PM", text:"项目计划内容" }],
+      artifacts:[{ title:"最终产物", content:"整合结论" }],
+    }, "2026-06-03T20:30:00.000Z");
+
+    assert.equal(archived.status, "archived");
+    assert.equal(archived.updatedAt, "2026-06-03T20:30:00.000Z");
+    assert.equal(archived.members[0].name, "林 美穂");
+    assert.equal(archived.results[0].text, "项目计划内容");
+    assert.equal(archived.artifacts[0].content, "整合结论");
+    assert.match(formatWorkflowRecordMarkdown(archived, "zh"), /archived/);
   });
 
   it("generates stable artifact content fingerprints", () => {

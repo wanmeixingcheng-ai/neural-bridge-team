@@ -80,6 +80,7 @@ import {
   deleteWorkflowArchive,
   formatWorkflowRecordMarkdown,
   listWorkflowRecords,
+  markWorkflowRecordArchived,
   saveWorkflowRecord,
 } from "../lib/workflowArchive.mjs";
 
@@ -1964,6 +1965,18 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
       setSavingId("");
     }
   };
+  const archiveRecord = async (record) => {
+    setSavingId(record.id);
+    try {
+      const archived = await markWorkflowRecordArchived(record.id);
+      setRecords(items => items.map(item => item.id === archived.id ? archived : item));
+      setNotice(label("已归档该工作流记录。", "このワークフロー記録をアーカイブしました。", "Workflow record archived."));
+    } catch (e) {
+      setNotice(e.message || label("归档失败。", "アーカイブに失敗しました。", "Archive failed."));
+    } finally {
+      setSavingId("");
+    }
+  };
   return (
     <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.surface, borderRadius:"10px", padding:"12px" }}>
       <div style={{ color:T.muted, fontSize:"10.5px", fontWeight:800 }}>{label("最近工作流记录", "最近のワークフロー記録", "Recent workflow records")}</div>
@@ -1979,7 +1992,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
               <button type="button" onClick={()=>setSelectedId(selected ? "" : record.id)} style={{ width:"100%", border:"none", background:"transparent", padding:0, cursor:"pointer", textAlign:"left" }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
                   <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{record.title}</div>
-                  <div style={{ color:record.status === "done" ? T.green : T.muted, fontSize:"10px", fontWeight:900, whiteSpace:"nowrap" }}>{record.status}</div>
+                  <div style={{ color:record.status === "done" ? T.green : record.status === "archived" ? T.muted : T.orange, fontSize:"10px", fontWeight:900, whiteSpace:"nowrap" }}>{workflowStatusLabel(lang, record.status)}</div>
                 </div>
                 <div style={{ color:T.muted, fontSize:"10px", marginTop:"3px" }}>{record.members?.length || 0} {label("名成员", "名", "members")} · {record.source}</div>
                 {artifact?.content && <div style={{ color:T.text, fontSize:"10.8px", lineHeight:1.5, marginTop:"6px", maxHeight:selected ? "220px" : "72px", overflow:"hidden", whiteSpace:"pre-wrap" }}>{artifact.content}</div>}
@@ -2026,6 +2039,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                     <button type="button" onClick={()=>rerunRecord(record)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("复跑", "再実行", "Rerun")}</button>
                     {canRecover && <button type="button" onClick={()=>recoverRecord(record)} style={{ border:`1px solid ${T.red}45`, background:T.surface, color:T.red, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("恢复", "復旧", "Recover")}</button>}
                     <button type="button" disabled={savingId === record.id} onClick={()=>rememberRecord(record)} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingId === record.id ? T.faint : T.green, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{savingId === record.id ? label("入库中", "保存中", "Saving") : label("加入知识库", "知識庫へ", "Add to knowledge")}</button>
+                    {record.status !== "archived" && <button type="button" disabled={savingId === record.id} onClick={()=>archiveRecord(record)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:savingId === record.id ? T.faint : T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{label("归档记录", "アーカイブ", "Archive")}</button>}
                     <button type="button" onClick={()=>setSelectedId("")} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("收起", "閉じる", "Collapse")}</button>
                   </div>
                 </div>
