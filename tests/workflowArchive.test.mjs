@@ -6,6 +6,7 @@ import {
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
+  buildWorkflowRecoveryPrompt,
   buildWorkflowRerunPrompt,
   formatWorkflowRecordMarkdown,
   normalizeWorkflowRecord,
@@ -106,6 +107,26 @@ describe("workflowArchive", () => {
     assert.match(prompt, /先产品后工程/);
     assert.match(prompt, /启动新的 ARIA 调度/);
     assert.match(prompt, /林 美穂 · PM/);
+  });
+
+  it("builds a recovery prompt for failed workflow records", () => {
+    const prompt = buildWorkflowRecoveryPrompt({
+      title:"失败任务",
+      task:"生成上线方案",
+      status:"failed",
+      error:"CTO 调用失败",
+      members:[
+        { name:"林 美穂", title:"PM", model:"gemma26", status:"complete" },
+        { name:"Alex Chen", title:"CTO", model:"claude", status:"failed" },
+      ],
+      results:[{ member:"林 美穂", title:"PM", text:"已完成里程碑拆解" }],
+    }, "zh");
+
+    assert.match(prompt, /恢复以下失败/);
+    assert.match(prompt, /生成上线方案/);
+    assert.match(prompt, /CTO 调用失败/);
+    assert.match(prompt, /Alex Chen · CTO/);
+    assert.match(prompt, /只重试失败或缺失部分/);
   });
 
   it("builds an approved knowledge payload from a workflow record", () => {
