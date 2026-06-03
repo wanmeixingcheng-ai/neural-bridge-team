@@ -52,6 +52,7 @@ import {
 import {
   callModel,
   detectInputLanguage,
+  localOnlyBlockMessage,
   modelUsageSummary,
   outboundBlockedByLocalOnly,
   outboundProviderLabel,
@@ -1074,7 +1075,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
         hasWeb:!!urlPrompt,
         hasKnowledge:!!brainPrompt,
       })) {
-        setNotice(lang === "ja" ? "送信をキャンセルしました。" : lang === "en" ? "Send canceled." : "已取消发送。");
+        setNotice(localOnlyBlockMessage(effectiveModel, apiKeys, lang) || (lang === "ja" ? "送信をキャンセルしました。" : lang === "en" ? "Send canceled." : "已取消发送。"));
         return;
       }
       const displayText = attachments.length
@@ -1430,7 +1431,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
       hasKnowledge:!!brainPrompt,
     })) {
       setError("");
-      setMessages(m => [...m, { role:"ai", member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统", text:lang==="ja" ? "送信をキャンセルしました。" : lang==="en" ? "Send canceled." : "已取消发送。" }]);
+      setMessages(m => [...m, { role:"ai", member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统", text:localOnlyBlockMessage(firstModel, apiKeys, lang) || (lang==="ja" ? "送信をキャンセルしました。" : lang==="en" ? "Send canceled." : "已取消发送。") }]);
       return;
     }
     const displayText = currentAttachments.length
