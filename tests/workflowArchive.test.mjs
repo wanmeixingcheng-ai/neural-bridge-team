@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  artifactContentHash,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   formatWorkflowRecordMarkdown,
@@ -36,6 +37,8 @@ describe("workflowArchive", () => {
     assert.equal(record.plan.steps.length, 24);
     assert.ok(record.plan.strategy.length < 600);
     assert.ok(record.plan.steps[0].purpose.length < 600);
+    assert.equal(record.artifacts[0].version, 1);
+    assert.match(record.artifacts[0].hash, /^a-/);
     assert.ok(record.members[0].summary.length < 1800);
     assert.ok(record.results[0].text.length < 6200);
     assert.ok(record.artifacts[0].content.length < 12200);
@@ -66,6 +69,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /里程碑与风险拆解/);
     assert.match(markdown, /## 模型调用/);
     assert.match(markdown, /Google Gemini\/Gemma/);
+    assert.match(markdown, /### v1 · 最终产物/);
+    assert.match(markdown, /指纹/);
     assert.match(markdown, /林 美穂/);
     assert.match(markdown, /项目计划内容/);
     assert.match(markdown, /整合结论/);
@@ -112,6 +117,13 @@ describe("workflowArchive", () => {
     assert.match(payload.document.text, /## 成员成果/);
     assert.equal(payload.memory.status, "approved");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");
+    assert.equal(payload.memory.metadata.artifactVersions[0].version, 1);
+    assert.match(payload.memory.metadata.artifactVersions[0].hash, /^a-/);
     assert.match(payload.memory.content, /整合结论/);
+  });
+
+  it("generates stable artifact content fingerprints", () => {
+    assert.equal(artifactContentHash("same output"), artifactContentHash("same output"));
+    assert.notEqual(artifactContentHash("same output"), artifactContentHash("different output"));
   });
 });

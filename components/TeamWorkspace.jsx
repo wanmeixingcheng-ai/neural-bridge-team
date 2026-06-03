@@ -59,6 +59,7 @@ import {
   saveWorkflowState,
 } from "../lib/workflowStorage.mjs";
 import {
+  artifactContentHash,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   deleteWorkflowArchive,
@@ -1190,6 +1191,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             finalText = `${lang === "ja" ? "統合モデルの呼び出しに失敗したため、メンバー成果をローカルで整理しました。" : lang === "en" ? "The integration model failed, so member results were organized locally." : "整合模型调用失败，已在本地整理成员成果。"}\n\n${results.map(item => `## ${item.member} · ${item.title}\n${item.text}`).join("\n\n")}`;
           }
           const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
+          const artifact = { title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", version:1, hash:artifactContentHash(finalText), content:finalText, createdAt:new Date().toISOString() };
           await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"aria-workflow" });
           await saveWorkflowRecord({
             id:workflowId,
@@ -1202,7 +1204,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             plan:workflowPlan,
             modelUsage:workflowModelUsage,
             results,
-            artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
+            artifacts:[artifact],
           }).catch(() => {});
           setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}` }]);
           onWorkflowState?.(state => ({
@@ -1210,7 +1212,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             mode:"done",
             phase:lang === "ja" ? "成果物生成完了" : lang === "en" ? "Output generated" : "产物已生成",
             updatedAt:new Date().toISOString(),
-            artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
+            artifacts:[artifact],
             progress:{ done:state.members.length, total:state.members.length },
           }));
         }
@@ -1506,6 +1508,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           finalText = `${lang === "ja" ? "統合モデルの呼び出しに失敗したため、メンバー成果をローカルで整理しました。" : lang === "en" ? "The integration model failed, so member results were organized locally." : "整合模型调用失败，已在本地整理成员成果。"}\n\n${results.map(item => `## ${item.member} · ${item.title}\n${item.text}`).join("\n\n")}`;
         }
         const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
+        const artifact = { title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", version:1, hash:artifactContentHash(finalText), content:finalText, createdAt:new Date().toISOString() };
         await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"group-workflow" });
         await saveWorkflowRecord({
           id:workflowId,
@@ -1518,7 +1521,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           plan:workflowPlan,
           modelUsage:workflowModelUsage,
           results,
-          artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
+          artifacts:[artifact],
         }).catch(() => {});
         setMessages(m => [...m, { role:"ai", member:"ARIA", title:lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物", model:aria.model, emoji:aria.emoji || "◎", text:finalText }]);
         onWorkflowState?.(state => ({
@@ -1526,7 +1529,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           mode:"done",
           phase:lang === "ja" ? "成果物生成完了" : lang === "en" ? "Output generated" : "产物已生成",
           updatedAt:new Date().toISOString(),
-          artifacts:[{ title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", content:finalText, createdAt:new Date().toISOString() }],
+          artifacts:[artifact],
           progress:{ done:state.members.length, total:state.members.length },
         }));
       }
@@ -2006,8 +2009,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
           <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"8px" }}>
             {currentWorkflow.artifacts.map((artifact, index) => (
               <div key={`${artifact.title}-${index}`} style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
-                <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{artifact.title}</div>
-                <div style={{ color:T.muted, fontSize:"10.5px", marginTop:"3px" }}>{artifact.kind}</div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+                  <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artifact.title}</div>
+                  <div style={{ color:T.blue, background:T.surface, border:`1px solid ${T.border}`, borderRadius:"999px", padding:"2px 6px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>v{artifact.version || index + 1}</div>
+                </div>
+                <div style={{ color:T.muted, fontSize:"10.5px", marginTop:"3px" }}>{artifact.kind}{artifact.hash ? ` · ${artifact.hash}` : ""}</div>
                 <div style={{ color:T.text, fontSize:"10.8px", lineHeight:1.5, marginTop:"6px", maxHeight:"96px", overflow:"hidden", whiteSpace:"pre-wrap" }}>{artifact.content}</div>
               </div>
             ))}

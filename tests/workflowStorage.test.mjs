@@ -63,6 +63,8 @@ describe("workflowStorage", () => {
     assert.equal(restored.modelUsage.models.length, 12);
     assert.equal(restored.modelUsage.external, true);
     assert.ok(restored.modelUsage.models[0].provider.length <= 120);
+    assert.equal(restored.artifacts[0].version, 1);
+    assert.match(restored.artifacts[0].hash, /^a-/);
     assert.ok(restored.members[0].summary.length < 1800);
     assert.ok(restored.artifacts[0].content.length < 8200);
   });
