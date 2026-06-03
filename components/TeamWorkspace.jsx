@@ -53,6 +53,7 @@ import {
   callModel,
   detectInputLanguage,
   modelUsageSummary,
+  outboundBlockedByLocalOnly,
   outboundProviderLabel,
   urlsToPrompt,
 } from "../lib/modelGateway.mjs";
@@ -992,6 +993,7 @@ function speakText(text, lang) {
 }
 
 function confirmOutboundContext({ lang, modelKey, apiKeys, hasAttachments, hasWeb, hasKnowledge }) {
+  if (outboundBlockedByLocalOnly(modelKey, apiKeys)) return false;
   const provider = outboundProviderLabel(modelKey, apiKeys);
   if (!provider) return true;
   return true;
@@ -1778,6 +1780,17 @@ function AppSettings({ open, settings, members, onSave, onMembersSave, onClearLo
                 ? "When enabled, related IndexedDB knowledge and memories are sent to the current model provider. This is off by default."
                 : "开启后，IndexedDB 中检索到的相关知识和记忆会发送给当前模型提供商。默认关闭。"}
           </div>
+          <label style={{ display:"flex", alignItems:"flex-start", gap:"8px", marginBottom:"8px", color:T.text, fontSize:"12px", fontWeight:800 }}>
+            <input type="checkbox" checked={!!values.localOnlyMode} onChange={e=>setValues(v=>({...v, localOnlyMode:e.target.checked, autoInjectKnowledge:e.target.checked ? false : v.autoInjectKnowledge}))} style={{ marginTop:"2px" }} />
+            <span>{liveLang === "ja" ? "Local-only モード（外部モデル送信をブロック）" : liveLang === "en" ? "Local-only mode (block external model sends)" : "Local-only 模式（阻止外部模型发送）"}</span>
+          </label>
+          <div style={{ color:values.localOnlyMode ? T.red : T.muted, fontSize:"11.5px", lineHeight:1.6, marginBottom:"14px" }}>
+            {liveLang === "ja"
+              ? "有効にすると、Claude/Gemini など外部モデルへの送信をキャンセルします。ローカル保存や Codex キュー以外の整理だけに使います。"
+              : liveLang === "en"
+                ? "When enabled, sends to external model providers such as Claude/Gemini are canceled. Use for local organization and local saves."
+                : "开启后，发送到 Claude/Gemini 等外部模型提供商的请求会被取消。适合本地整理和本地保存。"}
+          </div>
           <div style={{ color:T.text, fontSize:"13px", fontWeight:900, margin:"18px 0 8px" }}>Claude Code Bridge</div>
           <div style={{ color:T.muted, fontSize:"12px", marginBottom:"12px" }}>
             {liveLang === "ja" ? "ローカルの Claude Code を使う場合だけ有効にしてください。" : liveLang === "en" ? "Enable only when using a local Claude Code bridge." : "仅在使用本机 Claude Code 桥接服务时开启。"}
@@ -2454,6 +2467,7 @@ function mergeStoredSettings(current, stored = {}) {
     },
     codexAdminToken:"",
     autoInjectKnowledge:!!safe.autoInjectKnowledge,
+    localOnlyMode:!!safe.localOnlyMode,
   };
 }
 
@@ -2471,7 +2485,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [mobileWorkOpen, setMobileWorkOpen] = useState(false);
-  const [settings, setSettings] = useState({ username:"Neural Bridge Owner", language:"auto", apiKeys:{ anthropic:"", google:"" }, autoInjectKnowledge:false, claudeBridge:{ enabled:false, url:"http://127.0.0.1:8787", token:"" }, codexAdminToken:"" });
+  const [settings, setSettings] = useState({ username:"Neural Bridge Owner", language:"auto", apiKeys:{ anthropic:"", google:"" }, autoInjectKnowledge:false, localOnlyMode:false, claudeBridge:{ enabled:false, url:"http://127.0.0.1:8787", token:"" }, codexAdminToken:"" });
   const [customOpen, setCustomOpen] = useState(false);
   const [customIds, setCustomIds] = useState(["aria", "cto", "fe"]);
   const [chatHistory, setChatHistory] = useState([]);
@@ -2580,7 +2594,7 @@ export default function App() {
     setActiveSession(null);
     setActiveKnowledge(false);
     setWorkflowState(emptyWorkflowState(lang));
-    setSettings({ username:"Neural Bridge Owner", language:"auto", apiKeys:{ anthropic:"", google:"" }, autoInjectKnowledge:false, claudeBridge:{ enabled:false, url:"http://127.0.0.1:8787", token:"" }, codexAdminToken:"" });
+    setSettings({ username:"Neural Bridge Owner", language:"auto", apiKeys:{ anthropic:"", google:"" }, autoInjectKnowledge:false, localOnlyMode:false, claudeBridge:{ enabled:false, url:"http://127.0.0.1:8787", token:"" }, codexAdminToken:"" });
     setSettingsOpen(false);
   };
 
@@ -2630,7 +2644,7 @@ export default function App() {
   };
   const panelTitle = activeKnowledge ? t(lang, "knowledge") : activeInfo?.title || activeGroup?.name || selected.name;
   const panelSubtitle = activeKnowledge ? "IndexedDB" : activeInfo?.subtitle || (activeGroup ? `${activeGroup.members.length} ${t(lang, "members")}` : selected.title);
-  const apiConfig = { ...(settings.apiKeys || {}), autoInjectKnowledge:!!settings.autoInjectKnowledge, claudeBridge: settings.claudeBridge || {}, codexAdminToken:settings.codexAdminToken || "" };
+  const apiConfig = { ...(settings.apiKeys || {}), autoInjectKnowledge:!!settings.autoInjectKnowledge && !settings.localOnlyMode, localOnlyMode:!!settings.localOnlyMode, claudeBridge: settings.claudeBridge || {}, codexAdminToken:settings.codexAdminToken || "" };
   const updateChatSession = (session) => {
     setChatHistory(current => {
       const next = [session, ...current.filter(item => item.id !== session.id)]

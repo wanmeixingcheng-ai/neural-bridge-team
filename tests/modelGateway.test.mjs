@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { detectInputLanguage, extractUrls, modelProviderInfo, modelUsageSummary, outboundProviderLabel } from "../lib/modelGateway.mjs";
+import { detectInputLanguage, extractUrls, modelProviderInfo, modelUsageSummary, outboundBlockedByLocalOnly, outboundProviderLabel } from "../lib/modelGateway.mjs";
 
 describe("modelGateway", () => {
   it("detects the user input language", () => {
@@ -23,6 +23,9 @@ describe("modelGateway", () => {
     assert.equal(outboundProviderLabel("gemma26", {}), "Google Gemini/Gemma");
     assert.deepEqual(modelProviderInfo("codex", {}), { modelKey:"codex", provider:"", external:false });
     assert.equal(modelProviderInfo("claude", {}).external, true);
+    assert.equal(outboundBlockedByLocalOnly("claude", { localOnlyMode:true }), true);
+    assert.equal(outboundBlockedByLocalOnly("codex", { localOnlyMode:true }), true);
+    assert.equal(outboundBlockedByLocalOnly("", { localOnlyMode:true }), false);
   });
 
   it("summarizes unique model usage and external providers", () => {
