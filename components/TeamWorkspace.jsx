@@ -2149,6 +2149,14 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
     const artifact = currentWorkflow.artifacts?.[index] || { title:currentWorkflow.title };
     await saveToLocalOutputs({ name:"Artifact", title:artifact.title || currentWorkflow.title }, markdown);
   };
+  const reviseCurrentArtifact = (index = 0) => {
+    onContinueWorkflow?.(buildWorkflowArtifactRevisionPrompt({
+      ...currentWorkflow,
+      title:currentWorkflow.title || title,
+      source:currentWorkflow.source || "active-workflow",
+      status:currentWorkflow.mode,
+    }, index, lang));
+  };
   const downloadCurrentAudit = async () => {
     const markdown = formatWorkflowAuditMarkdown({
       ...currentWorkflow,
@@ -2402,6 +2410,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                   <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artifact.title}</div>
                   <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
                     <div style={{ color:T.blue, background:T.surface, border:`1px solid ${T.border}`, borderRadius:"999px", padding:"2px 6px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>v{artifact.version || index + 1}</div>
+                    <button type="button" onClick={()=>reviseCurrentArtifact(index)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "改訂" : lang==="en" ? "Revise" : "修订"}</button>
                     <button type="button" onClick={()=>downloadCurrentArtifact(index)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "保存" : lang==="en" ? "Download" : "下载"}</button>
                   </div>
                 </div>
