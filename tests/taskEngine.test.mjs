@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   chooseWorkflowMembers,
   buildWorkflowRetryPrompt,
+  buildWorkflowPlan,
   emptyWorkflowState,
   extractPriorWorkflowResults,
   parsePlannerJson,
@@ -67,6 +68,16 @@ test("retry prompt preserves completed work and failed member context", () => {
   assert.match(prompt, /吴晓敏/);
   assert.match(prompt, /测试模型超时/);
   assert.match(prompt, /已完成里程碑拆分/);
+});
+
+test("workflow plan explains dispatch order without changing selected workers", () => {
+  const selected = chooseWorkflowMembers({ members }, "请开发并测试移动端布局");
+  const plan = buildWorkflowPlan({ taskText:"请开发并测试移动端布局", workers:selected, lang:"zh" });
+
+  assert.equal(plan.steps.length, selected.length);
+  assert.equal(plan.steps[0].order, 1);
+  assert.match(plan.strategy, /ARIA 自动调度/);
+  assert.ok(plan.steps.some(step => step.memberId === "fe"));
 });
 
 test("model planner JSON can be fenced and dispatch selected members", async () => {

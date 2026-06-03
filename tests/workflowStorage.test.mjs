@@ -25,6 +25,19 @@ describe("workflowStorage", () => {
       mode: "done",
       title: "任务",
       task: "z".repeat(6000),
+      plan: {
+        mode:"auto",
+        strategy:"s".repeat(1000),
+        task:"p".repeat(1000),
+        steps:Array.from({ length:30 }, (_, index) => ({
+          order:index + 1,
+          memberId:`member-${index}`,
+          member:"m".repeat(200),
+          title:"t".repeat(300),
+          model:"gemma31",
+          purpose:"purpose".repeat(100),
+        })),
+      },
       members: [{ id: "aria", name: "ARIA", summary: "x".repeat(3000) }],
       artifacts: [{ title: "产物", content: "y".repeat(12000) }],
       progress: { done: 1, total: 1 },
@@ -35,6 +48,9 @@ describe("workflowStorage", () => {
     const restored = loadWorkflowState("zh", storage);
     assert.equal(restored.mode, "done");
     assert.ok(restored.task.length < 4200);
+    assert.equal(restored.plan.steps.length, 24);
+    assert.ok(restored.plan.strategy.length < 360);
+    assert.ok(restored.plan.steps[0].purpose.length < 320);
     assert.ok(restored.members[0].summary.length < 1800);
     assert.ok(restored.artifacts[0].content.length < 8200);
   });

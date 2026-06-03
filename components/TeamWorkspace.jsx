@@ -15,6 +15,7 @@ import {
 import {
   emptyWorkflowState,
   buildWorkflowRetryPrompt,
+  buildWorkflowPlan,
   extractPriorWorkflowResults,
   memberWorkflowTask,
   planWorkflowMembersWithModel,
@@ -1095,6 +1096,12 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
         });
         const workflowId = `wf-${Date.now().toString(36)}`;
         const results = integrateExisting ? [...priorResults] : [];
+        const workflowPlan = buildWorkflowPlan({
+          taskText:text,
+          workers:integrateExisting ? priorResults.map((item, index) => ({ id:`prior-${index}`, name:item.member, title:item.title, model:item.model, layer:1 })) : workers,
+          mode:integrateExisting ? "integrate" : "auto",
+          lang:requestLanguage,
+        });
         onWorkflowState?.({
           id:workflowId,
           title:firstUserTitle([{ role:"user", text:displayText }], member.name),
@@ -1108,6 +1115,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           members:integrateExisting
             ? priorResults.map((item, index) => ({ id:`prior-${index}`, name:item.member, title:item.title, model:item.model, status:"complete", task:"", summary:item.summary, error:"" }))
             : workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"queued", task:"", summary:"", error:"" })),
+          plan:workflowPlan,
           artifacts:[],
           error:"",
           progress:integrateExisting ? { done:priorResults.length, total:priorResults.length } : { done:0, total:workers.length },
@@ -1407,6 +1415,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         callModel,
       });
       const workflowId = `wf-${Date.now().toString(36)}`;
+      const workflowPlan = buildWorkflowPlan({ taskText:text, workers, mode:"auto", lang:requestLanguage });
       onWorkflowState?.({
         id:workflowId,
         title:firstUserTitle([{ role:"user", text:displayText }], group.name),
@@ -1416,6 +1425,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         startedAt:new Date().toISOString(),
         updatedAt:new Date().toISOString(),
         members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"queued", task:"", summary:"", error:"" })),
+        plan:workflowPlan,
         artifacts:[],
         error:"",
         progress:{ done:0, total:workers.length },
@@ -1891,6 +1901,23 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               <div style={{ width:`${Math.min(100, Math.round((progress.done / progress.total) * 100))}%`, height:"100%", background:modeColor, transition:"width .2s ease" }} />
             </div>
             <div style={{ color:T.muted, fontSize:"10.5px", marginTop:"5px" }}>{progress.done} / {progress.total}</div>
+          </div>
+        )}
+        {currentWorkflow.plan?.steps?.length > 0 && (
+          <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "調度計画" : lang==="en" ? "Dispatch plan" : "调度计划"}</div>
+            <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"4px" }}>{currentWorkflow.plan.strategy}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:"6px", marginTop:"8px" }}>
+              {currentWorkflow.plan.steps.slice(0, 8).map(step => (
+                <div key={`${step.order}-${step.memberId || step.member}`} style={{ display:"grid", gridTemplateColumns:"22px minmax(0,1fr)", gap:"6px", alignItems:"start" }}>
+                  <div style={{ width:"22px", height:"22px", borderRadius:"7px", background:T.surface, border:`1px solid ${T.border}`, color:T.muted, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:900 }}>{step.order}</div>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{step.member} · {step.title}</div>
+                    <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.4, marginTop:"2px" }}>{step.purpose}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {!!currentWorkflow.members?.length && (
