@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildWorkflowContinuationPrompt, formatWorkflowRecordMarkdown, normalizeWorkflowRecord } from "../lib/workflowArchive.mjs";
+import {
+  buildWorkflowContinuationPrompt,
+  buildWorkflowKnowledgePayload,
+  formatWorkflowRecordMarkdown,
+  normalizeWorkflowRecord,
+} from "../lib/workflowArchive.mjs";
 
 describe("workflowArchive", () => {
   it("normalizes a workflow run into a bounded record", () => {
@@ -52,5 +57,23 @@ describe("workflowArchive", () => {
     assert.match(prompt, /整合结论/);
     assert.match(prompt, /林 美穂 · PM/);
     assert.match(prompt, /调度哪些成员/);
+  });
+
+  it("builds an approved knowledge payload from a workflow record", () => {
+    const payload = buildWorkflowKnowledgePayload({
+      id: "wf-1",
+      title: "综合报告",
+      task: "分析项目",
+      source: "aria-workflow",
+      results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
+      artifacts: [{ title: "最终产物", content: "整合结论" }],
+    }, "zh");
+
+    assert.equal(payload.document.source, "workflow-archive:aria-workflow");
+    assert.match(payload.document.title, /工作流产物/);
+    assert.match(payload.document.text, /## 成员成果/);
+    assert.equal(payload.memory.status, "approved");
+    assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");
+    assert.match(payload.memory.content, /整合结论/);
   });
 });

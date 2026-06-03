@@ -56,6 +56,7 @@ import {
 } from "../lib/workflowStorage.mjs";
 import {
   buildWorkflowContinuationPrompt,
+  buildWorkflowKnowledgePayload,
   deleteWorkflowArchive,
   formatWorkflowRecordMarkdown,
   listWorkflowRecords,
@@ -1792,6 +1793,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
   const [records, setRecords] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [notice, setNotice] = useState("");
+  const [savingId, setSavingId] = useState("");
   useEffect(() => {
     listWorkflowRecords({ limit:5 }).then(setRecords).catch(() => setRecords([]));
   }, [refreshKey]);
@@ -1805,6 +1807,23 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
   const continueRecord = (record) => {
     onContinue?.(buildWorkflowContinuationPrompt(record, lang));
     setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input."));
+  };
+  const rememberRecord = async (record) => {
+    setSavingId(record.id);
+    try {
+      const payload = buildWorkflowKnowledgePayload(record, lang);
+      const doc = await putKnowledgeDocument(payload.document);
+      await updateKnowledgeDocument(doc.id, { status:"approved", archived:false });
+      await putProjectMemory({
+        ...payload.memory,
+        metadata:{ ...payload.memory.metadata, sourceDocId:doc.id },
+      });
+      setNotice(label("已加入知识库和长期记忆。", "知識庫と長期記憶に追加しました。", "Added to knowledge and long-term memory."));
+    } catch (e) {
+      setNotice(e.message || label("加入知识库失败。", "知識庫への追加に失敗しました。", "Failed to add to knowledge."));
+    } finally {
+      setSavingId("");
+    }
   };
   return (
     <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.surface, borderRadius:"10px", padding:"12px" }}>
@@ -1830,6 +1849,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                   <div style={{ display:"flex", gap:"7px", marginTop:"8px", flexWrap:"wrap" }}>
                     <button type="button" onClick={()=>downloadRecord(record)} style={{ border:"none", background:T.blue, color:"#fff", borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("下载完整记录", "完全記録を保存", "Download full record")}</button>
                     <button type="button" onClick={()=>continueRecord(record)} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("继续任务", "続行", "Continue")}</button>
+                    <button type="button" disabled={savingId === record.id} onClick={()=>rememberRecord(record)} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingId === record.id ? T.faint : T.green, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:savingId === record.id ? "default" : "pointer" }}>{savingId === record.id ? label("入库中", "保存中", "Saving") : label("加入知识库", "知識庫へ", "Add to knowledge")}</button>
                     <button type="button" onClick={()=>setSelectedId("")} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("收起", "閉じる", "Collapse")}</button>
                   </div>
                 </div>
