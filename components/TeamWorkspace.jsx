@@ -85,6 +85,7 @@ import {
   buildWorkflowRecoveryPrompt,
   buildWorkflowRerunPrompt,
   deleteWorkflowArchive,
+  formatWorkflowAuditMarkdown,
   formatWorkflowArtifactMarkdown,
   formatWorkflowRecordMarkdown,
   listWorkflowRecords,
@@ -1971,6 +1972,11 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     const fileName = await saveToLocalOutputs({ name:"Artifact", title:artifact.title || record.title }, markdown);
     setNotice(label(`已下载产物：${fileName}`, `成果物を保存しました：${fileName}`, `Downloaded artifact: ${fileName}`));
   };
+  const downloadAudit = async (record) => {
+    const markdown = formatWorkflowAuditMarkdown(record, lang);
+    const fileName = await saveToLocalOutputs({ name:"Audit", title:record.title }, markdown);
+    setNotice(label(`已下载审计包：${fileName}`, `監査パッケージを保存しました：${fileName}`, `Downloaded audit package: ${fileName}`));
+  };
   const continueRecord = (record) => {
     onContinue?.(buildWorkflowContinuationPrompt(record, lang));
     setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input."));
@@ -2095,6 +2101,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                   {!!record.results?.length && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.5 }}>{record.results.slice(0, 6).map(result => `${result.member} · ${result.title}`).join(" / ")}</div>}
                   <div style={{ display:"flex", gap:"7px", marginTop:"8px", flexWrap:"wrap" }}>
                     <button type="button" onClick={()=>downloadRecord(record)} style={{ border:"none", background:T.blue, color:"#fff", borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("下载完整记录", "完全記録を保存", "Download full record")}</button>
+                    <button type="button" onClick={()=>downloadAudit(record)} style={{ border:`1px solid ${T.orange}55`, background:T.surface, color:T.orange, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("下载审计", "監査保存", "Audit")}</button>
                     <button type="button" onClick={()=>continueRecord(record)} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("继续任务", "続行", "Continue")}</button>
                     <button type="button" onClick={()=>rerunRecord(record)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("复跑", "再実行", "Rerun")}</button>
                     {canRecover && <button type="button" onClick={()=>recoverRecord(record)} style={{ border:`1px solid ${T.red}45`, background:T.surface, color:T.red, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("恢复", "復旧", "Recover")}</button>}

@@ -9,6 +9,7 @@ import {
   buildWorkflowRecordDetails,
   buildWorkflowRecoveryPrompt,
   buildWorkflowRerunPrompt,
+  formatWorkflowAuditMarkdown,
   formatWorkflowArtifactMarkdown,
   formatWorkflowRecordMarkdown,
   normalizeWorkflowRecord,
@@ -114,6 +115,37 @@ describe("workflowArchive", () => {
     assert.match(markdown, /来源工作流: 综合报告/);
     assert.match(markdown, /## 产物内容/);
     assert.match(markdown, /整合结论/);
+  });
+
+  it("formats a workflow audit package with permissions and evidence", () => {
+    const markdown = formatWorkflowAuditMarkdown({
+      title:"生产任务",
+      task:"部署并验证",
+      source:"aria-workflow",
+      status:"done",
+      members:[
+        { name:"陈志远", title:"前端工程师", model:"codex", status:"complete" },
+        { name:"吴晓敏", title:"QA", model:"gemma26", status:"complete" },
+      ],
+      modelUsage:{
+        external:true,
+        localOnlyMode:false,
+        providers:["Google Gemini/Gemma"],
+        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+      },
+      quality:{ complete:true, missingMembers:[] },
+      artifacts:[{ title:"部署报告", kind:"审计报告", hash:"a-test", content:"已完成" }],
+    }, "zh");
+
+    assert.match(markdown, /^# 工作流审计: 生产任务/);
+    assert.match(markdown, /Local-only: no/);
+    assert.match(markdown, /外发模型: yes/);
+    assert.match(markdown, /## 权限与工具调用/);
+    assert.match(markdown, /模型网关/);
+    assert.match(markdown, /## 质量闸门/);
+    assert.match(markdown, /成员成果完整: yes/);
+    assert.match(markdown, /陈志远 · 前端工程师 · codex · complete/);
+    assert.match(markdown, /v1 · 部署报告 · 审计报告 · a-test/);
   });
 
   it("formats waiting-confirmation records with their planning evidence", () => {
