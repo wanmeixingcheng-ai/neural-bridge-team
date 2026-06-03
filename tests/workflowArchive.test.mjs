@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { formatWorkflowRecordMarkdown, normalizeWorkflowRecord } from "../lib/workflowArchive.mjs";
+import { buildWorkflowContinuationPrompt, formatWorkflowRecordMarkdown, normalizeWorkflowRecord } from "../lib/workflowArchive.mjs";
 
 describe("workflowArchive", () => {
   it("normalizes a workflow run into a bounded record", () => {
@@ -37,5 +37,20 @@ describe("workflowArchive", () => {
     assert.match(markdown, /林 美穂/);
     assert.match(markdown, /项目计划内容/);
     assert.match(markdown, /整合结论/);
+  });
+
+  it("builds a continuation prompt from prior workflow evidence", () => {
+    const prompt = buildWorkflowContinuationPrompt({
+      title: "综合报告",
+      task: "分析项目",
+      results: [{ member: "林 美穂", title: "PM", text: "项目计划内容很长，需要继续拆分里程碑。" }],
+      artifacts: [{ title: "最终产物", content: "整合结论：先做工作流继续能力。" }],
+    }, "zh");
+
+    assert.match(prompt, /不要重新从零开始/);
+    assert.match(prompt, /分析项目/);
+    assert.match(prompt, /整合结论/);
+    assert.match(prompt, /林 美穂 · PM/);
+    assert.match(prompt, /调度哪些成员/);
   });
 });

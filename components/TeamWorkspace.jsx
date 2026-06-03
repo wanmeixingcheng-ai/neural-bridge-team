@@ -55,6 +55,7 @@ import {
   saveWorkflowState,
 } from "../lib/workflowStorage.mjs";
 import {
+  buildWorkflowContinuationPrompt,
   deleteWorkflowArchive,
   formatWorkflowRecordMarkdown,
   listWorkflowRecords,
@@ -980,7 +981,7 @@ function confirmOutboundContext({ lang, modelKey, apiKeys, hasAttachments, hasWe
   return true;
 }
 
-function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activeSession, lang, allMembers = TEAM, onWorkflowState }) {
+function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activeSession, lang, allMembers = TEAM, onWorkflowState, draftPrompt }) {
   const [controls, setControls] = useState({ thinkingMode:"off", modelOverride:"", reasoningLevel:"medium" });
   const effectiveModel = controls.modelOverride || member.model;
   const model = MODELS[effectiveModel] || MODELS[member.model];
@@ -1011,6 +1012,11 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
     setError("");
     setNotice("");
   }, [member.id, lang, activeSession?.id]);
+
+  useEffect(() => {
+    if (!draftPrompt?.text || draftPrompt.targetId !== member.id) return;
+    setInput(draftPrompt.text);
+  }, [draftPrompt?.nonce, draftPrompt?.targetId, member.id]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, loading]);
   useEffect(() => {
@@ -1782,7 +1788,7 @@ function InfoPanel({ item, onMenu, onWorkPanel, lang }) {
   );
 }
 
-function WorkflowArchiveList({ lang, refreshKey }) {
+function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
   const [records, setRecords] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [notice, setNotice] = useState("");
@@ -1795,6 +1801,10 @@ function WorkflowArchiveList({ lang, refreshKey }) {
     const markdown = formatWorkflowRecordMarkdown(record, lang);
     const fileName = await saveToLocalOutputs({ name:"Workflow", title:record.title }, markdown);
     setNotice(label(`已下载：${fileName}`, `ダウンロードしました：${fileName}`, `Downloaded: ${fileName}`));
+  };
+  const continueRecord = (record) => {
+    onContinue?.(buildWorkflowContinuationPrompt(record, lang));
+    setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input."));
   };
   return (
     <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.surface, borderRadius:"10px", padding:"12px" }}>
@@ -1819,6 +1829,7 @@ function WorkflowArchiveList({ lang, refreshKey }) {
                   {!!record.results?.length && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.5 }}>{record.results.slice(0, 6).map(result => `${result.member} · ${result.title}`).join(" / ")}</div>}
                   <div style={{ display:"flex", gap:"7px", marginTop:"8px", flexWrap:"wrap" }}>
                     <button type="button" onClick={()=>downloadRecord(record)} style={{ border:"none", background:T.blue, color:"#fff", borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("下载完整记录", "完全記録を保存", "Download full record")}</button>
+                    <button type="button" onClick={()=>continueRecord(record)} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("继续任务", "続行", "Continue")}</button>
                     <button type="button" onClick={()=>setSelectedId("")} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"7px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer" }}>{label("收起", "閉じる", "Collapse")}</button>
                   </div>
                 </div>
@@ -1831,7 +1842,7 @@ function WorkflowArchiveList({ lang, refreshKey }) {
   );
 }
 
-function WorkPanelContent({ title, subtitle, lang, workflow }) {
+function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow }) {
   const currentWorkflow = workflow || emptyWorkflowState(lang);
   const modeColor = workflowModeColor(currentWorkflow.mode);
   const progress = currentWorkflow.progress || { done:0, total:0 };
@@ -1902,7 +1913,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow }) {
           </div>
         )}
       </div>
-      <WorkflowArchiveList lang={lang} refreshKey={`${currentWorkflow.id}-${currentWorkflow.mode}-${currentWorkflow.updatedAt}`} />
+      <WorkflowArchiveList lang={lang} refreshKey={`${currentWorkflow.id}-${currentWorkflow.mode}-${currentWorkflow.updatedAt}`} onContinue={onContinueWorkflow} />
     </div>
   );
 }
@@ -2114,17 +2125,17 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   );
 }
 
-function RightWorkPanel({ open, onToggle, title, subtitle, lang, workflow }) {
+function RightWorkPanel({ open, onToggle, title, subtitle, lang, workflow, onContinueWorkflow }) {
   if (!open) return null;
   return (
     <aside className={`nb-work-panel ${open ? "open" : "collapsed"}`}>
       <button className="nb-work-toggle" onClick={onToggle}>{open ? "›" : "‹"}</button>
-      {open && <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} />}
+      {open && <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} onContinueWorkflow={onContinueWorkflow} />}
     </aside>
   );
 }
 
-function MobileWorkDrawer({ open, onClose, title, subtitle, lang, workflow }) {
+function MobileWorkDrawer({ open, onClose, title, subtitle, lang, workflow, onContinueWorkflow }) {
   if (!open) return null;
   return (
     <div className="nb-mobile-work-backdrop" onClick={onClose}>
@@ -2133,7 +2144,7 @@ function MobileWorkDrawer({ open, onClose, title, subtitle, lang, workflow }) {
           <div style={{ color:T.text, fontSize:"14px", fontWeight:900 }}>{lang==="ja" ? "状態と成果物" : lang==="en" ? "Status and artifacts" : "状态与产物"}</div>
           <button onClick={onClose} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"8px", width:"32px", height:"32px", cursor:"pointer" }}>×</button>
         </div>
-        <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} />
+        <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} onContinueWorkflow={onContinueWorkflow} />
       </div>
     </div>
   );
@@ -2187,6 +2198,7 @@ export default function App() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customIds, setCustomIds] = useState(["aria", "cto", "fe"]);
   const [chatHistory, setChatHistory] = useState([]);
+  const [draftPrompt, setDraftPrompt] = useState(null);
   const lang = effectiveLanguage(settings.language);
   const [workflowState, setWorkflowState] = useState(() => loadWorkflowState(lang));
   const conversations = chatHistory.map(session => ({
@@ -2358,6 +2370,17 @@ export default function App() {
     }
     setRightPanelOpen(true);
   };
+  const continueWorkflow = (text) => {
+    const aria = members.find(member => member.id === "aria") || TEAM[0];
+    setSelected(aria);
+    setActiveGroup(null);
+    setActiveInfo(null);
+    setActiveSession(null);
+    setActiveKnowledge(false);
+    setMobileWorkOpen(false);
+    setSidebarOpen(false);
+    setDraftPrompt({ targetId:aria.id, text, nonce:Date.now() });
+  };
 
   return (
     <div className="nb-app-root" style={{ fontFamily:"'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif", background:T.bg, minHeight:"100vh", color:T.text }}>
@@ -2465,10 +2488,10 @@ export default function App() {
           ? <InfoPanel item={activeInfo} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} lang={lang} />
           : activeGroup
             ? <GroupChat key={activeGroup.id} group={activeGroup} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} onWorkflowState={setWorkflowState} />
-            : <WorkspaceChat key={selected.id} member={selected} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} allMembers={members} onWorkflowState={setWorkflowState} />}
-        <RightWorkPanel open={rightPanelOpen} onToggle={()=>setRightPanelOpen(v=>!v)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} />
+            : <WorkspaceChat key={selected.id} member={selected} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} allMembers={members} onWorkflowState={setWorkflowState} draftPrompt={draftPrompt} />}
+        <RightWorkPanel open={rightPanelOpen} onToggle={()=>setRightPanelOpen(v=>!v)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} onContinueWorkflow={continueWorkflow} />
       </div>
-      <MobileWorkDrawer open={mobileWorkOpen} onClose={()=>setMobileWorkOpen(false)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} />
+      <MobileWorkDrawer open={mobileWorkOpen} onClose={()=>setMobileWorkOpen(false)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} onContinueWorkflow={continueWorkflow} />
       <AppSettings open={settingsOpen} settings={settings} members={members} onSave={saveSettings} onMembersSave={saveMembers} onClearLocalData={clearLocalData} onClose={()=>setSettingsOpen(false)} lang={lang} />
       <CustomGroupModal open={customOpen} members={members} selectedIds={customIds} onChange={setCustomIds} onStart={startCustomGroup} onClose={()=>setCustomOpen(false)} lang={lang} />
     </div>
