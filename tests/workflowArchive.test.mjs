@@ -43,6 +43,7 @@ describe("workflowArchive", () => {
       },
       results: [{ member: "林 美穂", title: "PM", text: "r".repeat(9000) }],
       artifacts: [{ title: "报告", content: "a".repeat(16000) }],
+      modelUsage:{ models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }] },
     });
 
     assert.equal(record.source, "aria-workflow");
@@ -58,6 +59,7 @@ describe("workflowArchive", () => {
     assert.ok(record.members[0].summary.length < 1800);
     assert.ok(record.results[0].text.length < 6200);
     assert.ok(record.artifacts[0].content.length < 12200);
+    assert.equal(record.modelUsage.models[0].actualModel, "gemma-4-26b-a4b-it");
   });
 
   it("formats a full workflow record as markdown", () => {

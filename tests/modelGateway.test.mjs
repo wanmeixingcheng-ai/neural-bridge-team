@@ -21,8 +21,9 @@ describe("modelGateway", () => {
     assert.equal(outboundProviderLabel("codex", {}), "");
     assert.equal(outboundProviderLabel("claude", { claudeBridge: { enabled: true } }), "Claude Bridge");
     assert.equal(outboundProviderLabel("gemma26", {}), "Google Gemini/Gemma");
-    assert.deepEqual(modelProviderInfo("codex", {}), { modelKey:"codex", provider:"", external:false });
+    assert.deepEqual(modelProviderInfo("codex", {}), { modelKey:"codex", actualModel:"", provider:"", external:false });
     assert.equal(modelProviderInfo("claude", {}).external, true);
+    assert.equal(modelProviderInfo("gemma26", {}).actualModel, "gemma-4-26b-a4b-it");
     assert.equal(outboundBlockedByLocalOnly("claude", { localOnlyMode:true }), true);
     assert.equal(outboundBlockedByLocalOnly("codex", { localOnlyMode:true }), true);
     assert.equal(outboundBlockedByLocalOnly("", { localOnlyMode:true }), false);
@@ -33,6 +34,7 @@ describe("modelGateway", () => {
   it("summarizes unique model usage and external providers", () => {
     const usage = modelUsageSummary(["claude", "claude", "gemma26", "codex"], {});
     assert.deepEqual(usage.models.map(item => item.modelKey), ["claude", "gemma26", "codex"]);
+    assert.deepEqual(usage.models.map(item => item.actualModel), ["claude-sonnet-4-20250514", "gemma-4-26b-a4b-it", ""]);
     assert.equal(usage.external, true);
     assert.deepEqual(usage.providers, ["Claude / Anthropic", "Google Gemini/Gemma"]);
   });

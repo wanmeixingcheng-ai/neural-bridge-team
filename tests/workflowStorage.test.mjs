@@ -59,6 +59,7 @@ describe("workflowStorage", () => {
         providers:["Claude / Anthropic", "Google Gemini/Gemma"],
         models:Array.from({ length:20 }, (_, index) => ({
           modelKey:`model-${index}`,
+          actualModel:`actual-model-${index}`,
           provider:"p".repeat(300),
           external:index % 2 === 0,
         })),
@@ -89,6 +90,7 @@ describe("workflowStorage", () => {
     assert.equal(restored.modelUsage.models.length, 12);
     assert.equal(restored.modelUsage.external, true);
     assert.equal(restored.modelUsage.localOnlyMode, true);
+    assert.equal(restored.modelUsage.models[0].actualModel, "actual-model-0");
     assert.ok(restored.modelUsage.models[0].provider.length <= 120);
     assert.equal(restored.quality.complete, false);
     assert.equal(restored.quality.missingMembers.length, 24);
