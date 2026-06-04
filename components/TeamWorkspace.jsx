@@ -2332,6 +2332,19 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       </div>
                     </div>
                   )}
+                  {!!details?.events?.length && (
+                    <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{label("执行事件", "実行イベント", "Execution events")}</div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
+                        {details.events.map((event, index) => (
+                          <div key={`${event.title}-${index}`} style={{ color:T.text, fontSize:"10px", lineHeight:1.45 }}>
+                            <span style={{ color:T.orange, fontWeight:900 }}>{event.title}</span>
+                            <span style={{ color:T.muted }}> · {event.meta}{event.detail ? ` · ${event.detail}` : ""}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {details?.quality && (
                     <div style={{ border:`1px solid ${details.quality.complete ? T.green : T.yellow}45`, background:details.quality.complete ? "#10b98110" : "#f59e0b10", borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ color:details.quality.complete ? T.green : T.yellow, fontSize:"10.8px", fontWeight:900 }}>{label("成果检查", "成果チェック", "Output check")}</div>

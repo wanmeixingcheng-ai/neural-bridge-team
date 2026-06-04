@@ -404,6 +404,7 @@ describe("workflowArchive", () => {
         models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }],
       },
       quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
+      events:[{ type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"busy" }],
       artifacts:[{ title:"最终产物", kind:"整合报告", content:"整合结论" }],
     }, "zh");
 
@@ -414,6 +415,8 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
     assert.match(details.modelUsage.lines[0], /gemma26 -> gemma-4-26b-a4b-it/);
     assert.match(details.modelUsage.disclosure.join(" "), /任务文本/);
+    assert.equal(details.events[0].title, "auto_reassignment · 吴晓敏");
+    assert.match(details.events[0].detail, /busy/);
     assert.equal(details.toolCalls.needsAttention, true);
     assert.equal(details.toolCalls.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
     assert.match(details.toolCalls.entries.find(item => item.id === "codex-dispatch").detail, /管理员 token/);
