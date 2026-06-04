@@ -24,6 +24,7 @@ import {
   ensureExecutableWorkflowMembers,
   extractPriorWorkflowResults,
   memberWorkflowTask,
+  parseAutomationDirective,
   planWorkflowDispatchWithModel,
   recentConversationContext,
   summarizeForWorkflow,
@@ -1111,9 +1112,11 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
   const send = async (txt, options = {}) => {
     const displayInput = (txt || input).trim();
     const internalPrompt = options.internalPrompt || pendingInternalPrompt?.text || "";
-    const forceWorkflowExecution = !!(options.forceWorkflowExecution || pendingInternalPrompt?.forceWorkflowExecution);
-    const text = (internalPrompt || displayInput).trim();
-    const userVisibleText = (options.displayText || pendingInternalPrompt?.displayText || displayInput || text).trim();
+    const rawText = (internalPrompt || displayInput).trim();
+    const automationDirective = parseAutomationDirective(rawText);
+    const forceWorkflowExecution = !!(options.forceWorkflowExecution || pendingInternalPrompt?.forceWorkflowExecution || automationDirective.detected);
+    const text = (automationDirective.detected ? automationDirective.taskText : rawText).trim();
+    const userVisibleText = (options.displayText || pendingInternalPrompt?.displayText || (automationDirective.detected ? automationDirective.displayText : displayInput) || text).trim();
     if ((!text && attachments.length === 0) || loading) return;
     setInput("");
     setPendingInternalPrompt(null);
@@ -1604,7 +1607,10 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
   }, [messages, group.id]);
 
   const send = async () => {
-    const text = input.trim();
+    const rawText = input.trim();
+    const automationDirective = parseAutomationDirective(rawText);
+    const text = (automationDirective.detected ? automationDirective.taskText : rawText).trim();
+    const userVisibleText = (automationDirective.detected ? automationDirective.displayText : rawText).trim();
     if ((!text && attachments.length === 0) || loading) return;
     setInput("");
     setError("");
@@ -1628,8 +1634,8 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
     }
     const urlPrompt = hasUrls ? await urlsToPrompt(text, lang) : "";
     const displayText = currentAttachments.length
-      ? `${text || ""}\n\n${currentAttachments.map(item => `📎 ${item.file.name} (${formatBytes(item.file.size)})`).join("\n")}`.trim()
-      : text;
+      ? `${userVisibleText || ""}\n\n${currentAttachments.map(item => `📎 ${item.file.name} (${formatBytes(item.file.size)})`).join("\n")}`.trim()
+      : userVisibleText;
     const images = await attachmentsToImages(currentAttachments, lang);
     const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}`;
     const requestLanguage = detectInputLanguage(text, lang);

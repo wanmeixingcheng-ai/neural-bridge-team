@@ -15,6 +15,7 @@ import {
   extractPriorWorkflowResults,
   inferWorkflowTaskType,
   normalizeWorkflowProtocol,
+  parseAutomationDirective,
   parsePlannerJson,
   plannerRequiredMemberIds,
   planWorkflowDispatchWithModel,
@@ -62,6 +63,24 @@ test("forced workflow actions always resolve to executable members", () => {
     ensureExecutableWorkflowMembers([], members, "请法务审查隐私条款").map(item => item.id),
     ["legal"],
   );
+});
+
+test("automation heartbeat directives become executable workflow tasks", () => {
+  const directive = parseAutomationDirective(`<heartbeat>
+    <automation_id>neural-bridge</automation_id>
+    <current_time_iso>2026-06-04T10:34:49.708Z</current_time_iso>
+    <instructions>
+自动按阶段连续完成 Neural Bridge 项目的全部待办任务，不要从头重建。
+每个阶段必须运行 npm run test 和 npm run build。
+    </instructions>
+  </heartbeat>`);
+
+  assert.equal(directive.detected, true);
+  assert.equal(directive.automationId, "neural-bridge");
+  assert.match(directive.taskText, /自动按阶段连续完成 Neural Bridge/);
+  assert.match(directive.taskText, /npm run test/);
+  assert.doesNotMatch(directive.taskText, /<heartbeat>/);
+  assert.match(directive.displayText, /自动化任务 neural-bridge/);
 });
 
 test("prior workflow outputs are extracted for ARIA reintegration", () => {
