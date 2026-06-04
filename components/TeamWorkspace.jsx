@@ -2348,6 +2348,11 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.modelUsage.title}</div>
                       <div style={{ color:details.modelUsage.external ? T.orange : T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"3px" }}>{details.modelUsage.lines.join(" / ")}</div>
                       {!!details.modelUsage.disclosure?.length && <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.45, marginTop:"4px" }}>{details.modelUsage.disclosure.join(" ")}</div>}
+                      {!!details.modelUsage.routeLines?.length && (
+                        <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.45, marginTop:"5px" }}>
+                          {details.modelUsage.routeLines.map((line, index) => <div key={`${line}-${index}`}>{line}</div>)}
+                        </div>
+                      )}
                     </div>
                   )}
                   {details?.toolCalls && (

@@ -448,6 +448,8 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
     assert.match(details.modelUsage.lines[0], /gemma26 -> gemma-4-26b-a4b-it/);
     assert.match(details.modelUsage.disclosure.join(" "), /任务文本/);
+    assert.match(details.modelUsage.routeLines.join(" "), /陈志远 · 前端工程师: codex/);
+    assert.match(details.modelUsage.routeLines.join(" "), /claude -> gemma26/);
     assert.equal(details.events[0].title, "auto_reassignment · 吴晓敏");
     assert.match(details.events[0].detail, /busy/);
     assert.equal(details.recoveryActions.length, 3);
