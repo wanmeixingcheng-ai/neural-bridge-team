@@ -56,6 +56,7 @@ import {
   learnFromExchange,
   listKnowledgeDocuments,
   listProjectMemories,
+  projectMemoryApprovalQueueSummary,
   projectMemorySourceTypeCounts,
   putKnowledgeDocument,
   putProjectMemory,
@@ -2921,6 +2922,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   const visibleMemories = conflictsOnly ? sourceFilteredMemories.filter(memoryHasConflict) : sourceFilteredMemories;
   const conflictCount = sourceFilteredMemories.filter(memoryHasConflict).length;
   const sourceCounts = projectMemorySourceTypeCounts(memories);
+  const approvalQueue = projectMemoryApprovalQueueSummary(sourceFilteredMemories);
   const sourceFilterOptions = [
     ["all", label("全部来源", "すべてのソース", "All sources")],
     ["manual", label("手动记忆", "手動メモリ", "Manual memories")],
@@ -3051,6 +3053,15 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
             {(sourceFilter !== "all" || conflictsOnly) && (
               <div style={{ color:T.muted, background:T.card, border:`1px solid ${T.border}`, borderRadius:"8px", padding:"7px 8px", fontSize:"10.5px", lineHeight:1.45, marginBottom:"10px" }}>
                 {label("批量操作仅作用于当前筛选范围。", "一括操作は現在のフィルター範囲にのみ適用されます。", "Bulk actions apply only to the current filtered scope.")}
+              </div>
+            )}
+            {!!approvalQueue.total && (
+              <div style={{ color:T.yellow, background:"#f59e0b10", border:`1px solid ${T.yellow}35`, borderRadius:"8px", padding:"7px 8px", fontSize:"10.5px", lineHeight:1.45, marginBottom:"10px" }}>
+                {label(
+                  `待审批队列：${approvalQueue.total} 条 · 工作流 ${approvalQueue.bySource.workflow_record || 0} · 产物版本 ${approvalQueue.bySource.workflow_artifact_version || 0}`,
+                  `承認待ちキュー：${approvalQueue.total} 件 · ワークフロー ${approvalQueue.bySource.workflow_record || 0} · 成果物バージョン ${approvalQueue.bySource.workflow_artifact_version || 0}`,
+                  `Approval queue: ${approvalQueue.total} · workflows ${approvalQueue.bySource.workflow_record || 0} · artifact versions ${approvalQueue.bySource.workflow_artifact_version || 0}`
+                )}
               </div>
             )}
             <div style={{ color:T.muted, fontSize:"11.5px", lineHeight:1.55, marginBottom:"10px" }}>{label("普通对话进入短期记忆 7 天；明确“记住/这是规则/确定采用”等会自动进入长期记忆；AI 自动总结的决策、风险、规则进入待确认。", "通常会話は7日間の短期記憶です。明示的な記憶指示は長期記憶になり、AIの自動要約は候補になります。", "Normal conversations become 7-day short-term memory. Explicit memory instructions become approved long-term memory. AI summaries become candidates.")}</div>

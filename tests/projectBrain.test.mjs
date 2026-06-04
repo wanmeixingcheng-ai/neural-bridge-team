@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemorySourceTypeCounts, selectLowValueMemories } from "../lib/projectBrain.mjs";
+import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemorySourceTypeCounts, selectLowValueMemories } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -38,6 +38,23 @@ test("project brain counts memory source types", () => {
   assert.equal(counts.workflow_record, 1);
   assert.equal(counts.workflow_artifact_version, 2);
   assert.equal(counts.manual, 1);
+});
+
+test("project brain summarizes pending approval queues", () => {
+  const summary = projectMemoryApprovalQueueSummary([
+    { id:"approved", status:"approved", metadata:{ sourceType:"workflow_record", ingestAction:"workflow_record_approved" } },
+    { id:"record", status:"candidate", metadata:{ sourceType:"workflow_record", ingestAction:"workflow_record_candidate", workflowRecordId:"wf-1" } },
+    { id:"artifact", status:"approved", metadata:{ sourceType:"workflow_artifact_version", ingestAction:"artifact_version_candidate", ingestRequiresReview:true, workflowRecordId:"wf-1" } },
+    { id:"manual", status:"candidate", metadata:{} },
+  ]);
+
+  assert.equal(summary.total, 3);
+  assert.equal(summary.bySource.workflow_record, 1);
+  assert.equal(summary.bySource.workflow_artifact_version, 1);
+  assert.equal(summary.bySource.manual, 1);
+  assert.equal(summary.byAction.workflow_record_candidate, 1);
+  assert.equal(summary.byAction.artifact_version_candidate, 1);
+  assert.deepEqual(summary.workflowRecordIds, ["wf-1", "wf-1"]);
 });
 
 test("project brain selects low-value memories within the requested source", () => {
