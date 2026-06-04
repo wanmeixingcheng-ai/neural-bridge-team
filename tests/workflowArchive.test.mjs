@@ -108,6 +108,11 @@ describe("workflowArchive", () => {
       title:"综合报告",
       task:"分析项目",
       status:"done",
+      modelUsage:{
+        external:true,
+        providers:["Google Gemini/Gemma"],
+        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+      },
       artifacts:[
         { title:"最终产物", kind:"整合报告", version:2, hash:"a-test", content:"整合结论" },
       ],
@@ -117,6 +122,10 @@ describe("workflowArchive", () => {
     assert.match(markdown, /版本: v2/);
     assert.match(markdown, /指纹: a-test/);
     assert.match(markdown, /来源工作流: 综合报告/);
+    assert.match(markdown, /## 生命周期/);
+    assert.match(markdown, /已完成: complete/);
+    assert.match(markdown, /## 模型与外发披露/);
+    assert.match(markdown, /任务文本、相关上下文/);
     assert.match(markdown, /## 产物内容/);
     assert.match(markdown, /整合结论/);
   });
