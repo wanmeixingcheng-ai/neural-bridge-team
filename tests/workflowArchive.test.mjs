@@ -44,6 +44,7 @@ describe("workflowArchive", () => {
       results: [{ member: "林 美穂", title: "PM", text: "r".repeat(9000) }],
       artifacts: [{ title: "报告", content: "a".repeat(16000) }],
       modelUsage:{ models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }] },
+      events:[{ at:"2026-06-04T00:00:00.000Z", type:"auto_reassignment", member:"CTO", model:"claude -> gemma26", status:"running", detail:"busy" }],
     });
 
     assert.equal(record.source, "aria-workflow");
@@ -60,6 +61,7 @@ describe("workflowArchive", () => {
     assert.ok(record.results[0].text.length < 6200);
     assert.ok(record.artifacts[0].content.length < 12200);
     assert.equal(record.modelUsage.models[0].actualModel, "gemma-4-26b-a4b-it");
+    assert.equal(record.events[0].type, "auto_reassignment");
   });
 
   it("formats a full workflow record as markdown", () => {
@@ -82,6 +84,7 @@ describe("workflowArchive", () => {
       quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
       artifacts: [{ title: "最终产物", content: "整合结论" }],
+      events:[{ at:"2026-06-04T00:00:00.000Z", type:"fallback_failed", member:"QA", model:"gemma26", status:"failed", detail:"timeout" }],
     }, "zh");
 
     assert.match(markdown, /# 综合报告/);
@@ -103,6 +106,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /林 美穂/);
     assert.match(markdown, /项目计划内容/);
     assert.match(markdown, /整合结论/);
+    assert.match(markdown, /执行事件/);
+    assert.match(markdown, /fallback_failed/);
   });
 
   it("formats a single workflow artifact as markdown", () => {

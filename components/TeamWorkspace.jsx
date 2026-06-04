@@ -1246,6 +1246,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
         }
         const workerFailures = [];
         const attemptedWorkerModels = [];
+        const workflowEvents = [];
         for (const worker of workers) {
           if (controller.signal.aborted) break;
           const memberTask = memberWorkflowTask(worker, modelText, results, requestLanguage);
@@ -1266,6 +1267,14 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             if (workerError.name === "AbortError") throw workerError;
             const fallback = workflowFallbackModelForMember({ ...worker, model:workerModel, error:workerError.message }, requestLanguage);
             if (fallback.action === "model_fallback" && fallback.toModel && fallback.toModel !== workerModel) {
+              workflowEvents.push({
+                at:new Date().toISOString(),
+                type:"auto_reassignment",
+                member:worker.name,
+                model:`${workerModel} -> ${fallback.toModel}`,
+                status:"running",
+                detail:workerError.message || fallback.reason,
+              });
               onWorkflowState?.(state => ({
                 ...state,
                 mode:"running",
@@ -1288,6 +1297,14 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
               } catch (fallbackError) {
                 if (fallbackError.name === "AbortError") throw fallbackError;
                 workerFailures.push({ ...worker, model:fallback.toModel, status:"failed", error:fallbackError.message || workerError.message || t(lang, "unknownError") });
+                workflowEvents.push({
+                  at:new Date().toISOString(),
+                  type:"fallback_failed",
+                  member:worker.name,
+                  model:fallback.toModel,
+                  status:"failed",
+                  detail:fallbackError.message || workerError.message || t(lang, "unknownError"),
+                });
                 onWorkflowState?.(state => ({
                   ...state,
                   mode:"running",
@@ -1299,6 +1316,14 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
               }
             } else {
               workerFailures.push({ ...worker, model:workerModel, status:"failed", error:workerError.message || t(lang, "unknownError") });
+              workflowEvents.push({
+                at:new Date().toISOString(),
+                type:fallback.action === "manual_confirmation" ? "manual_confirmation" : "member_failed",
+                member:worker.name,
+                model:workerModel,
+                status:"failed",
+                detail:workerError.message || fallback.reason || t(lang, "unknownError"),
+              });
               onWorkflowState?.(state => ({
                 ...state,
                 mode:"running",
@@ -1388,6 +1413,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             quality,
             results,
             artifacts:[artifact],
+            events:workflowEvents,
           }).catch(() => {});
           setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}`, ...modelMessageMeta(effectiveModel, apiKeys) }]);
           onWorkflowState?.(state => ({
