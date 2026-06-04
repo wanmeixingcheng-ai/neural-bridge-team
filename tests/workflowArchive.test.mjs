@@ -408,7 +408,11 @@ describe("workflowArchive", () => {
         models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }],
       },
       quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
-      events:[{ type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"busy" }],
+      events:[
+        { type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"busy" },
+        { type:"fallback_failed", member:"吴晓敏", model:"gemma26", status:"failed", detail:"timeout" },
+        { type:"manual_confirmation", member:"陈志远", model:"codex", status:"failed", detail:"admin token required" },
+      ],
       artifacts:[{ title:"最终产物", kind:"整合报告", content:"整合结论" }],
     }, "zh");
 
@@ -421,6 +425,9 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.disclosure.join(" "), /任务文本/);
     assert.equal(details.events[0].title, "auto_reassignment · 吴晓敏");
     assert.match(details.events[0].detail, /busy/);
+    assert.equal(details.recoveryActions.length, 3);
+    assert.equal(details.recoveryActions.find(item => item.type === "retry_or_reassign").member, "吴晓敏");
+    assert.match(details.recoveryActions.find(item => item.type === "manual_confirmation").label, /人工确认/);
     assert.equal(details.toolCalls.needsAttention, true);
     assert.equal(details.toolCalls.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
     assert.match(details.toolCalls.entries.find(item => item.id === "codex-dispatch").detail, /管理员 token/);

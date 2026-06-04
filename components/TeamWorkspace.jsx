@@ -2380,6 +2380,19 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       </div>
                     </div>
                   )}
+                  {!!details?.recoveryActions?.length && (
+                    <div style={{ border:`1px solid ${T.orange}45`, background:"#f59e0b10", borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ color:T.orange, fontSize:"10.8px", fontWeight:900 }}>{label("恢复建议", "復旧提案", "Recovery actions")}</div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
+                        {details.recoveryActions.map((action, index) => (
+                          <div key={`${action.type}-${action.member}-${index}`} style={{ color:T.text, fontSize:"10px", lineHeight:1.45 }}>
+                            <span style={{ color:T.orange, fontWeight:900 }}>{action.label}</span>
+                            <span style={{ color:T.muted }}> · {action.member || "-"}{action.detail ? ` · ${action.detail}` : ""}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {details?.quality && (
                     <div style={{ border:`1px solid ${details.quality.complete ? T.green : T.yellow}45`, background:details.quality.complete ? "#10b98110" : "#f59e0b10", borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ color:details.quality.complete ? T.green : T.yellow, fontSize:"10.8px", fontWeight:900 }}>{label("成果检查", "成果チェック", "Output check")}</div>
