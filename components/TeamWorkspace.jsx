@@ -15,6 +15,7 @@ import {
 import {
   emptyWorkflowState,
   buildWorkflowPlanEditPrompt,
+  buildWorkflowReassignmentPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowSkipPrompt,
   buildWorkflowResumePrompt,
@@ -2334,7 +2335,10 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
         )}
         {reassignment.needed && (
           <div style={{ marginTop:"10px", border:`1px solid ${T.yellow}55`, background:"#f59e0b12", borderRadius:"8px", padding:"9px" }}>
-            <div style={{ color:T.yellow, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "自動再割当案" : lang==="en" ? "Fallback route" : "自动改派建议"}</div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+              <div style={{ color:T.yellow, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "自動再割当案" : lang==="en" ? "Fallback route" : "自动改派建议"}</div>
+              <button type="button" onClick={()=>onContinueWorkflow?.(buildWorkflowReassignmentPrompt(currentWorkflow, lang))} style={{ border:`1px solid ${T.yellow}70`, background:T.surface, color:T.yellow, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "実行" : lang==="en" ? "Apply" : "执行"}</button>
+            </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px", marginTop:"7px" }}>
               {reassignment.actions.slice(0, 6).map(action => (
                 <div key={`${action.memberId}-${action.toModel}`} style={{ color:T.text, fontSize:"10.5px", lineHeight:1.45 }}>

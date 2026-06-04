@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   chooseWorkflowMembers,
   buildWorkflowPlanEditPrompt,
+  buildWorkflowReassignmentPrompt,
   buildWorkflowRetryPrompt,
   buildWorkflowSkipPrompt,
   buildWorkflowResumePrompt,
@@ -88,6 +89,26 @@ test("retry prompt preserves completed work and failed member context", () => {
   assert.match(prompt, /建议改派/);
   assert.match(prompt, /gemma26/);
   assert.match(prompt, /已完成里程碑拆分/);
+});
+
+test("reassignment prompt asks ARIA to execute fallback routes only", () => {
+  const prompt = buildWorkflowReassignmentPrompt({
+    task:"生成上线计划",
+    mode:"failed",
+    error:"handoff failed",
+    members:[
+      { id:"pm", name:"林 美穂", title:"PM", status:"complete", summary:"已完成里程碑拆分" },
+      { id:"audit", name:"孙建国", title:"开发审计", model:"claude", status:"failed", error:"busy" },
+      { id:"fe", name:"陈志远", title:"前端工程师", model:"codex", status:"failed", error:"handoff failed" },
+    ],
+  }, "zh");
+
+  assert.match(prompt, /按以下自动改派方案恢复/);
+  assert.match(prompt, /claude -> gemma26/);
+  assert.match(prompt, /codex -> manual_confirmation/);
+  assert.match(prompt, /不要重复已完成成员工作/);
+  assert.match(prompt, /已完成里程碑拆分/);
+  assert.match(prompt, /只执行改派后的失败部分/);
 });
 
 test("skip prompt preserves completed work and asks ARIA to integrate gaps", () => {
