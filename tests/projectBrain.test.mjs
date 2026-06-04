@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { chunkText, filterProjectMemoriesBySourceType, projectMemorySourceTypeCounts, selectLowValueMemories } from "../lib/projectBrain.mjs";
+import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemorySourceTypeCounts, selectLowValueMemories } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -51,4 +51,24 @@ test("project brain selects low-value memories within the requested source", () 
 
   assert.deepEqual(selectLowValueMemories(memories, { sourceType:"manual", now }).map(item => item.id), ["manual-low"]);
   assert.deepEqual(selectLowValueMemories(memories, { sourceType:"workflow_record", now }).map(item => item.id), ["workflow-low", "workflow-expired"]);
+});
+
+test("approved memory metadata clears workflow approval requirements", () => {
+  const metadata = approvedMemoryMetadata({
+    sourceType:"workflow_record",
+    sourceDocId:"doc-1",
+    approvalState:"candidate",
+    documentState:"candidate",
+    requiresApproval:true,
+    approvalSummary:"工作流记录 · 记忆 candidate · 文档 candidate · 状态 done",
+  }, { approvedAt:"2026-06-04T00:00:00.000Z" });
+
+  assert.equal(metadata.approvalState, "approved");
+  assert.equal(metadata.documentState, "approved");
+  assert.equal(metadata.requiresApproval, false);
+  assert.equal(metadata.approvalAction, "approved");
+  assert.equal(metadata.approvedAt, "2026-06-04T00:00:00.000Z");
+  assert.equal(metadata.conflict, null);
+  assert.match(metadata.approvalSummary, /记忆 approved/);
+  assert.match(metadata.approvalSummary, /文档 approved/);
 });
