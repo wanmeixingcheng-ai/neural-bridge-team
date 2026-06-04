@@ -2684,6 +2684,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   const sourceCounts = projectMemorySourceTypeCounts(memories);
   const sourceFilterOptions = [
     ["all", label("全部来源", "すべてのソース", "All sources")],
+    ["manual", label("手动记忆", "手動メモリ", "Manual memories")],
     ["workflow_record", label("工作流记录", "ワークフロー記録", "Workflow records")],
     ["workflow_artifact_version", label("产物版本", "成果物バージョン", "Artifact versions")],
   ];
