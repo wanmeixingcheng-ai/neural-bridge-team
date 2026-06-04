@@ -354,6 +354,10 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.documentState, "approved");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");
     assert.equal(payload.memory.metadata.sourceType, "workflow_record");
+    assert.equal(payload.memory.metadata.requiresApproval, false);
+    assert.match(payload.memory.metadata.approvalSummary, /工作流记录/);
+    assert.match(payload.memory.metadata.approvalSummary, /记忆 approved/);
+    assert.match(payload.memory.metadata.approvalSummary, /成员 1/);
     assert.equal(payload.memory.metadata.status, "done");
     assert.equal(payload.memory.metadata.taskType, "product");
     assert.equal(payload.memory.metadata.priority, "high");
@@ -380,6 +384,10 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.status, "candidate");
     assert.equal(payload.memory.metadata.approvalState, "candidate");
     assert.equal(payload.memory.metadata.documentState, "candidate");
+    assert.equal(payload.memory.metadata.requiresApproval, true);
+    assert.match(payload.memory.metadata.approvalSummary, /工作流记录/);
+    assert.match(payload.memory.metadata.approvalSummary, /记忆 candidate/);
+    assert.match(payload.memory.metadata.approvalSummary, /文档 candidate/);
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-candidate");
   });
 
@@ -403,6 +411,10 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.artifactHash, "a-v3");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-artifact");
     assert.equal(payload.memory.metadata.sourceType, "workflow_artifact_version");
+    assert.equal(payload.memory.metadata.requiresApproval, true);
+    assert.match(payload.memory.metadata.approvalSummary, /产物版本 v3/);
+    assert.match(payload.memory.metadata.approvalSummary, /a-v3/);
+    assert.match(payload.memory.metadata.approvalSummary, /记忆 candidate/);
   });
 
   it("builds an approved artifact knowledge payload for direct indexing", () => {
@@ -421,6 +433,9 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.documentState, "approved");
     assert.equal(payload.memory.metadata.sourceType, "workflow_artifact_version");
     assert.equal(payload.memory.metadata.artifactHash, "approved-v2");
+    assert.equal(payload.memory.metadata.requiresApproval, false);
+    assert.match(payload.memory.metadata.approvalSummary, /产物版本 v2/);
+    assert.match(payload.memory.metadata.approvalSummary, /记忆 approved/);
   });
 
   it("builds compact workflow details for archive expansion", () => {
