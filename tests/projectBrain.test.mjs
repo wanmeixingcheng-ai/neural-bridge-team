@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemorySourceTypeCounts, selectLowValueMemories } from "../lib/projectBrain.mjs";
+import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, selectLowValueMemories } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -55,6 +55,13 @@ test("project brain summarizes pending approval queues", () => {
   assert.equal(summary.byAction.workflow_record_candidate, 1);
   assert.equal(summary.byAction.artifact_version_candidate, 1);
   assert.deepEqual(summary.workflowRecordIds, ["wf-1", "wf-1"]);
+});
+
+test("project brain detects approval-needed memories beyond candidate status", () => {
+  assert.equal(projectMemoryNeedsApproval({ status:"candidate", metadata:{} }), true);
+  assert.equal(projectMemoryNeedsApproval({ status:"approved", metadata:{ requiresApproval:true } }), true);
+  assert.equal(projectMemoryNeedsApproval({ status:"approved", metadata:{ ingestRequiresReview:true } }), true);
+  assert.equal(projectMemoryNeedsApproval({ status:"approved", metadata:{ ingestRequiresReview:false } }), false);
 });
 
 test("project brain selects low-value memories within the requested source", () => {
