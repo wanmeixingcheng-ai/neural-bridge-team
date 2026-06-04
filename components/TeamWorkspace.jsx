@@ -2637,7 +2637,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   };
 
   const bulkReviewConflicts = async () => {
-    const conflicted = memories.filter(memoryHasConflict);
+    const conflicted = sourceFilteredMemories.filter(memoryHasConflict);
     for (const item of conflicted) {
       await updateProjectMemory(item.id, { metadata:clearMemoryConflictMetadata(item.metadata) });
     }
@@ -2646,7 +2646,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   };
 
   const bulkArchiveConflicts = async () => {
-    const conflicted = memories.filter(memoryHasConflict);
+    const conflicted = sourceFilteredMemories.filter(memoryHasConflict);
     for (const item of conflicted) {
       await updateProjectMemory(item.id, archiveMemoryConflictPatch(item.metadata));
     }
