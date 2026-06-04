@@ -47,6 +47,7 @@ import {
   deleteProjectMemory,
   enforceMemoryRetention,
   exportKnowledgeLibrary,
+  filterProjectMemoriesBySourceType,
   importKnowledgeLibrary,
   knowledgeStats,
   learnFromExchange,
@@ -2591,6 +2592,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   const [message, setMessage] = useState("");
   const [stats, setStats] = useState(null);
   const [conflictsOnly, setConflictsOnly] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState("all");
   const importRef = useRef(null);
 
   const refresh = async () => {
@@ -2675,8 +2677,14 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
 
   const label = (zh, ja, en) => lang === "ja" ? ja : lang === "en" ? en : zh;
   const usageText = stats?.quota ? `${formatBytes(stats.usage || 0)} / ${formatBytes(stats.quota || 0)}` : "-";
-  const visibleMemories = conflictsOnly ? memories.filter(memoryHasConflict) : memories;
+  const sourceFilteredMemories = filterProjectMemoriesBySourceType(memories, sourceFilter);
+  const visibleMemories = conflictsOnly ? sourceFilteredMemories.filter(memoryHasConflict) : sourceFilteredMemories;
   const conflictCount = memories.filter(memoryHasConflict).length;
+  const sourceFilterOptions = [
+    ["all", label("全部来源", "すべてのソース", "All sources")],
+    ["workflow_record", label("工作流记录", "ワークフロー記録", "Workflow records")],
+    ["workflow_artifact_version", label("产物版本", "成果物バージョン", "Artifact versions")],
+  ];
   const approvedMemories = visibleMemories.filter(item => item.status === "approved");
   const shortTermMemories = visibleMemories.filter(item => item.status === "short_term");
   const candidateMemories = visibleMemories.filter(item => item.status === "candidate");
@@ -2790,6 +2798,11 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", marginBottom:"10px", flexWrap:"wrap" }}>
               <div style={{ color:T.text, fontSize:"13px", fontWeight:900 }}>{label("记忆治理", "記憶ガバナンス", "Memory governance")}（{visibleMemories.length}/{memories.length}）</div>
               <button type="button" onClick={()=>setConflictsOnly(v=>!v)} style={{ border:`1px solid ${conflictsOnly ? T.red : T.border}`, background:conflictsOnly ? "#ef444415" : T.card, color:conflictsOnly ? T.red : T.muted, borderRadius:"999px", padding:"6px 9px", fontSize:"10.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{conflictsOnly ? label("显示全部", "すべて表示", "Show all") : label(`仅看冲突 ${conflictCount}`, `競合のみ ${conflictCount}`, `Conflicts ${conflictCount}`)}</button>
+            </div>
+            <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"10px" }}>
+              {sourceFilterOptions.map(([value, text]) => (
+                <button key={value} type="button" onClick={()=>setSourceFilter(value)} style={{ border:`1px solid ${sourceFilter === value ? T.blue : T.border}`, background:sourceFilter === value ? T.blueGlow : T.card, color:sourceFilter === value ? T.blue : T.muted, borderRadius:"999px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{text}</button>
+              ))}
             </div>
             <div style={{ color:T.muted, fontSize:"11.5px", lineHeight:1.55, marginBottom:"10px" }}>{label("普通对话进入短期记忆 7 天；明确“记住/这是规则/确定采用”等会自动进入长期记忆；AI 自动总结的决策、风险、规则进入待确认。", "通常会話は7日間の短期記憶です。明示的な記憶指示は長期記憶になり、AIの自動要約は候補になります。", "Normal conversations become 7-day short-term memory. Explicit memory instructions become approved long-term memory. AI summaries become candidates.")}</div>
             <div style={{ display:"grid", gridTemplateColumns:"110px 1fr", gap:"8px", marginBottom:"8px" }}>
