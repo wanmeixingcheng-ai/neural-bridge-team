@@ -25,6 +25,7 @@ import {
   workflowRequiresConfirmation,
   workflowExternalDisclosureLines,
   workflowFailureReassignmentPlan,
+  workflowFallbackModelForMember,
   workflowAuditSummary,
   workflowLifecycleSteps,
   workflowPermissionChecklist,
@@ -395,6 +396,11 @@ test("workflow failure reassignment plan routes failed members to fallbacks", ()
   assert.equal(plan.needed, true);
   assert.deepEqual(plan.actions.map(item => item.toModel), ["gemma26", "manual_confirmation"]);
   assert.equal(workflowFailureReassignmentPlan([{ id:"qa", status:"complete" }], "zh").needed, false);
+});
+
+test("single member fallback decision is explicit and reusable", () => {
+  assert.equal(workflowFallbackModelForMember({ id:"cto", model:"claude" }, "zh").toModel, "gemma26");
+  assert.equal(workflowFallbackModelForMember({ id:"fe", model:"codex" }, "zh").action, "manual_confirmation");
 });
 
 test("model planner JSON can be fenced and dispatch selected members", async () => {

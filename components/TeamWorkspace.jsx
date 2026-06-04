@@ -30,6 +30,7 @@ import {
   wantsPriorIntegration,
   workflowQueueSummary,
   workflowFailureReassignmentPlan,
+  workflowFallbackModelForMember,
   workflowAuditSummary,
   workflowLifecycleSteps,
   workflowPermissionChecklist,
@@ -1242,6 +1243,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           setLoading(false);
           return;
         }
+        const workerFailures = [];
         for (const worker of workers) {
           if (controller.signal.aborted) break;
           const memberTask = memberWorkflowTask(worker, modelText, results, requestLanguage);
@@ -1253,19 +1255,79 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
           }));
           const workerModel = controls.modelOverride || worker.model;
-          const reply = await callModel(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+          let actualWorkerModel = workerModel;
+          let reply = "";
+          try {
+            reply = await callModel(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+          } catch (workerError) {
+            if (workerError.name === "AbortError") throw workerError;
+            const fallback = workflowFallbackModelForMember({ ...worker, model:workerModel, error:workerError.message }, requestLanguage);
+            if (fallback.action === "model_fallback" && fallback.toModel && fallback.toModel !== workerModel) {
+              onWorkflowState?.(state => ({
+                ...state,
+                mode:"running",
+                phase:lang === "ja" ? `${worker.name} を ${fallback.toModel} に再割当中` : lang === "en" ? `Reassigning ${worker.name} to ${fallback.toModel}` : `正在将 ${worker.name} 改派到 ${fallback.toModel}`,
+                updatedAt:new Date().toISOString(),
+                members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", model:fallback.toModel, error:workerError.message || t(lang, "unknownError") } : item),
+              }));
+              setMessages(m => [...m, {
+                role:"ai",
+                text:lang === "ja"
+                  ? `【ARIA · 自動改派】${worker.name} の ${workerModel} 呼び出しに失敗したため、${fallback.toModel} で継続します。`
+                  : lang === "en"
+                    ? `【ARIA · Auto reassignment】${worker.name} failed on ${workerModel}; continuing with ${fallback.toModel}.`
+                    : `【ARIA · 自动改派】${worker.name} 使用 ${workerModel} 调用失败，已改用 ${fallback.toModel} 继续执行。`,
+              }]);
+              try {
+                reply = await callModel(fallback.toModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+                actualWorkerModel = fallback.toModel;
+              } catch (fallbackError) {
+                if (fallbackError.name === "AbortError") throw fallbackError;
+                workerFailures.push({ ...worker, model:fallback.toModel, status:"failed", error:fallbackError.message || workerError.message || t(lang, "unknownError") });
+                onWorkflowState?.(state => ({
+                  ...state,
+                  mode:"running",
+                  phase:lang === "ja" ? "改派先も失敗、次の担当へ移行" : lang === "en" ? "Fallback also failed; moving to next member" : "改派失败，继续下一位成员",
+                  updatedAt:new Date().toISOString(),
+                  members:state.members.map(item => item.id === worker.id ? { ...item, status:"failed", model:fallback.toModel, error:fallbackError.message || t(lang, "unknownError") } : item),
+                }));
+                continue;
+              }
+            } else {
+              workerFailures.push({ ...worker, model:workerModel, status:"failed", error:workerError.message || t(lang, "unknownError") });
+              onWorkflowState?.(state => ({
+                ...state,
+                mode:"running",
+                phase:lang === "ja" ? "人工確認待ちの失敗メンバーを記録" : lang === "en" ? "Recorded failed member for manual confirmation" : "已记录需人工确认的失败成员",
+                updatedAt:new Date().toISOString(),
+                members:state.members.map(item => item.id === worker.id ? { ...item, status:"failed", error:workerError.message || t(lang, "unknownError") } : item),
+              }));
+              setMessages(m => [...m, {
+                role:"ai",
+                text:lang === "ja"
+                  ? `【ARIA · 人工確認】${worker.name} の実行に失敗しました。Codex/GitHub など高リスク投递は人工確認後に再投递してください。`
+                  : lang === "en"
+                    ? `【ARIA · Manual confirmation】${worker.name} failed. Codex/GitHub style handoff should be reviewed before retrying.`
+                    : `【ARIA · 人工确认】${worker.name} 执行失败。Codex/GitHub 类投递需要人工确认后再重试。`,
+              }]);
+              continue;
+            }
+          }
           const safeReply = reply || (lang === "en" ? "No response." : lang === "ja" ? "応答がありません。" : "无响应");
-          results.push({ member:worker.name, title:worker.title, model:workerModel, text:safeReply, summary:summarizeForWorkflow(safeReply) });
-          setMessages(m => [...m, { role:"ai", text:`【${worker.name} · ${worker.title}】\n${safeReply}`, ...modelMessageMeta(workerModel, apiKeys) }]);
+          results.push({ member:worker.name, title:worker.title, model:actualWorkerModel, text:safeReply, summary:summarizeForWorkflow(safeReply) });
+          setMessages(m => [...m, { role:"ai", text:`【${worker.name} · ${worker.title}】\n${safeReply}`, ...modelMessageMeta(actualWorkerModel, apiKeys) }]);
           onWorkflowState?.(state => ({
             ...state,
             mode:"running",
             phase:lang === "ja" ? "次の担当へ引き継ぎ中" : lang === "en" ? "Handing off to next member" : "正在移交下一位成员",
             updatedAt:new Date().toISOString(),
-            members:state.members.map(item => item.id === worker.id ? { ...item, status:"complete", summary:summarizeForWorkflow(safeReply) } : item),
+            members:state.members.map(item => item.id === worker.id ? { ...item, status:"complete", model:actualWorkerModel, summary:summarizeForWorkflow(safeReply), error:"" } : item),
             progress:{ done:state.members.filter(item => item.status === "complete").length + 1, total:state.members.length },
           }));
           await learnFromExchange({ member:worker, userText:text, reply:safeReply, lang:requestLanguage });
+        }
+        if (!controller.signal.aborted && !results.length && workerFailures.length) {
+          throw new Error(workerFailures.map(item => `${item.name || item.id}: ${item.error}`).join("; "));
         }
         if (!controller.signal.aborted && results.length) {
           const quality = workflowQualityCheck(workers, results);
@@ -1308,7 +1370,13 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             source:"aria-workflow",
             status:"done",
             language:requestLanguage,
-            members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"complete" })),
+            members:workers.map(worker => {
+              const result = results.find(item => item.member === worker.name && item.title === worker.title);
+              const failure = workerFailures.find(item => item.id === worker.id);
+              return result
+                ? { id:worker.id, name:worker.name, title:worker.title, model:result.model || worker.model, status:"complete" }
+                : { id:worker.id, name:worker.name, title:worker.title, model:failure?.model || worker.model, status:"failed", error:failure?.error || "" };
+            }),
             plan:workflowPlan,
             modelUsage:workflowModelUsage,
             quality,
@@ -1323,7 +1391,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             updatedAt:new Date().toISOString(),
             artifacts:[artifact],
             quality,
-            progress:{ done:state.members.length, total:state.members.length },
+            progress:{ done:state.members.filter(item => item.status === "complete").length, total:state.members.length },
           }));
         }
         return;
