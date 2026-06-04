@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   chooseWorkflowMembers,
+  ensureExecutableWorkflowMembers,
   buildWorkflowPlanEditPrompt,
   buildWorkflowReassignmentPrompt,
   buildWorkflowRetryPrompt,
@@ -49,6 +50,17 @@ test("fallback planner can dispatch explicit groups", () => {
   assert.equal(chooseWorkflowMembers({ members }, "请让所有成员一起协作").length, members.length);
   assert.deepEqual(chooseWorkflowMembers({ members }, "开发组处理这个问题").map(item => item.id), ["fe", "qa"]);
   assert.deepEqual(chooseWorkflowMembers({ members }, "法务组审查隐私条款").map(item => item.id), ["legal"]);
+});
+
+test("forced workflow actions always resolve to executable members", () => {
+  assert.deepEqual(
+    ensureExecutableWorkflowMembers([{ id:"aria", name:"ARIA" }], members, "请开发并测试这个功能").map(item => item.id),
+    ["cto", "fe", "qa"],
+  );
+  assert.deepEqual(
+    ensureExecutableWorkflowMembers([], members, "请法务审查隐私条款").map(item => item.id),
+    ["legal"],
+  );
 });
 
 test("prior workflow outputs are extracted for ARIA reintegration", () => {

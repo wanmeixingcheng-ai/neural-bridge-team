@@ -21,6 +21,7 @@ import {
   buildWorkflowResumePrompt,
   buildWorkflowPlan,
   buildWorkflowConfirmationPrompt,
+  ensureExecutableWorkflowMembers,
   extractPriorWorkflowResults,
   memberWorkflowTask,
   planWorkflowDispatchWithModel,
@@ -1070,12 +1071,20 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
 
   useEffect(() => {
     if (!draftPrompt?.text || draftPrompt.targetId !== member.id) return;
-    setPendingInternalPrompt({ text:draftPrompt.text, displayText:draftPrompt.displayText || "" });
+    setPendingInternalPrompt({
+      text:draftPrompt.text,
+      displayText:draftPrompt.displayText || "",
+      forceWorkflowExecution:!!draftPrompt.forceWorkflowExecution,
+    });
     setInput(draftPrompt.displayText || draftPrompt.text);
     if (draftPrompt.autoSend && autoSentDraftRef.current !== `${draftPrompt.nonce || ""}`) {
       autoSentDraftRef.current = `${draftPrompt.nonce || ""}`;
       window.setTimeout(() => {
-        send(draftPrompt.displayText || draftPrompt.text, { internalPrompt:draftPrompt.text, displayText:draftPrompt.displayText || "" });
+        send(draftPrompt.displayText || draftPrompt.text, {
+          internalPrompt:draftPrompt.text,
+          displayText:draftPrompt.displayText || "",
+          forceWorkflowExecution:!!draftPrompt.forceWorkflowExecution,
+        });
       }, 0);
     }
   }, [draftPrompt?.nonce, draftPrompt?.targetId, member.id]);
@@ -1099,6 +1108,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
   const send = async (txt, options = {}) => {
     const displayInput = (txt || input).trim();
     const internalPrompt = options.internalPrompt || pendingInternalPrompt?.text || "";
+    const forceWorkflowExecution = !!(options.forceWorkflowExecution || pendingInternalPrompt?.forceWorkflowExecution);
     const text = (internalPrompt || displayInput).trim();
     const userVisibleText = (options.displayText || pendingInternalPrompt?.displayText || displayInput || text).trim();
     if ((!text && attachments.length === 0) || loading) return;
@@ -1111,7 +1121,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const hasUrls = extractUrls(text).length > 0;
+      const hasUrls = !internalPrompt && extractUrls(text).length > 0;
       const attachmentPrompt = await attachmentsToPrompt(attachments, lang);
       const brainPrompt = apiKeys.autoInjectKnowledge ? await brainContextPrompt(text, lang) : "";
       if (!confirmOutboundContext({
@@ -1146,7 +1156,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
       if (member.id === "aria") {
         const conversationContext = recentConversationContext(messages);
         const priorResults = extractPriorWorkflowResults(messages);
-        const integrateExisting = priorResults.length > 0 && wantsPriorIntegration(text);
+        const integrateExisting = !forceWorkflowExecution && priorResults.length > 0 && wantsPriorIntegration(text);
         const modelText = `${text || ""}${urlPrompt}${attachmentPrompt}${brainPrompt}${conversationContext}`;
         const dispatch = integrateExisting ? { workers:[], protocol:null } : await planWorkflowDispatchWithModel({
           router:{ ...member, model:effectiveModel },
@@ -1158,7 +1168,9 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           signal:controller.signal,
           callModel,
         });
-        const workers = dispatch.workers;
+        const workers = forceWorkflowExecution && !integrateExisting
+          ? ensureExecutableWorkflowMembers(dispatch.workers, allMembers, text)
+          : dispatch.workers;
         const workflowId = `wf-${Date.now().toString(36)}`;
         const results = integrateExisting ? [...priorResults] : [];
         const workflowPlan = buildWorkflowPlan({
@@ -3138,7 +3150,7 @@ export default function App() {
     setActiveKnowledge(false);
     setMobileWorkOpen(false);
     setSidebarOpen(false);
-    setDraftPrompt({ targetId:aria.id, text, displayText, autoSend:true, nonce:Date.now() });
+    setDraftPrompt({ targetId:aria.id, text, displayText, autoSend:true, forceWorkflowExecution:true, nonce:Date.now() });
   };
   const retryWorkflow = (text) => {
     continueWorkflow(text, workflowActionLabel("重试失败部分", "失敗部分を再試行", "Retry failed parts"));
