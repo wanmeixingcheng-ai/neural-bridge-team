@@ -94,6 +94,7 @@ import {
   buildWorkflowArtifactRevisionPrompt,
   buildWorkflowAttentionRecoveryPrompt,
   buildWorkflowContinuationPrompt,
+  buildWorkflowEventRecoveryPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
   buildWorkflowRecoveryPrompt,
@@ -2212,6 +2213,10 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     onContinue?.(buildWorkflowRecoveryPrompt(record, lang), label("恢复失败工作流", "失敗ワークフローを復旧", "Recover failed workflow"));
     setNotice(label("已交给 ARIA 恢复失败部分。", "ARIA に失敗部分の復旧を依頼しました。", "Sent to ARIA to recover failed parts."));
   };
+  const recoverEventAction = (record, actionIndex = 0) => {
+    onContinue?.(buildWorkflowEventRecoveryPrompt(record, actionIndex, lang), label("按事件恢复", "イベントから復旧", "Recover event"));
+    setNotice(label("已交给 ARIA 按该事件恢复。", "ARIA にこのイベントからの復旧を依頼しました。", "Sent to ARIA to recover this event."));
+  };
   const reassignRecord = (record) => {
     onContinue?.(buildWorkflowReassignmentPrompt({ ...record, mode:record.status }, lang), label("按改派恢复", "再割当で復旧", "Recover with reassignment"));
     setNotice(label("已交给 ARIA 按改派方案恢复。", "ARIA に再割当での復旧を依頼しました。", "Sent to ARIA for reassignment recovery."));
@@ -2385,9 +2390,12 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       <div style={{ color:T.orange, fontSize:"10.8px", fontWeight:900 }}>{label("恢复建议", "復旧提案", "Recovery actions")}</div>
                       <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
                         {details.recoveryActions.map((action, index) => (
-                          <div key={`${action.type}-${action.member}-${index}`} style={{ color:T.text, fontSize:"10px", lineHeight:1.45 }}>
-                            <span style={{ color:T.orange, fontWeight:900 }}>{action.label}</span>
-                            <span style={{ color:T.muted }}> · {action.member || "-"}{action.detail ? ` · ${action.detail}` : ""}</span>
+                          <div key={`${action.type}-${action.member}-${index}`} style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"7px" }}>
+                            <div style={{ color:T.text, fontSize:"10px", lineHeight:1.45, minWidth:0 }}>
+                              <span style={{ color:T.orange, fontWeight:900 }}>{action.label}</span>
+                              <span style={{ color:T.muted }}> · {action.member || "-"}{action.detail ? ` · ${action.detail}` : ""}</span>
+                            </div>
+                            <button type="button" onClick={()=>recoverEventAction(record, index)} style={{ border:`1px solid ${T.orange}55`, background:T.surface, color:T.orange, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0 }}>{label("执行", "実行", "Run")}</button>
                           </div>
                         ))}
                       </div>

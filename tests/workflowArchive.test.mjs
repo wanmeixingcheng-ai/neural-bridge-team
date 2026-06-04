@@ -8,6 +8,7 @@ import {
   buildWorkflowArtifactRevisionPrompt,
   buildWorkflowAttentionRecoveryPrompt,
   buildWorkflowContinuationPrompt,
+  buildWorkflowEventRecoveryPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
   buildWorkflowRecoveryPrompt,
@@ -269,6 +270,29 @@ describe("workflowArchive", () => {
     assert.match(prompt, /claude busy/);
     assert.match(prompt, /旧版上线方案/);
     assert.match(prompt, /不要覆盖旧版本/);
+  });
+
+  it("builds a recovery prompt for a specific execution event", () => {
+    const prompt = buildWorkflowEventRecoveryPrompt({
+      title:"部分失败",
+      task:"上线自动化工作流",
+      members:[
+        { name:"林 美穂", title:"PM", status:"complete" },
+        { name:"吴晓敏", title:"QA", status:"failed" },
+      ],
+      results:[{ member:"林 美穂", title:"PM", text:"已完成里程碑拆解" }],
+      artifacts:[{ title:"旧版产物", content:"旧版上线方案" }],
+      events:[
+        { type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"claude busy" },
+        { type:"fallback_failed", member:"吴晓敏", model:"gemma26", status:"failed", detail:"timeout" },
+      ],
+    }, 1, "zh");
+
+    assert.match(prompt, /按以下执行事件恢复/);
+    assert.match(prompt, /重试或改派该成员/);
+    assert.match(prompt, /吴晓敏/);
+    assert.match(prompt, /timeout/);
+    assert.match(prompt, /旧版上线方案/);
   });
 
   it("builds a batch recovery prompt for records needing attention", () => {
