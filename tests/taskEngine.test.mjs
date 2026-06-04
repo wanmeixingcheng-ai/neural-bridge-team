@@ -283,7 +283,13 @@ test("workflow queue summary tracks member execution states", () => {
   assert.equal(queue.remaining, 2);
   assert.equal(queue.needsAttention, true);
   assert.equal(queue.completionRate, 25);
+  assert.equal(queue.nextAction, "retry_failed");
   assert.equal(queue.next.id, "qa");
+
+  assert.equal(workflowQueueSummary([{ status:"working" }]).nextAction, "continue_queue");
+  assert.equal(workflowQueueSummary([{ status:"complete" }]).nextAction, "ready_to_integrate");
+  assert.equal(workflowQueueSummary([{ status:"stopped" }]).nextAction, "review_queue");
+  assert.equal(workflowQueueSummary([]).nextAction, "idle");
 });
 
 test("workflow lifecycle steps expose the production task state machine", () => {

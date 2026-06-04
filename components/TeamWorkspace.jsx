@@ -2477,6 +2477,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const permissionChecklist = currentWorkflow.mode !== "idle" ? workflowPermissionChecklist(currentWorkflow, lang) : null;
   const outputQa = currentWorkflow.mode !== "idle" ? workflowOutputQaChecklist(currentWorkflow, lang) : null;
   const toolCalls = currentWorkflow.mode !== "idle" ? workflowToolCallChecklist(currentWorkflow, lang) : null;
+  const queueActionLabel = {
+    retry_failed: lang==="ja" ? "次の一手：失敗分を再試行" : lang==="en" ? "Next action: retry failed parts" : "下一步：重试失败部分",
+    continue_queue: lang==="ja" ? "次の一手：キューを続行" : lang==="en" ? "Next action: continue queue" : "下一步：继续队列",
+    ready_to_integrate: lang==="ja" ? "次の一手：成果物を統合" : lang==="en" ? "Next action: integrate output" : "下一步：整合产物",
+    review_queue: lang==="ja" ? "次の一手：キューを確認" : lang==="en" ? "Next action: review queue" : "下一步：复核队列",
+  };
   const downloadCurrentArtifact = async (index = 0) => {
     const markdown = formatWorkflowArtifactMarkdown(currentWorkflow, index, lang);
     const artifact = currentWorkflow.artifacts?.[index] || { title:currentWorkflow.title };
@@ -2630,6 +2636,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
               {lang==="ja" ? `進捗：${queue.completionRate}% · 残り ${queue.remaining}` : lang==="en" ? `Progress: ${queue.completionRate}% · remaining ${queue.remaining}` : `进度：${queue.completionRate}% · 剩余 ${queue.remaining}`}
               {queue.next ? ` · ${lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一位："}${queue.next.name} · ${queue.next.title}` : ""}
               {queue.needsAttention ? ` · ${lang==="ja" ? "要対応" : lang==="en" ? "needs attention" : "需处理"}` : ""}
+              {queueActionLabel[queue.nextAction] ? ` · ${queueActionLabel[queue.nextAction]}` : ""}
             </div>
           </div>
         )}
