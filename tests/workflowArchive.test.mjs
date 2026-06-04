@@ -160,7 +160,10 @@ describe("workflowArchive", () => {
       },
       quality:{ complete:true, missingMembers:[] },
       artifacts:[{ title:"部署报告", kind:"审计报告", hash:"a-test", content:"已完成" }],
-      events:[{ at:"2026-06-04T01:00:00.000Z", type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"claude busy" }],
+      events:[
+        { at:"2026-06-04T01:00:00.000Z", type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"claude busy" },
+        { at:"2026-06-04T01:02:00.000Z", type:"fallback_failed", member:"吴晓敏", model:"gemma26", status:"failed", detail:"timeout" },
+      ],
     }, "zh");
 
     assert.match(markdown, /^# 工作流审计: 生产任务/);
@@ -172,6 +175,10 @@ describe("workflowArchive", () => {
     assert.match(markdown, /## 执行事件/);
     assert.match(markdown, /auto_reassignment/);
     assert.match(markdown, /claude busy/);
+    assert.match(markdown, /### 模型执行路径/);
+    assert.match(markdown, /吴晓敏: claude -> gemma26 · auto_reassignment · running/);
+    assert.match(markdown, /## 恢复建议/);
+    assert.match(markdown, /重试或改派该成员: 吴晓敏 · timeout/);
     assert.match(markdown, /模型网关/);
     assert.match(markdown, /## 质量闸门/);
     assert.match(markdown, /成员成果完整: yes/);
