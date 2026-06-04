@@ -354,6 +354,8 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.documentState, "approved");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");
     assert.equal(payload.memory.metadata.sourceType, "workflow_record");
+    assert.equal(payload.memory.metadata.ingestAction, "workflow_record_approved");
+    assert.equal(payload.memory.metadata.ingestRequiresReview, false);
     assert.equal(payload.memory.metadata.requiresApproval, false);
     assert.match(payload.memory.metadata.approvalSummary, /工作流记录/);
     assert.match(payload.memory.metadata.approvalSummary, /记忆 approved/);
@@ -385,6 +387,8 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.approvalState, "candidate");
     assert.equal(payload.memory.metadata.documentState, "candidate");
     assert.equal(payload.memory.metadata.requiresApproval, true);
+    assert.equal(payload.memory.metadata.ingestAction, "workflow_record_candidate");
+    assert.equal(payload.memory.metadata.ingestRequiresReview, true);
     assert.match(payload.memory.metadata.approvalSummary, /工作流记录/);
     assert.match(payload.memory.metadata.approvalSummary, /记忆 candidate/);
     assert.match(payload.memory.metadata.approvalSummary, /文档 candidate/);
@@ -411,6 +415,8 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.artifactHash, "a-v3");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-artifact");
     assert.equal(payload.memory.metadata.sourceType, "workflow_artifact_version");
+    assert.equal(payload.memory.metadata.ingestAction, "artifact_version_candidate");
+    assert.equal(payload.memory.metadata.ingestRequiresReview, true);
     assert.equal(payload.memory.metadata.requiresApproval, true);
     assert.match(payload.memory.metadata.approvalSummary, /产物版本 v3/);
     assert.match(payload.memory.metadata.approvalSummary, /a-v3/);
@@ -433,6 +439,8 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.documentState, "approved");
     assert.equal(payload.memory.metadata.sourceType, "workflow_artifact_version");
     assert.equal(payload.memory.metadata.artifactHash, "approved-v2");
+    assert.equal(payload.memory.metadata.ingestAction, "artifact_version_approved");
+    assert.equal(payload.memory.metadata.ingestRequiresReview, false);
     assert.equal(payload.memory.metadata.requiresApproval, false);
     assert.match(payload.memory.metadata.approvalSummary, /产物版本 v2/);
     assert.match(payload.memory.metadata.approvalSummary, /记忆 approved/);
