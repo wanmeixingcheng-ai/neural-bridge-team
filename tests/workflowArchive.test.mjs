@@ -155,6 +155,7 @@ describe("workflowArchive", () => {
       },
       quality:{ complete:true, missingMembers:[] },
       artifacts:[{ title:"部署报告", kind:"审计报告", hash:"a-test", content:"已完成" }],
+      events:[{ at:"2026-06-04T01:00:00.000Z", type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"claude busy" }],
     }, "zh");
 
     assert.match(markdown, /^# 工作流审计: 生产任务/);
@@ -163,6 +164,9 @@ describe("workflowArchive", () => {
     assert.match(markdown, /## 生命周期/);
     assert.match(markdown, /已完成: complete/);
     assert.match(markdown, /## 权限与工具调用/);
+    assert.match(markdown, /## 执行事件/);
+    assert.match(markdown, /auto_reassignment/);
+    assert.match(markdown, /claude busy/);
     assert.match(markdown, /模型网关/);
     assert.match(markdown, /## 质量闸门/);
     assert.match(markdown, /成员成果完整: yes/);
