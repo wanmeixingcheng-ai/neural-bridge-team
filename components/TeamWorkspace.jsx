@@ -1999,6 +1999,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
   const filteredRecords = filterWorkflowRecordsByStatus(records, statusFilter);
   const filterOptions = [
     ["all", label("全部", "すべて", "All")],
+    ["needs_attention", label("需处理", "要対応", "Needs attention")],
     ["done", label("完成", "完了", "Done")],
     ["failed", label("失败", "失敗", "Failed")],
     ["archived", label("归档", "アーカイブ", "Archived")],

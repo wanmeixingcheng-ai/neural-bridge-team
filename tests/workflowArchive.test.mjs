@@ -396,12 +396,15 @@ describe("workflowArchive", () => {
     const records = [
       { id:"done", status:"done", title:"完成" },
       { id:"failed", status:"failed", title:"失败" },
+      { id:"approval", status:"waiting_confirmation", title:"待确认" },
+      { id:"codex", status:"done", title:"Codex", members:[{ name:"Codex", title:"开发", model:"codex" }] },
       { id:"archived", status:"archived", title:"归档" },
     ];
 
-    assert.equal(filterWorkflowRecordsByStatus(records, "all").length, 3);
+    assert.equal(filterWorkflowRecordsByStatus(records, "all").length, 5);
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "failed").map(item => item.id), ["failed"]);
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "archived").map(item => item.id), ["archived"]);
+    assert.deepEqual(filterWorkflowRecordsByStatus(records, "needs_attention").map(item => item.id), ["failed", "approval", "codex"]);
   });
 
   it("generates stable artifact content fingerprints", () => {
