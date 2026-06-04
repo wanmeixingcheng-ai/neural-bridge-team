@@ -53,6 +53,7 @@ import {
   learnFromExchange,
   listKnowledgeDocuments,
   listProjectMemories,
+  projectMemorySourceTypeCounts,
   putKnowledgeDocument,
   putProjectMemory,
   rememberWorkflowArtifact,
@@ -2680,6 +2681,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   const sourceFilteredMemories = filterProjectMemoriesBySourceType(memories, sourceFilter);
   const visibleMemories = conflictsOnly ? sourceFilteredMemories.filter(memoryHasConflict) : sourceFilteredMemories;
   const conflictCount = memories.filter(memoryHasConflict).length;
+  const sourceCounts = projectMemorySourceTypeCounts(memories);
   const sourceFilterOptions = [
     ["all", label("全部来源", "すべてのソース", "All sources")],
     ["workflow_record", label("工作流记录", "ワークフロー記録", "Workflow records")],
@@ -2801,7 +2803,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
             </div>
             <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"10px" }}>
               {sourceFilterOptions.map(([value, text]) => (
-                <button key={value} type="button" onClick={()=>setSourceFilter(value)} style={{ border:`1px solid ${sourceFilter === value ? T.blue : T.border}`, background:sourceFilter === value ? T.blueGlow : T.card, color:sourceFilter === value ? T.blue : T.muted, borderRadius:"999px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{text}</button>
+                <button key={value} type="button" onClick={()=>setSourceFilter(value)} style={{ border:`1px solid ${sourceFilter === value ? T.blue : T.border}`, background:sourceFilter === value ? T.blueGlow : T.card, color:sourceFilter === value ? T.blue : T.muted, borderRadius:"999px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{text} {sourceCounts[value] || 0}</button>
               ))}
             </div>
             <div style={{ color:T.muted, fontSize:"11.5px", lineHeight:1.55, marginBottom:"10px" }}>{label("普通对话进入短期记忆 7 天；明确“记住/这是规则/确定采用”等会自动进入长期记忆；AI 自动总结的决策、风险、规则进入待确认。", "通常会話は7日間の短期記憶です。明示的な記憶指示は長期記憶になり、AIの自動要約は候補になります。", "Normal conversations become 7-day short-term memory. Explicit memory instructions become approved long-term memory. AI summaries become candidates.")}</div>
