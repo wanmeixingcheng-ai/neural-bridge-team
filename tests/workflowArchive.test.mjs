@@ -243,16 +243,19 @@ describe("workflowArchive", () => {
       error:"CTO 调用失败",
       members:[
         { name:"林 美穂", title:"PM", model:"gemma26", status:"complete" },
-        { name:"Alex Chen", title:"CTO", model:"claude", status:"failed" },
+        { name:"Alex Chen", title:"CTO", model:"claude", status:"failed", error:"claude busy" },
       ],
       results:[{ member:"林 美穂", title:"PM", text:"已完成里程碑拆解" }],
+      artifacts:[{ title:"旧版产物", content:"旧版上线方案" }],
     }, "zh");
 
     assert.match(prompt, /恢复以下失败/);
     assert.match(prompt, /生成上线方案/);
     assert.match(prompt, /CTO 调用失败/);
     assert.match(prompt, /Alex Chen · CTO/);
-    assert.match(prompt, /只重试失败或缺失部分/);
+    assert.match(prompt, /claude busy/);
+    assert.match(prompt, /旧版上线方案/);
+    assert.match(prompt, /不要覆盖旧版本/);
   });
 
   it("builds a batch recovery prompt for records needing attention", () => {
