@@ -322,6 +322,23 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-artifact");
   });
 
+  it("builds an approved artifact knowledge payload for direct indexing", () => {
+    const payload = buildWorkflowArtifactKnowledgePayload({
+      id:"wf-approved-artifact",
+      title:"上线报告",
+      task:"整理最终产物",
+      source:"aria-workflow",
+      status:"done",
+      artifacts:[{ title:"上线产物", version:2, hash:"approved-v2", content:"可直接复用的上线结论" }],
+    }, 0, "zh", { memoryStatus:"approved", documentStatus:"approved" });
+
+    assert.equal(payload.document.status, "approved");
+    assert.equal(payload.memory.status, "approved");
+    assert.equal(payload.memory.metadata.approvalState, "approved");
+    assert.equal(payload.memory.metadata.documentState, "approved");
+    assert.equal(payload.memory.metadata.artifactHash, "approved-v2");
+  });
+
   it("builds compact workflow details for archive expansion", () => {
     const details = buildWorkflowRecordDetails({
       title:"综合报告",

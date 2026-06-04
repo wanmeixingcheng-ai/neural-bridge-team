@@ -2034,16 +2034,23 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     onContinue?.(buildWorkflowArtifactRevisionPrompt(record, index, lang));
     setNotice(label("已放入 ARIA 输入框，可基于该版本生成下一版。", "ARIA の入力欄に入れました。この版を基に次版を生成できます。", "Placed in ARIA input to create the next version."));
   };
-  const rememberArtifact = async (record, index = 0) => {
-    setSavingId(`${record.id}-artifact-${index}`);
+  const rememberArtifact = async (record, index = 0, approvalState = "candidate") => {
+    const approved = approvalState === "approved";
+    setSavingId(`${record.id}-artifact-${index}-${approvalState}`);
     try {
-      const payload = buildWorkflowArtifactKnowledgePayload(record, index, lang);
+      const payload = buildWorkflowArtifactKnowledgePayload(record, index, lang, {
+        memoryStatus:approved ? "approved" : "candidate",
+        documentStatus:approved ? "approved" : "candidate",
+      });
       const doc = await putKnowledgeDocument(payload.document);
+      if (approved) await updateKnowledgeDocument(doc.id, { status:"approved", archived:false });
       await putProjectMemory({
         ...payload.memory,
         metadata:{ ...payload.memory.metadata, sourceDocId:doc.id },
       });
-      setNotice(label("该产物版本已加入候选知识和候选记忆。", "この成果物バージョンを候補知識と候補記憶に追加しました。", "Artifact version added as candidate knowledge and memory."));
+      setNotice(approved
+        ? label("该产物版本已加入已批准知识和长期记忆。", "この成果物バージョンを承認済み知識と長期記憶に追加しました。", "Artifact version added as approved knowledge and long-term memory.")
+        : label("该产物版本已加入候选知识和候选记忆。", "この成果物バージョンを候補知識と候補記憶に追加しました。", "Artifact version added as candidate knowledge and memory."));
     } catch (e) {
       setNotice(e.message || label("产物入库失败。", "成果物の保存に失敗しました。", "Failed to add artifact."));
     } finally {
@@ -2175,7 +2182,8 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                           <div key={`${item.title}-${index}`} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"7px" }}>
                             <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.5, minWidth:0 }}>{item.title} · {item.meta}</div>
                             <div style={{ display:"flex", gap:"5px", flexShrink:0 }}>
-                              <button type="button" disabled={savingId === `${record.id}-artifact-${index}`} onClick={()=>rememberArtifact(record, index)} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingId === `${record.id}-artifact-${index}` ? T.faint : T.green, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:savingId === `${record.id}-artifact-${index}` ? "default" : "pointer", whiteSpace:"nowrap" }}>{label("入库", "保存", "Index")}</button>
+                              <button type="button" disabled={savingId === `${record.id}-artifact-${index}-candidate`} onClick={()=>rememberArtifact(record, index, "candidate")} style={{ border:`1px solid ${T.yellow}55`, background:T.surface, color:savingId === `${record.id}-artifact-${index}-candidate` ? T.faint : T.yellow, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:savingId === `${record.id}-artifact-${index}-candidate` ? "default" : "pointer", whiteSpace:"nowrap" }}>{label("候选", "候補", "Candidate")}</button>
+                              <button type="button" disabled={savingId === `${record.id}-artifact-${index}-approved`} onClick={()=>rememberArtifact(record, index, "approved")} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingId === `${record.id}-artifact-${index}-approved` ? T.faint : T.green, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:savingId === `${record.id}-artifact-${index}-approved` ? "default" : "pointer", whiteSpace:"nowrap" }}>{label("批准", "承認", "Approve")}</button>
                               <button type="button" onClick={()=>reviseArtifact(record, index)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("修订", "改訂", "Revise")}</button>
                               <button type="button" onClick={()=>downloadArtifact(record, index)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("下载", "保存", "Download")}</button>
                             </div>
