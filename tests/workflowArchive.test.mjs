@@ -242,11 +242,12 @@ describe("workflowArchive", () => {
     assert.match(prompt, /生成下一版本/);
     assert.match(prompt, /原工作流: 综合报告/);
     assert.match(prompt, /分析项目/);
-    assert.match(prompt, /v2 · 最终产物/);
+    assert.match(prompt, /来源版本: v2 · 最终产物/);
+    assert.match(prompt, /目标版本: v3/);
     assert.match(prompt, /a-v2/);
     assert.match(prompt, /v2 内容/);
     assert.match(prompt, /林 美穂 · PM/);
-    assert.match(prompt, /新版完整产物/);
+    assert.match(prompt, /v3 完整产物/);
   });
 
   it("builds a recovery prompt for failed workflow records", () => {
@@ -457,6 +458,7 @@ describe("workflowArchive", () => {
     assert.match(details.toolCalls.entries.find(item => item.id === "codex-dispatch").detail, /管理员 token/);
     assert.match(details.artifacts[0].title, /^v1/);
     assert.match(details.artifacts[0].meta, /^整合报告 · a-/);
+    assert.equal(details.artifacts[0].nextVersion, 2);
   });
 
   it("archives a workflow record snapshot without losing evidence", () => {
