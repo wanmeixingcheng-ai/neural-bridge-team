@@ -428,19 +428,37 @@ describe("workflowArchive", () => {
     assert.match(formatWorkflowRecordMarkdown(archived, "zh"), /archived/);
   });
 
+  it("preserves partial failure evidence for recovery", () => {
+    const markdown = formatWorkflowRecordMarkdown({
+      id:"partial",
+      status:"partial_failed",
+      title:"部分失败",
+      members:[
+        { id:"pm", name:"林 美穂", title:"PM", model:"claude", status:"complete" },
+        { id:"qa", name:"吴晓敏", title:"QA", model:"gemma26", status:"failed", error:"fallback timeout" },
+      ],
+    }, "zh");
+
+    assert.match(markdown, /partial_failed/);
+    assert.match(markdown, /fallback timeout/);
+    assert.deepEqual(filterWorkflowRecordsByStatus([{ id:"partial", status:"partial_failed" }], "needs_attention").map(item => item.id), ["partial"]);
+  });
+
   it("filters workflow records by normalized status", () => {
     const records = [
       { id:"done", status:"done", title:"完成" },
+      { id:"partial", status:"partial_failed", title:"部分失败" },
       { id:"failed", status:"failed", title:"失败" },
       { id:"approval", status:"waiting_confirmation", title:"待确认" },
       { id:"codex", status:"done", title:"Codex", members:[{ name:"Codex", title:"开发", model:"codex" }] },
       { id:"archived", status:"archived", title:"归档" },
     ];
 
-    assert.equal(filterWorkflowRecordsByStatus(records, "all").length, 5);
+    assert.equal(filterWorkflowRecordsByStatus(records, "all").length, 6);
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "failed").map(item => item.id), ["failed"]);
+    assert.deepEqual(filterWorkflowRecordsByStatus(records, "partial_failed").map(item => item.id), ["partial"]);
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "archived").map(item => item.id), ["archived"]);
-    assert.deepEqual(filterWorkflowRecordsByStatus(records, "needs_attention").map(item => item.id), ["failed", "approval", "codex"]);
+    assert.deepEqual(filterWorkflowRecordsByStatus(records, "needs_attention").map(item => item.id), ["partial", "failed", "approval", "codex"]);
   });
 
   it("generates stable artifact content fingerprints", () => {

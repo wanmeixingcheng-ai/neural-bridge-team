@@ -1368,7 +1368,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             title:artifactTitle,
             task:text,
             source:"aria-workflow",
-            status:"done",
+            status:workerFailures.length ? "partial_failed" : "done",
             language:requestLanguage,
             members:workers.map(worker => {
               const result = results.find(item => item.member === worker.name && item.title === worker.title);
@@ -2103,6 +2103,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     ["all", label("全部", "すべて", "All")],
     ["needs_attention", label("需处理", "要対応", "Needs attention")],
     ["done", label("完成", "完了", "Done")],
+    ["partial_failed", label("部分失败", "一部失敗", "Partial")],
     ["failed", label("失败", "失敗", "Failed")],
     ["archived", label("归档", "アーカイブ", "Archived")],
   ];
