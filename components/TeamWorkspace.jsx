@@ -1039,6 +1039,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
   const model = MODELS[effectiveModel] || MODELS[member.model];
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [pendingInternalPrompt, setPendingInternalPrompt] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
@@ -1046,6 +1047,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
   const bottomRef = useRef(null);
   const abortRef = useRef(null);
   const sessionRef = useRef(null);
+  const autoSentDraftRef = useRef("");
 
   useEffect(() => {
     const intro = lang === "ja"
@@ -1061,13 +1063,21 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
       setMessages([{ role:"ai", text:intro }]);
     }
     setInput("");
+    setPendingInternalPrompt(null);
     setError("");
     setNotice("");
   }, [member.id, lang, activeSession?.id]);
 
   useEffect(() => {
     if (!draftPrompt?.text || draftPrompt.targetId !== member.id) return;
-    setInput(draftPrompt.text);
+    setPendingInternalPrompt({ text:draftPrompt.text, displayText:draftPrompt.displayText || "" });
+    setInput(draftPrompt.displayText || draftPrompt.text);
+    if (draftPrompt.autoSend && autoSentDraftRef.current !== `${draftPrompt.nonce || ""}`) {
+      autoSentDraftRef.current = `${draftPrompt.nonce || ""}`;
+      window.setTimeout(() => {
+        send(draftPrompt.displayText || draftPrompt.text, { internalPrompt:draftPrompt.text, displayText:draftPrompt.displayText || "" });
+      }, 0);
+    }
   }, [draftPrompt?.nonce, draftPrompt?.targetId, member.id]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages, loading]);
@@ -1086,10 +1096,14 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
     });
   }, [messages, member.id]);
 
-  const send = async (txt) => {
-    const text = (txt || input).trim();
+  const send = async (txt, options = {}) => {
+    const displayInput = (txt || input).trim();
+    const internalPrompt = options.internalPrompt || pendingInternalPrompt?.text || "";
+    const text = (internalPrompt || displayInput).trim();
+    const userVisibleText = (options.displayText || pendingInternalPrompt?.displayText || displayInput || text).trim();
     if ((!text && attachments.length === 0) || loading) return;
     setInput("");
+    setPendingInternalPrompt(null);
     setError("");
     setNotice("");
     setAttachments([]);
@@ -1113,8 +1127,8 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
       }
       const urlPrompt = hasUrls ? await urlsToPrompt(text, lang) : "";
       const displayText = attachments.length
-        ? `${text || ""}\n\n${attachments.map(item => `📎 ${item.file.name} (${formatBytes(item.file.size)})`).join("\n")}`.trim()
-        : text;
+        ? `${userVisibleText || ""}\n\n${attachments.map(item => `📎 ${item.file.name} (${formatBytes(item.file.size)})`).join("\n")}`.trim()
+        : userVisibleText;
       const displayNext = [...messages, { role:"user", text:displayText }];
       if (!sessionRef.current) {
         sessionRef.current = {
@@ -2029,32 +2043,32 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     setNotice(label(`已下载审计包：${fileName}`, `監査パッケージを保存しました：${fileName}`, `Downloaded audit package: ${fileName}`));
   };
   const continueRecord = (record) => {
-    onContinue?.(buildWorkflowContinuationPrompt(record, lang));
-    setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input."));
+    onContinue?.(buildWorkflowContinuationPrompt(record, lang), label("继续历史工作流", "履歴ワークフローを続行", "Continue archived workflow"));
+    setNotice(label("已交给 ARIA 继续执行。", "ARIA に続行を依頼しました。", "Sent to ARIA to continue."));
   };
   const rerunRecord = (record) => {
-    onContinue?.(buildWorkflowRerunPrompt(record, lang));
-    setNotice(label("已放入 ARIA 输入框，可直接复跑。", "ARIA の入力欄に入れました。再実行できます。", "Placed in ARIA input for rerun."));
+    onContinue?.(buildWorkflowRerunPrompt(record, lang), label("复跑历史工作流", "履歴ワークフローを再実行", "Rerun archived workflow"));
+    setNotice(label("已交给 ARIA 复跑。", "ARIA に再実行を依頼しました。", "Sent to ARIA to rerun."));
   };
   const recoverRecord = (record) => {
-    onContinue?.(buildWorkflowRecoveryPrompt(record, lang));
-    setNotice(label("已放入 ARIA 输入框，可恢复失败部分。", "ARIA の入力欄に入れました。失敗部分を復旧できます。", "Placed in ARIA input for recovery."));
+    onContinue?.(buildWorkflowRecoveryPrompt(record, lang), label("恢复失败工作流", "失敗ワークフローを復旧", "Recover failed workflow"));
+    setNotice(label("已交给 ARIA 恢复失败部分。", "ARIA に失敗部分の復旧を依頼しました。", "Sent to ARIA to recover failed parts."));
   };
   const reassignRecord = (record) => {
-    onContinue?.(buildWorkflowReassignmentPrompt({ ...record, mode:record.status }, lang));
-    setNotice(label("已放入 ARIA 输入框，可按改派方案恢复。", "ARIA の入力欄に入れました。再割当案で復旧できます。", "Placed in ARIA input for fallback reassignment."));
+    onContinue?.(buildWorkflowReassignmentPrompt({ ...record, mode:record.status }, lang), label("按改派恢复", "再割当で復旧", "Recover with reassignment"));
+    setNotice(label("已交给 ARIA 按改派方案恢复。", "ARIA に再割当での復旧を依頼しました。", "Sent to ARIA for reassignment recovery."));
   };
   const skipRecord = (record) => {
-    onContinue?.(buildWorkflowSkipPrompt(record, lang));
-    setNotice(label("已放入 ARIA 输入框，可跳过缺失成员并整合。", "ARIA の入力欄に入れました。不足メンバーをスキップして統合できます。", "Placed in ARIA input to skip missing members and integrate."));
+    onContinue?.(buildWorkflowSkipPrompt(record, lang), label("跳过并整合", "スキップして統合", "Skip and integrate"));
+    setNotice(label("已交给 ARIA 跳过缺失成员并整合。", "ARIA に不足メンバーのスキップと統合を依頼しました。", "Sent to ARIA to skip gaps and integrate."));
   };
   const recoverAttentionRecords = () => {
-    onContinue?.(buildWorkflowAttentionRecoveryPrompt(filteredRecords, lang));
-    setNotice(label("已放入 ARIA 输入框，可批量恢复需处理记录。", "ARIA の入力欄に入れました。要対応記録をまとめて復旧できます。", "Placed in ARIA input to batch recover attention records."));
+    onContinue?.(buildWorkflowAttentionRecoveryPrompt(filteredRecords, lang), label("批量恢复需处理记录", "要対応記録を一括復旧", "Batch recover attention records"));
+    setNotice(label("已交给 ARIA 批量恢复需处理记录。", "ARIA に要対応記録の一括復旧を依頼しました。", "Sent to ARIA to batch recover attention records."));
   };
   const reviseArtifact = (record, index = 0) => {
-    onContinue?.(buildWorkflowArtifactRevisionPrompt(record, index, lang));
-    setNotice(label("已放入 ARIA 输入框，可基于该版本生成下一版。", "ARIA の入力欄に入れました。この版を基に次版を生成できます。", "Placed in ARIA input to create the next version."));
+    onContinue?.(buildWorkflowArtifactRevisionPrompt(record, index, lang), label("生成产物下一版", "成果物の次版を生成", "Create next artifact version"));
+    setNotice(label("已交给 ARIA 基于该版本生成下一版。", "ARIA にこの版を基に次版生成を依頼しました。", "Sent to ARIA to create the next version."));
   };
   const rememberArtifact = async (record, index = 0, approvalState = "candidate") => {
     const approved = approvalState === "approved";
@@ -2159,7 +2173,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                     <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
                         <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.plan.title}</div>
-                        <button type="button" onClick={()=>{ onContinue?.(buildWorkflowPlanEditPrompt(record, lang)); setNotice(label("已放入 ARIA 输入框。", "ARIA の入力欄に入れました。", "Placed in ARIA input.")); }} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("调整", "調整", "Edit")}</button>
+                        <button type="button" onClick={()=>{ onContinue?.(buildWorkflowPlanEditPrompt(record, lang), label("调整工作流计划", "ワークフロー計画を調整", "Edit workflow plan")); setNotice(label("已交给 ARIA 调整计划。", "ARIA に計画調整を依頼しました。", "Sent to ARIA to edit the plan.")); }} style={{ border:`1px solid ${T.blue}55`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{label("调整", "調整", "Edit")}</button>
                       </div>
                       <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.45, marginTop:"3px" }}>{details.plan.strategy}</div>
                       {details.plan.protocol?.intent && <div style={{ color:T.text, fontSize:"10px", lineHeight:1.45, marginTop:"4px" }}>{details.plan.protocol.intent} · {details.plan.protocol.task_type} · {details.plan.protocol.priority}</div>}
@@ -3114,7 +3128,8 @@ export default function App() {
     }
     setRightPanelOpen(true);
   };
-  const continueWorkflow = (text) => {
+  const workflowActionLabel = (zh, ja, en) => lang === "ja" ? ja : lang === "en" ? en : zh;
+  const continueWorkflow = (text, displayText = workflowActionLabel("继续执行工作流", "ワークフローを続行", "Continue workflow")) => {
     const aria = members.find(member => member.id === "aria") || TEAM[0];
     setSelected(aria);
     setActiveGroup(null);
@@ -3123,18 +3138,18 @@ export default function App() {
     setActiveKnowledge(false);
     setMobileWorkOpen(false);
     setSidebarOpen(false);
-    setDraftPrompt({ targetId:aria.id, text, nonce:Date.now() });
+    setDraftPrompt({ targetId:aria.id, text, displayText, autoSend:true, nonce:Date.now() });
   };
   const retryWorkflow = (text) => {
-    continueWorkflow(text);
+    continueWorkflow(text, workflowActionLabel("重试失败部分", "失敗部分を再試行", "Retry failed parts"));
     setRightPanelOpen(false);
   };
   const skipWorkflow = (text) => {
-    continueWorkflow(text);
+    continueWorkflow(text, workflowActionLabel("跳过并整合", "スキップして統合", "Skip and integrate"));
     setRightPanelOpen(false);
   };
   const reassignWorkflow = (text) => {
-    continueWorkflow(text);
+    continueWorkflow(text, workflowActionLabel("按改派恢复", "再割当で復旧", "Recover with reassignment"));
     setRightPanelOpen(false);
   };
 
