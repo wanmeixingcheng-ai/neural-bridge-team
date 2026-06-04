@@ -2806,6 +2806,11 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
                 <button key={value} type="button" onClick={()=>setSourceFilter(value)} style={{ border:`1px solid ${sourceFilter === value ? T.blue : T.border}`, background:sourceFilter === value ? T.blueGlow : T.card, color:sourceFilter === value ? T.blue : T.muted, borderRadius:"999px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{text} {sourceCounts[value] || 0}</button>
               ))}
             </div>
+            {(sourceFilter !== "all" || conflictsOnly) && (
+              <div style={{ color:T.muted, background:T.card, border:`1px solid ${T.border}`, borderRadius:"8px", padding:"7px 8px", fontSize:"10.5px", lineHeight:1.45, marginBottom:"10px" }}>
+                {label("批量操作仅作用于当前筛选范围。", "一括操作は現在のフィルター範囲にのみ適用されます。", "Bulk actions apply only to the current filtered scope.")}
+              </div>
+            )}
             <div style={{ color:T.muted, fontSize:"11.5px", lineHeight:1.55, marginBottom:"10px" }}>{label("普通对话进入短期记忆 7 天；明确“记住/这是规则/确定采用”等会自动进入长期记忆；AI 自动总结的决策、风险、规则进入待确认。", "通常会話は7日間の短期記憶です。明示的な記憶指示は長期記憶になり、AIの自動要約は候補になります。", "Normal conversations become 7-day short-term memory. Explicit memory instructions become approved long-term memory. AI summaries become candidates.")}</div>
             <div style={{ display:"grid", gridTemplateColumns:"110px 1fr", gap:"8px", marginBottom:"8px" }}>
               <select value={note.type} onChange={e=>setNote(v=>({...v,type:e.target.value}))} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.text, borderRadius:"8px", padding:"8px" }}>
