@@ -67,6 +67,14 @@ describe("workflowStorage", () => {
       members: [{ id: "aria", name: "ARIA", summary: "x".repeat(3000) }],
       quality:{ complete:false, missingMembers:Array.from({ length:30 }, (_, index) => ({ id:`m-${index}`, name:"n".repeat(300), title:"t".repeat(300) })) },
       artifacts: [{ title: "产物", content: "y".repeat(12000) }],
+      events:Array.from({ length:45 }, (_, index) => ({
+        at:`2026-06-04T00:${String(index).padStart(2, "0")}:00.000Z`,
+        type:index === 44 ? "fallback_failed" : "auto_reassignment",
+        member:"m".repeat(300),
+        model:"claude -> gemma26",
+        status:"failed",
+        detail:"d".repeat(2000),
+      })),
       progress: { done: 1, total: 1 },
     }, "zh", storage);
 
@@ -97,6 +105,10 @@ describe("workflowStorage", () => {
     assert.ok(restored.quality.missingMembers[0].name.length <= 120);
     assert.equal(restored.artifacts[0].version, 1);
     assert.match(restored.artifacts[0].hash, /^a-/);
+    assert.equal(restored.events.length, 40);
+    assert.equal(restored.events[39].type, "fallback_failed");
+    assert.ok(restored.events[0].member.length <= 120);
+    assert.ok(restored.events[0].detail.length < 1100);
     assert.ok(restored.members[0].summary.length < 1800);
     assert.ok(restored.artifacts[0].content.length < 8200);
   });

@@ -1247,6 +1247,16 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
         const workerFailures = [];
         const attemptedWorkerModels = [];
         const workflowEvents = [];
+        const appendWorkflowEvent = (event) => {
+          const nextEvent = { at:new Date().toISOString(), ...event };
+          workflowEvents.push(nextEvent);
+          onWorkflowState?.(state => ({
+            ...state,
+            updatedAt:new Date().toISOString(),
+            events:[...(state.events || []), nextEvent].slice(-40),
+          }));
+          return nextEvent;
+        };
         for (const worker of workers) {
           if (controller.signal.aborted) break;
           const memberTask = memberWorkflowTask(worker, modelText, results, requestLanguage);
@@ -1267,8 +1277,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             if (workerError.name === "AbortError") throw workerError;
             const fallback = workflowFallbackModelForMember({ ...worker, model:workerModel, error:workerError.message }, requestLanguage);
             if (fallback.action === "model_fallback" && fallback.toModel && fallback.toModel !== workerModel) {
-              workflowEvents.push({
-                at:new Date().toISOString(),
+              appendWorkflowEvent({
                 type:"auto_reassignment",
                 member:worker.name,
                 model:`${workerModel} -> ${fallback.toModel}`,
@@ -1297,8 +1306,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
               } catch (fallbackError) {
                 if (fallbackError.name === "AbortError") throw fallbackError;
                 workerFailures.push({ ...worker, model:fallback.toModel, status:"failed", error:fallbackError.message || workerError.message || t(lang, "unknownError") });
-                workflowEvents.push({
-                  at:new Date().toISOString(),
+                appendWorkflowEvent({
                   type:"fallback_failed",
                   member:worker.name,
                   model:fallback.toModel,
@@ -1316,8 +1324,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
               }
             } else {
               workerFailures.push({ ...worker, model:workerModel, status:"failed", error:workerError.message || t(lang, "unknownError") });
-              workflowEvents.push({
-                at:new Date().toISOString(),
+              appendWorkflowEvent({
                 type:fallback.action === "manual_confirmation" ? "manual_confirmation" : "member_failed",
                 member:worker.name,
                 model:workerModel,
@@ -2576,6 +2583,19 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                   <strong>{action.name} · {action.title}</strong>
                   <span style={{ color:T.muted }}>：{action.fromModel || "-"} → {action.toModel}</span>
                   <div style={{ color:T.muted, marginTop:"2px" }}>{action.reason}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {!!currentWorkflow.events?.length && (
+          <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "実行イベント" : lang==="en" ? "Execution events" : "执行事件"}</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"7px" }}>
+              {currentWorkflow.events.slice(-6).map((event, index) => (
+                <div key={`${event.at || ""}-${event.type || ""}-${index}`} style={{ color:T.text, fontSize:"10.2px", lineHeight:1.45 }}>
+                  <span style={{ color:event.status === "failed" ? T.red : event.type === "auto_reassignment" ? T.orange : T.muted, fontWeight:900 }}>{event.type || "-"}</span>
+                  <span style={{ color:T.muted }}> · {event.member || "-"} · {event.model || "-"}{event.detail ? ` · ${event.detail}` : ""}</span>
                 </div>
               ))}
             </div>
