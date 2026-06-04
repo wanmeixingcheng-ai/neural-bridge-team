@@ -2142,6 +2142,16 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       </div>
                     </div>
                   )}
+                  {details?.quality && (
+                    <div style={{ border:`1px solid ${details.quality.complete ? T.green : T.yellow}45`, background:details.quality.complete ? "#10b98110" : "#f59e0b10", borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ color:details.quality.complete ? T.green : T.yellow, fontSize:"10.8px", fontWeight:900 }}>{label("成果检查", "成果チェック", "Output check")}</div>
+                      <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.5, marginTop:"3px" }}>
+                        {details.quality.complete
+                          ? label("所有分派成员都有成果。", "全担当メンバーの成果があります。", "All assigned member outputs are present.")
+                          : `${label("缺失", "不足", "Missing")}: ${details.quality.missingMembers?.map(member => `${member.name} · ${member.title}`).join(" / ") || "-"}`}
+                      </div>
+                    </div>
+                  )}
                   {!!details?.artifacts?.length && (
                     <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{label("产物版本", "成果物バージョン", "Artifact versions")}</div>
