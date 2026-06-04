@@ -247,13 +247,16 @@ describe("workflowArchive", () => {
       { id:"ok", title:"完成记录", status:"done", task:"已完成" },
       { id:"failed", title:"失败记录", status:"failed", task:"修复失败", members:[{ name:"Codex", title:"开发", status:"failed" }], error:"构建失败" },
       { id:"approval", title:"确认记录", status:"waiting_confirmation", task:"需要确认" },
+      { id:"codex", title:"Codex 记录", status:"done", task:"投递开发", members:[{ name:"Codex", title:"开发", model:"codex" }] },
     ], "zh");
 
     assert.match(prompt, /批量恢复/);
     assert.match(prompt, /失败记录/);
     assert.match(prompt, /确认记录/);
+    assert.match(prompt, /Codex 记录/);
     assert.doesNotMatch(prompt, /完成记录/);
     assert.match(prompt, /工具权限风险/);
+    assert.match(prompt, /toolRisks: .*Codex\/GitHub 投递 · needs_admin · admin/);
     assert.match(prompt, /Codex · 开发/);
   });
 
