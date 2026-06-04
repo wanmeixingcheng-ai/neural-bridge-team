@@ -84,6 +84,7 @@ import {
   artifactContentHash,
   buildWorkflowArtifactKnowledgePayload,
   buildWorkflowArtifactRevisionPrompt,
+  buildWorkflowAttentionRecoveryPrompt,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
@@ -2040,6 +2041,10 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     onContinue?.(buildWorkflowSkipPrompt(record, lang));
     setNotice(label("已放入 ARIA 输入框，可跳过缺失成员并整合。", "ARIA の入力欄に入れました。不足メンバーをスキップして統合できます。", "Placed in ARIA input to skip missing members and integrate."));
   };
+  const recoverAttentionRecords = () => {
+    onContinue?.(buildWorkflowAttentionRecoveryPrompt(filteredRecords, lang));
+    setNotice(label("已放入 ARIA 输入框，可批量恢复需处理记录。", "ARIA の入力欄に入れました。要対応記録をまとめて復旧できます。", "Placed in ARIA input to batch recover attention records."));
+  };
   const reviseArtifact = (record, index = 0) => {
     onContinue?.(buildWorkflowArtifactRevisionPrompt(record, index, lang));
     setNotice(label("已放入 ARIA 输入框，可基于该版本生成下一版。", "ARIA の入力欄に入れました。この版を基に次版を生成できます。", "Placed in ARIA input to create the next version."));
@@ -2110,6 +2115,9 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
         {filterOptions.map(([value, text]) => (
           <button key={value} type="button" onClick={()=>setStatusFilter(value)} style={{ border:`1px solid ${statusFilter === value ? T.blue : T.border}`, background:statusFilter === value ? T.blueGlow : T.card, color:statusFilter === value ? T.blue : T.muted, borderRadius:"999px", padding:"4px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer" }}>{text}</button>
         ))}
+        {statusFilter === "needs_attention" && !!filteredRecords.length && (
+          <button type="button" onClick={recoverAttentionRecords} style={{ border:`1px solid ${T.orange}55`, background:T.card, color:T.orange, borderRadius:"999px", padding:"4px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer" }}>{label("批量恢复", "一括復旧", "Batch recover")}</button>
+        )}
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"8px" }}>
         {!filteredRecords.length && <div style={{ color:T.faint, fontSize:"11px", lineHeight:1.5 }}>{label("当前筛选下没有记录。", "このフィルターには記録がありません。", "No records for this filter.")}</div>}

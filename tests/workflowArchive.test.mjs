@@ -6,6 +6,7 @@ import {
   artifactContentHash,
   buildWorkflowArtifactKnowledgePayload,
   buildWorkflowArtifactRevisionPrompt,
+  buildWorkflowAttentionRecoveryPrompt,
   buildWorkflowContinuationPrompt,
   buildWorkflowKnowledgePayload,
   buildWorkflowRecordDetails,
@@ -239,6 +240,21 @@ describe("workflowArchive", () => {
     assert.match(prompt, /CTO 调用失败/);
     assert.match(prompt, /Alex Chen · CTO/);
     assert.match(prompt, /只重试失败或缺失部分/);
+  });
+
+  it("builds a batch recovery prompt for records needing attention", () => {
+    const prompt = buildWorkflowAttentionRecoveryPrompt([
+      { id:"ok", title:"完成记录", status:"done", task:"已完成" },
+      { id:"failed", title:"失败记录", status:"failed", task:"修复失败", members:[{ name:"Codex", title:"开发", status:"failed" }], error:"构建失败" },
+      { id:"approval", title:"确认记录", status:"waiting_confirmation", task:"需要确认" },
+    ], "zh");
+
+    assert.match(prompt, /批量恢复/);
+    assert.match(prompt, /失败记录/);
+    assert.match(prompt, /确认记录/);
+    assert.doesNotMatch(prompt, /完成记录/);
+    assert.match(prompt, /工具权限风险/);
+    assert.match(prompt, /Codex · 开发/);
   });
 
   it("builds an approved knowledge payload from a workflow record", () => {
