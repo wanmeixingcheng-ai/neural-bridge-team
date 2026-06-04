@@ -2138,8 +2138,22 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                   {details?.toolCalls && (
                     <div style={{ border:`1px solid ${details.toolCalls.needsAttention ? T.orange : T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ color:details.toolCalls.needsAttention ? T.orange : T.text, fontSize:"10.8px", fontWeight:900 }}>{label("工具调用", "ツール呼び出し", "Tool calls")}</div>
-                      <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.5, marginTop:"3px" }}>
-                        {details.toolCalls.entries.map(entry => `${entry.name} · ${entry.status} · ${entry.permission}`).join(" / ")}
+                      <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
+                        {details.toolCalls.entries.map(entry => {
+                          const color = entry.status === "recorded" || entry.status === "available" ? T.green : entry.status === "not_needed" || entry.status === "optional" ? T.muted : T.orange;
+                          return (
+                            <div key={entry.id} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"6px", padding:"6px", minWidth:0 }}>
+                              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"6px" }}>
+                                <div style={{ color:T.text, fontSize:"10px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.name}</div>
+                                <div style={{ display:"flex", gap:"5px", flexShrink:0 }}>
+                                  <span style={{ color, fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{entry.status}</span>
+                                  <span style={{ color:T.muted, fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{entry.permission}</span>
+                                </div>
+                              </div>
+                              <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{entry.detail}</div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

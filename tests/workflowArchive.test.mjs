@@ -350,6 +350,7 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.disclosure.join(" "), /任务文本/);
     assert.equal(details.toolCalls.needsAttention, true);
     assert.equal(details.toolCalls.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
+    assert.match(details.toolCalls.entries.find(item => item.id === "codex-dispatch").detail, /管理员 token/);
     assert.match(details.artifacts[0].title, /^v1/);
     assert.match(details.artifacts[0].meta, /^整合报告 · a-/);
   });
