@@ -65,6 +65,7 @@ import {
   callModel,
   callModelWithMeta,
   detectInputLanguage,
+  extractUrls,
   localOnlyBlockMessage,
   modelExternalConfigSummary,
   modelProviderInfo,
@@ -1096,20 +1097,21 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
     const controller = new AbortController();
     abortRef.current = controller;
     try {
+      const hasUrls = extractUrls(text).length > 0;
       const attachmentPrompt = await attachmentsToPrompt(attachments, lang);
       const brainPrompt = apiKeys.autoInjectKnowledge ? await brainContextPrompt(text, lang) : "";
-      const urlPrompt = await urlsToPrompt(text, lang);
       if (!confirmOutboundContext({
         lang,
         modelKey:effectiveModel,
         apiKeys,
         hasAttachments:!!attachmentPrompt || attachments.some(item => isImageFile(item.file)),
-        hasWeb:!!urlPrompt,
+        hasWeb:hasUrls,
         hasKnowledge:!!brainPrompt,
       })) {
-        setNotice(localOnlyBlockMessage(effectiveModel, apiKeys, lang) || (lang === "ja" ? "送信をキャンセルしました。" : lang === "en" ? "Send canceled." : "已取消发送。"));
+        setNotice(localOnlyBlockMessage(effectiveModel, apiKeys, lang, { hasWeb:hasUrls, hasKnowledge:!!brainPrompt }) || (lang === "ja" ? "送信をキャンセルしました。" : lang === "en" ? "Send canceled." : "已取消发送。"));
         return;
       }
+      const urlPrompt = hasUrls ? await urlsToPrompt(text, lang) : "";
       const displayText = attachments.length
         ? `${text || ""}\n\n${attachments.map(item => `📎 ${item.file.name} (${formatBytes(item.file.size)})`).join("\n")}`.trim()
         : text;
@@ -1463,22 +1465,23 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
     setError("");
     const currentAttachments = attachments;
     setAttachments([]);
+    const hasUrls = extractUrls(text).length > 0;
     const attachmentPrompt = await attachmentsToPrompt(currentAttachments, lang);
     const brainPrompt = apiKeys.autoInjectKnowledge ? await brainContextPrompt(text, lang) : "";
-    const urlPrompt = await urlsToPrompt(text, lang);
     const firstModel = controls.modelOverride || group.members[0]?.model || "";
     if (!confirmOutboundContext({
       lang,
       modelKey:firstModel,
       apiKeys,
       hasAttachments:!!attachmentPrompt || currentAttachments.some(item => isImageFile(item.file)),
-      hasWeb:!!urlPrompt,
+      hasWeb:hasUrls,
       hasKnowledge:!!brainPrompt,
     })) {
       setError("");
-      setMessages(m => [...m, { role:"ai", member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统", text:localOnlyBlockMessage(firstModel, apiKeys, lang) || (lang==="ja" ? "送信をキャンセルしました。" : lang==="en" ? "Send canceled." : "已取消发送。") }]);
+      setMessages(m => [...m, { role:"ai", member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统", text:localOnlyBlockMessage(firstModel, apiKeys, lang, { hasWeb:hasUrls, hasKnowledge:!!brainPrompt }) || (lang==="ja" ? "送信をキャンセルしました。" : lang==="en" ? "Send canceled." : "已取消发送。") }]);
       return;
     }
+    const urlPrompt = hasUrls ? await urlsToPrompt(text, lang) : "";
     const displayText = currentAttachments.length
       ? `${text || ""}\n\n${currentAttachments.map(item => `📎 ${item.file.name} (${formatBytes(item.file.size)})`).join("\n")}`.trim()
       : text;

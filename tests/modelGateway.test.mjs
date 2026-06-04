@@ -28,6 +28,7 @@ describe("modelGateway", () => {
     assert.equal(outboundBlockedByLocalOnly("codex", { localOnlyMode:true }), true);
     assert.equal(outboundBlockedByLocalOnly("", { localOnlyMode:true }), false);
     assert.match(localOnlyBlockMessage("gemma26", { localOnlyMode:true }, "zh"), /Google Gemini\/Gemma/);
+    assert.match(localOnlyBlockMessage("gemma26", { localOnlyMode:true }, "zh", { hasWeb:true }), /网页读取/);
     assert.equal(localOnlyBlockMessage("gemma26", { localOnlyMode:false }, "zh"), "");
   });
 
