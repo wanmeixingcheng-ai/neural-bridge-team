@@ -2680,7 +2680,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   const usageText = stats?.quota ? `${formatBytes(stats.usage || 0)} / ${formatBytes(stats.quota || 0)}` : "-";
   const sourceFilteredMemories = filterProjectMemoriesBySourceType(memories, sourceFilter);
   const visibleMemories = conflictsOnly ? sourceFilteredMemories.filter(memoryHasConflict) : sourceFilteredMemories;
-  const conflictCount = memories.filter(memoryHasConflict).length;
+  const conflictCount = sourceFilteredMemories.filter(memoryHasConflict).length;
   const sourceCounts = projectMemorySourceTypeCounts(memories);
   const sourceFilterOptions = [
     ["all", label("全部来源", "すべてのソース", "All sources")],
