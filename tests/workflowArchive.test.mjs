@@ -303,6 +303,7 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.approvalState, "approved");
     assert.equal(payload.memory.metadata.documentState, "approved");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-1");
+    assert.equal(payload.memory.metadata.sourceType, "workflow_record");
     assert.equal(payload.memory.metadata.status, "done");
     assert.equal(payload.memory.metadata.taskType, "product");
     assert.equal(payload.memory.metadata.priority, "high");
@@ -351,6 +352,7 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.artifactVersion, 3);
     assert.equal(payload.memory.metadata.artifactHash, "a-v3");
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-artifact");
+    assert.equal(payload.memory.metadata.sourceType, "workflow_artifact_version");
   });
 
   it("builds an approved artifact knowledge payload for direct indexing", () => {
