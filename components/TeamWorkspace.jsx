@@ -75,6 +75,7 @@ import {
   outboundBlockedByLocalOnly,
   outboundProviderLabel,
   urlsToPrompt,
+  workflowLocalOnlyBlockMessage,
 } from "../lib/modelGateway.mjs";
 import {
   archiveMemoryConflictPatch,
@@ -1182,10 +1183,18 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           lang:requestLanguage,
           protocol:dispatch.protocol,
         });
-        const workflowModelUsage = modelUsageSummary([
+        const workflowModelKeys = [
           ...workers.map(worker => controls.modelOverride || worker.model),
           effectiveModel,
-        ], apiKeys);
+        ];
+        const workflowLocalOnlyNotice = integrateExisting ? "" : workflowLocalOnlyBlockMessage(workflowModelKeys, apiKeys, lang, { hasWeb:hasUrls, hasKnowledge:!!brainPrompt });
+        if (workflowLocalOnlyNotice) {
+          setNotice(workflowLocalOnlyNotice);
+          setMessages(m => [...m, { role:"ai", text:workflowLocalOnlyNotice }]);
+          setLoading(false);
+          return;
+        }
+        const workflowModelUsage = modelUsageSummary(workflowModelKeys, apiKeys);
         workflowModelUsage.localOnlyMode = !!apiKeys.localOnlyMode;
         const needsConfirmation = !integrateExisting && workflowPlan.protocol?.needs_user_confirmation;
         onWorkflowState?.({
@@ -1655,10 +1664,18 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
       const workers = dispatch.workers;
       const workflowId = `wf-${Date.now().toString(36)}`;
       const workflowPlan = buildWorkflowPlan({ taskText:text, workers, mode:"auto", lang:requestLanguage, protocol:dispatch.protocol });
-      const workflowModelUsage = modelUsageSummary([
+      const workflowModelKeys = [
         ...workers.map(member => controls.modelOverride || member.model),
         controls.modelOverride || router.model,
-      ], apiKeys);
+      ];
+      const workflowLocalOnlyNotice = workflowLocalOnlyBlockMessage(workflowModelKeys, apiKeys, lang, { hasWeb:hasUrls, hasKnowledge:!!brainPrompt });
+      if (workflowLocalOnlyNotice) {
+        setNotice(workflowLocalOnlyNotice);
+        setMessages(m => [...m, { role:"ai", member:lang==="en" ? "System" : lang==="ja" ? "システム" : "系统", text:workflowLocalOnlyNotice }]);
+        setLoading(false);
+        return;
+      }
+      const workflowModelUsage = modelUsageSummary(workflowModelKeys, apiKeys);
       workflowModelUsage.localOnlyMode = !!apiKeys.localOnlyMode;
       const needsConfirmation = workflowPlan.protocol?.needs_user_confirmation;
       onWorkflowState?.({

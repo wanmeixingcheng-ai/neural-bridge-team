@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { detectInputLanguage, extractUrls, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, normalizeModelResponse, outboundBlockedByLocalOnly, outboundProviderLabel } from "../lib/modelGateway.mjs";
+import { detectInputLanguage, extractUrls, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, normalizeModelResponse, outboundBlockedByLocalOnly, outboundBlockedModelKeys, outboundProviderLabel, workflowLocalOnlyBlockMessage } from "../lib/modelGateway.mjs";
 
 describe("modelGateway", () => {
   it("detects the user input language", () => {
@@ -30,6 +30,15 @@ describe("modelGateway", () => {
     assert.match(localOnlyBlockMessage("gemma26", { localOnlyMode:true }, "zh"), /Google Gemini\/Gemma/);
     assert.match(localOnlyBlockMessage("gemma26", { localOnlyMode:true }, "zh", { hasWeb:true }), /网页读取/);
     assert.equal(localOnlyBlockMessage("gemma26", { localOnlyMode:false }, "zh"), "");
+  });
+
+  it("blocks workflow member model sets in local-only mode", () => {
+    assert.deepEqual(outboundBlockedModelKeys(["gemma26", "gemma26", "codex", ""], { localOnlyMode:true }), ["gemma26", "codex"]);
+    assert.deepEqual(outboundBlockedModelKeys(["gemma26"], { localOnlyMode:false }), []);
+    assert.match(workflowLocalOnlyBlockMessage(["gemma26", "codex"], { localOnlyMode:true }, "zh"), /工作流/);
+    assert.match(workflowLocalOnlyBlockMessage(["gemma26", "codex"], { localOnlyMode:true }, "zh"), /Google Gemini\/Gemma/);
+    assert.match(workflowLocalOnlyBlockMessage([""], { localOnlyMode:true }, "en", { hasWeb:true }), /web fetch/);
+    assert.equal(workflowLocalOnlyBlockMessage([""], { localOnlyMode:false }, "en"), "");
   });
 
   it("summarizes unique model usage and external providers", () => {
