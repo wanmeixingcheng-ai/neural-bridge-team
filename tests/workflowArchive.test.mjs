@@ -369,6 +369,7 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.status, "approved");
     assert.equal(payload.memory.metadata.approvalState, "approved");
     assert.equal(payload.memory.metadata.documentState, "approved");
+    assert.equal(payload.memory.metadata.sourceType, "workflow_artifact_version");
     assert.equal(payload.memory.metadata.artifactHash, "approved-v2");
   });
 
