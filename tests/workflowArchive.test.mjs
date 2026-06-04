@@ -144,6 +144,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /^# 工作流审计: 生产任务/);
     assert.match(markdown, /Local-only: no/);
     assert.match(markdown, /外发模型: yes/);
+    assert.match(markdown, /## 生命周期/);
+    assert.match(markdown, /已完成: complete/);
     assert.match(markdown, /## 权限与工具调用/);
     assert.match(markdown, /模型网关/);
     assert.match(markdown, /## 质量闸门/);
