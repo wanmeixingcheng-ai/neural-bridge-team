@@ -347,6 +347,7 @@ describe("workflowArchive", () => {
     assert.equal(details.plan.protocol.priority, "high");
     assert.equal(details.quality.complete, false);
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
+    assert.match(details.modelUsage.disclosure.join(" "), /任务文本/);
     assert.equal(details.toolCalls.needsAttention, true);
     assert.equal(details.toolCalls.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
     assert.match(details.artifacts[0].title, /^v1/);
