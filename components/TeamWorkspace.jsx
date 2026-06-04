@@ -71,6 +71,7 @@ import {
   urlsToPrompt,
 } from "../lib/modelGateway.mjs";
 import {
+  archiveMemoryConflictPatch,
   clearMemoryConflictMetadata,
   memoryHasConflict,
 } from "../lib/memoryPolicy.mjs";
@@ -2637,7 +2638,10 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
             {item.metadata?.conflict && (
               <div style={{ color:T.red, background:"#ef444415", border:"1px solid #ef444430", borderRadius:"7px", padding:"6px 7px", fontSize:"10.5px", lineHeight:1.45, marginBottom:"7px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
                 <span>{label("可能冲突：", "競合の可能性：", "Possible conflict: ")}{item.metadata.conflict.title || item.metadata.conflict.memoryId}</span>
-                <button onClick={async()=>{ await updateProjectMemory(item.id, { metadata:clearMemoryConflictMetadata(item.metadata) }); await refresh(); }} style={{ border:`1px solid ${T.red}40`, background:T.surface, color:T.red, borderRadius:"7px", padding:"4px 7px", fontSize:"10px", cursor:"pointer", whiteSpace:"nowrap" }}>{label("确认保留", "確認して保持", "Keep reviewed")}</button>
+                <div style={{ display:"flex", gap:"5px", flexWrap:"wrap" }}>
+                  <button onClick={async()=>{ await updateProjectMemory(item.id, { metadata:clearMemoryConflictMetadata(item.metadata) }); await refresh(); }} style={{ border:`1px solid ${T.red}40`, background:T.surface, color:T.red, borderRadius:"7px", padding:"4px 7px", fontSize:"10px", cursor:"pointer", whiteSpace:"nowrap" }}>{label("确认保留", "確認して保持", "Keep reviewed")}</button>
+                  <button onClick={async()=>{ await updateProjectMemory(item.id, archiveMemoryConflictPatch(item.metadata)); await refresh(); }} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.muted, borderRadius:"7px", padding:"4px 7px", fontSize:"10px", cursor:"pointer", whiteSpace:"nowrap" }}>{label("归档冲突", "競合をアーカイブ", "Archive conflict")}</button>
+                </div>
               </div>
             )}
             <div style={{ color:T.text, fontSize:"11.5px", lineHeight:1.55, whiteSpace:"pre-wrap", maxHeight:"96px", overflow:"hidden" }}>{item.summary || item.content}</div>

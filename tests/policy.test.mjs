@@ -19,6 +19,7 @@ import {
 import {
   MEMORY_CANDIDATE_TTL_MS,
   MEMORY_SHORT_TERM_TTL_MS,
+  archiveMemoryConflictPatch,
   clearMemoryConflictMetadata,
   compactSummary,
   detectMemoryConflict,
@@ -106,6 +107,20 @@ test("memory conflict review metadata clears conflict and keeps audit time", () 
   assert.equal(reviewed.source, "manual");
   assert.equal(reviewed.conflict, undefined);
   assert.match(reviewed.conflictReviewedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("memory conflict archive patch clears conflict and marks archived", () => {
+  const patch = archiveMemoryConflictPatch({
+    source:"manual",
+    conflict:{ memoryId:"m1", title:"旧规则" },
+  });
+
+  assert.equal(patch.status, "archived");
+  assert.equal(patch.archived, true);
+  assert.equal(patch.metadata.source, "manual");
+  assert.equal(patch.metadata.conflict, undefined);
+  assert.match(patch.metadata.conflictReviewedAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(patch.metadata.conflictArchivedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test("memory conflict predicate only matches conflict metadata", () => {
