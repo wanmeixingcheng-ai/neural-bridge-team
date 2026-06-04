@@ -2246,8 +2246,9 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
       status:currentWorkflow.mode,
     }, index, lang));
   };
-  const rememberCurrentArtifact = async (index = 0) => {
-    setSavingArtifactId(`${currentWorkflow.id || "current"}-${index}`);
+  const rememberCurrentArtifact = async (index = 0, approvalState = "candidate") => {
+    const approved = approvalState === "approved";
+    setSavingArtifactId(`${currentWorkflow.id || "current"}-${index}-${approvalState}`);
     setArtifactNotice("");
     try {
       const payload = buildWorkflowArtifactKnowledgePayload({
@@ -2255,13 +2256,19 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
         title:currentWorkflow.title || title,
         source:currentWorkflow.source || "active-workflow",
         status:currentWorkflow.mode,
-      }, index, lang);
+      }, index, lang, {
+        memoryStatus:approved ? "approved" : "candidate",
+        documentStatus:approved ? "approved" : "candidate",
+      });
       const doc = await putKnowledgeDocument(payload.document);
+      if (approved) await updateKnowledgeDocument(doc.id, { status:"approved", archived:false });
       await putProjectMemory({
         ...payload.memory,
         metadata:{ ...payload.memory.metadata, sourceDocId:doc.id },
       });
-      setArtifactNotice(lang==="ja" ? "候補知識と候補記憶に追加しました。" : lang==="en" ? "Added as candidate knowledge and memory." : "已加入候选知识和候选记忆。");
+      setArtifactNotice(approved
+        ? (lang==="ja" ? "承認済み知識と長期記憶に追加しました。" : lang==="en" ? "Added as approved knowledge and long-term memory." : "已加入已批准知识和长期记忆。")
+        : (lang==="ja" ? "候補知識と候補記憶に追加しました。" : lang==="en" ? "Added as candidate knowledge and memory." : "已加入候选知识和候选记忆。"));
     } catch (e) {
       setArtifactNotice(e.message || (lang==="ja" ? "保存に失敗しました。" : lang==="en" ? "Failed to add artifact." : "产物入库失败。"));
     } finally {
@@ -2525,7 +2532,8 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                   <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{artifact.title}</div>
                   <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
                     <div style={{ color:T.blue, background:T.surface, border:`1px solid ${T.border}`, borderRadius:"999px", padding:"2px 6px", fontSize:"9.5px", fontWeight:900, whiteSpace:"nowrap" }}>v{artifact.version || index + 1}</div>
-                    <button type="button" disabled={savingArtifactId === `${currentWorkflow.id || "current"}-${index}`} onClick={()=>rememberCurrentArtifact(index)} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingArtifactId === `${currentWorkflow.id || "current"}-${index}` ? T.faint : T.green, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:savingArtifactId === `${currentWorkflow.id || "current"}-${index}` ? "default" : "pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "保存" : lang==="en" ? "Index" : "入库"}</button>
+                    <button type="button" disabled={savingArtifactId === `${currentWorkflow.id || "current"}-${index}-candidate`} onClick={()=>rememberCurrentArtifact(index, "candidate")} style={{ border:`1px solid ${T.yellow}55`, background:T.surface, color:savingArtifactId === `${currentWorkflow.id || "current"}-${index}-candidate` ? T.faint : T.yellow, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:savingArtifactId === `${currentWorkflow.id || "current"}-${index}-candidate` ? "default" : "pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "候補" : lang==="en" ? "Candidate" : "候选"}</button>
+                    <button type="button" disabled={savingArtifactId === `${currentWorkflow.id || "current"}-${index}-approved`} onClick={()=>rememberCurrentArtifact(index, "approved")} style={{ border:`1px solid ${T.green}55`, background:T.surface, color:savingArtifactId === `${currentWorkflow.id || "current"}-${index}-approved` ? T.faint : T.green, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:savingArtifactId === `${currentWorkflow.id || "current"}-${index}-approved` ? "default" : "pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "承認" : lang==="en" ? "Approve" : "批准"}</button>
                     <button type="button" onClick={()=>reviseCurrentArtifact(index)} style={{ border:`1px solid ${T.purple}55`, background:T.surface, color:T.purple, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "改訂" : lang==="en" ? "Revise" : "修订"}</button>
                     <button type="button" onClick={()=>downloadCurrentArtifact(index)} style={{ border:`1px solid ${T.border}`, background:T.surface, color:T.blue, borderRadius:"7px", padding:"3px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "保存" : lang==="en" ? "Download" : "下载"}</button>
                   </div>
