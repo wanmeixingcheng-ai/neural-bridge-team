@@ -25,6 +25,7 @@ describe("workflowStorage", () => {
       mode: "done",
       title: "任务",
       task: "z".repeat(6000),
+      trigger:{ type:"automation", automationId:"neural-bridge", label:"l".repeat(300) },
       plan: {
         mode:"auto",
         strategy:"s".repeat(1000),
@@ -82,6 +83,8 @@ describe("workflowStorage", () => {
     assert.ok(raw);
     const restored = loadWorkflowState("zh", storage);
     assert.equal(restored.mode, "done");
+    assert.equal(restored.trigger.automationId, "neural-bridge");
+    assert.ok(restored.trigger.label.length <= 160);
     assert.ok(restored.task.length < 4200);
     assert.equal(restored.plan.steps.length, 24);
     assert.equal(restored.plan.protocol.task_type, "development");

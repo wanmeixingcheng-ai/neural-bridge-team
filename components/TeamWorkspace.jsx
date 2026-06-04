@@ -1117,6 +1117,9 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
     const forceWorkflowExecution = !!(options.forceWorkflowExecution || pendingInternalPrompt?.forceWorkflowExecution || automationDirective.detected);
     const text = (automationDirective.detected ? automationDirective.taskText : rawText).trim();
     const userVisibleText = (options.displayText || pendingInternalPrompt?.displayText || (automationDirective.detected ? automationDirective.displayText : displayInput) || text).trim();
+    const workflowTrigger = automationDirective.detected
+      ? { type:"automation", automationId:automationDirective.automationId, label:automationDirective.displayText }
+      : null;
     if ((!text && attachments.length === 0) || loading) return;
     setInput("");
     setPendingInternalPrompt(null);
@@ -1204,6 +1207,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           id:workflowId,
           title:firstUserTitle([{ role:"user", text:displayText }], member.name),
           task:text,
+          trigger:workflowTrigger,
           mode:needsConfirmation ? "waiting_confirmation" : integrateExisting ? "summarizing" : "planning",
           phase:needsConfirmation
             ? (lang === "ja" ? "高リスク操作の確認待ち" : lang === "en" ? "Waiting for high-risk action confirmation" : "等待确认高风险操作")
@@ -1237,6 +1241,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             title:firstUserTitle([{ role:"user", text:displayText }], member.name),
             task:text,
             source:"aria-workflow",
+            trigger:workflowTrigger,
             status:"waiting_confirmation",
             language:requestLanguage,
             members:workers.map(worker => ({ id:worker.id, name:worker.name, title:worker.title, model:worker.model, status:"queued" })),
@@ -1418,6 +1423,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             title:artifactTitle,
             task:text,
             source:"aria-workflow",
+            trigger:workflowTrigger,
             status:workerFailures.length ? "partial_failed" : "done",
             language:requestLanguage,
             members:workers.map(worker => {
@@ -1611,6 +1617,9 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
     const automationDirective = parseAutomationDirective(rawText);
     const text = (automationDirective.detected ? automationDirective.taskText : rawText).trim();
     const userVisibleText = (automationDirective.detected ? automationDirective.displayText : rawText).trim();
+    const workflowTrigger = automationDirective.detected
+      ? { type:"automation", automationId:automationDirective.automationId, label:automationDirective.displayText }
+      : null;
     if ((!text && attachments.length === 0) || loading) return;
     setInput("");
     setError("");
@@ -1688,6 +1697,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
         id:workflowId,
         title:firstUserTitle([{ role:"user", text:displayText }], group.name),
         task:text,
+        trigger:workflowTrigger,
         mode:needsConfirmation ? "waiting_confirmation" : "planning",
         phase:needsConfirmation
           ? (lang === "ja" ? "高リスク操作の確認待ち" : lang === "en" ? "Waiting for high-risk action confirmation" : "等待确认高风险操作")
@@ -1716,6 +1726,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
           title:firstUserTitle([{ role:"user", text:displayText }], group.name),
           task:text,
           source:"group-workflow",
+          trigger:workflowTrigger,
           status:"waiting_confirmation",
           language:requestLanguage,
           members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"queued" })),
@@ -1800,6 +1811,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           title:artifactTitle,
           task:text,
           source:"group-workflow",
+          trigger:workflowTrigger,
           status:"done",
           language:requestLanguage,
           members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"complete" })),
@@ -2503,6 +2515,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
         </div>
         <div style={{ color:T.text, fontSize:"12.5px", fontWeight:900, marginTop:"8px", lineHeight:1.45 }}>{currentWorkflow.title}</div>
         {currentWorkflow.phase && <div style={{ color:T.muted, fontSize:"11px", marginTop:"5px", lineHeight:1.5 }}>{currentWorkflow.phase}</div>}
+        {currentWorkflow.trigger?.type && (
+          <div style={{ color:T.muted, fontSize:"10.5px", marginTop:"5px", lineHeight:1.45 }}>
+            {lang==="ja" ? "トリガー" : lang==="en" ? "Trigger" : "触发来源"}: {currentWorkflow.trigger.type}{currentWorkflow.trigger.automationId ? ` · ${currentWorkflow.trigger.automationId}` : ""}
+          </div>
+        )}
         {currentWorkflow.mode !== "idle" && (
           <button type="button" onClick={downloadCurrentAudit} style={{ marginTop:"8px", border:`1px solid ${T.orange}55`, background:T.surface, color:T.orange, borderRadius:"7px", padding:"5px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer" }}>
             {lang==="ja" ? "監査保存" : lang==="en" ? "Download audit" : "下载审计"}

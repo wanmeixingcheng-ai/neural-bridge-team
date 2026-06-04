@@ -25,6 +25,7 @@ describe("workflowArchive", () => {
       title: "x".repeat(200),
       task: "task",
       source: "aria-workflow",
+      trigger:{ type:"automation", automationId:"neural-bridge", label:"自动化任务 neural-bridge" },
       members: [{ id: "pm", name: "林 美穂", title: "PM", summary: "s".repeat(3000) }],
       plan: {
         strategy: "s".repeat(1000),
@@ -48,6 +49,7 @@ describe("workflowArchive", () => {
     });
 
     assert.equal(record.source, "aria-workflow");
+    assert.equal(record.trigger.automationId, "neural-bridge");
     assert.equal(record.title.length, 120);
     assert.equal(record.members.length, 1);
     assert.equal(record.plan.steps.length, 24);
@@ -69,6 +71,7 @@ describe("workflowArchive", () => {
       title: "综合报告",
       task: "分析项目",
       source: "aria-workflow",
+      trigger:{ type:"automation", automationId:"neural-bridge" },
       members: [{ id: "pm", name: "林 美穂", title: "PM", model: "gemma26" }],
       plan: {
         strategy:"ARIA 自动调度 · 核心判断",
@@ -88,6 +91,7 @@ describe("workflowArchive", () => {
     }, "zh");
 
     assert.match(markdown, /# 综合报告/);
+    assert.match(markdown, /触发: automation · neural-bridge/);
     assert.match(markdown, /## 任务/);
     assert.match(markdown, /## 调度计划/);
     assert.match(markdown, /意图: 分析项目/);
