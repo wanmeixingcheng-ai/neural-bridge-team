@@ -2688,6 +2688,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
     ["workflow_record", label("工作流记录", "ワークフロー記録", "Workflow records")],
     ["workflow_artifact_version", label("产物版本", "成果物バージョン", "Artifact versions")],
   ];
+  const sourceTypeLabel = value => sourceFilterOptions.find(([sourceType]) => sourceType === (value || "manual"))?.[1] || value;
   const approvedMemories = visibleMemories.filter(item => item.status === "approved");
   const shortTermMemories = visibleMemories.filter(item => item.status === "short_term");
   const candidateMemories = visibleMemories.filter(item => item.status === "candidate");
@@ -2713,7 +2714,7 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
               <div style={{ color:T.muted, background:T.surface, border:`1px solid ${T.border}`, borderRadius:"7px", padding:"6px 7px", fontSize:"10px", lineHeight:1.45, marginBottom:"7px" }}>
                 {[
                   `${label("工作流", "ワークフロー", "Workflow")}: ${item.metadata.workflowRecordId}`,
-                  item.metadata.sourceType ? `${label("来源", "ソース", "Source")}: ${item.metadata.sourceType}` : "",
+                  item.metadata.sourceType ? `${label("来源", "ソース", "Source")}: ${sourceTypeLabel(item.metadata.sourceType)}` : "",
                   item.metadata.taskType ? `${label("类型", "種別", "Type")}: ${item.metadata.taskType}` : "",
                   item.metadata.priority ? `${label("优先级", "優先度", "Priority")}: ${item.metadata.priority}` : "",
                   item.metadata.qualityComplete !== null && item.metadata.qualityComplete !== undefined ? `${label("质量", "品質", "Quality")}: ${item.metadata.qualityComplete ? label("完整", "完全", "complete") : label("有缺失", "不足あり", "missing")}` : "",
