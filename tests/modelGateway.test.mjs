@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { detectInputLanguage, extractUrls, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, outboundBlockedByLocalOnly, outboundProviderLabel } from "../lib/modelGateway.mjs";
+import { detectInputLanguage, extractUrls, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, normalizeModelResponse, outboundBlockedByLocalOnly, outboundProviderLabel } from "../lib/modelGateway.mjs";
 
 describe("modelGateway", () => {
   it("detects the user input language", () => {
@@ -35,6 +35,17 @@ describe("modelGateway", () => {
     assert.deepEqual(usage.models.map(item => item.modelKey), ["claude", "gemma26", "codex"]);
     assert.equal(usage.external, true);
     assert.deepEqual(usage.providers, ["Claude / Anthropic", "Google Gemini/Gemma"]);
+  });
+
+  it("preserves actual model identifiers from provider responses", () => {
+    assert.deepEqual(normalizeModelResponse({ text:"ok", actualModel:"gemini-2.5-flash" }), {
+      text:"ok",
+      actualModel:"gemini-2.5-flash",
+    });
+    assert.deepEqual(normalizeModelResponse("plain text"), {
+      text:"plain text",
+      actualModel:"",
+    });
   });
 
   it("summarizes external configuration without exposing secrets", () => {

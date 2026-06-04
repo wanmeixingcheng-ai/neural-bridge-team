@@ -63,6 +63,7 @@ import {
 } from "../lib/projectBrain.mjs";
 import {
   callModel,
+  callModelWithMeta,
   detectInputLanguage,
   localOnlyBlockMessage,
   modelExternalConfigSummary,
@@ -1022,10 +1023,10 @@ function confirmOutboundContext({ lang, modelKey, apiKeys, hasAttachments, hasWe
   return true;
 }
 
-function modelMessageMeta(modelKey, apiKeys = {}) {
+function modelMessageMeta(modelKey, apiKeys = {}, actualModel = "") {
   const info = modelProviderInfo(modelKey, apiKeys);
   return {
-    model:info.modelKey || modelKey || "",
+    model:actualModel || info.modelKey || modelKey || "",
     provider:info.provider || "",
     external:!!info.external,
   };
@@ -1299,8 +1300,9 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
         }
         return;
       }
-      const reply = await callModel(effectiveModel, member.systemPrompt, modelNext, apiKeys, { ...controls, language:requestLanguage }, controller.signal);
-      setMessages(m => [...m, { role:"ai", text:reply || "无响应", ...modelMessageMeta(effectiveModel, apiKeys) }]);
+      const response = await callModelWithMeta(effectiveModel, member.systemPrompt, modelNext, apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+      const reply = response.text || "无响应";
+      setMessages(m => [...m, { role:"ai", text:reply, ...modelMessageMeta(effectiveModel, apiKeys, response.actualModel) }]);
       await learnFromExchange({ member, userText:text, reply, lang:requestLanguage });
     } catch (e) {
       if (e.name === "AbortError") {
