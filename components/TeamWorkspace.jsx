@@ -2626,7 +2626,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                 </div>
               ))}
             </div>
-            {queue.next && <div style={{ color:T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"8px" }}>{lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一位："}{queue.next.name} · {queue.next.title}</div>}
+            <div style={{ color:queue.needsAttention ? T.yellow : T.muted, fontSize:"10.5px", lineHeight:1.45, marginTop:"8px" }}>
+              {lang==="ja" ? `進捗：${queue.completionRate}% · 残り ${queue.remaining}` : lang==="en" ? `Progress: ${queue.completionRate}% · remaining ${queue.remaining}` : `进度：${queue.completionRate}% · 剩余 ${queue.remaining}`}
+              {queue.next ? ` · ${lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一位："}${queue.next.name} · ${queue.next.title}` : ""}
+              {queue.needsAttention ? ` · ${lang==="ja" ? "要対応" : lang==="en" ? "needs attention" : "需处理"}` : ""}
+            </div>
           </div>
         )}
         {quality && (

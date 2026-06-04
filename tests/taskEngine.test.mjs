@@ -280,6 +280,9 @@ test("workflow queue summary tracks member execution states", () => {
   assert.equal(queue.working, 1);
   assert.equal(queue.queued, 1);
   assert.equal(queue.failed, 1);
+  assert.equal(queue.remaining, 2);
+  assert.equal(queue.needsAttention, true);
+  assert.equal(queue.completionRate, 25);
   assert.equal(queue.next.id, "qa");
 });
 
