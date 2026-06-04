@@ -2501,7 +2501,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
             <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"8px" }}>
               {currentWorkflow.modelUsage.models.map(item => (
                 <span key={item.modelKey} style={{ border:`1px solid ${T.border}`, background:T.surface, color:item.external ? T.orange : T.muted, borderRadius:"999px", padding:"4px 7px", fontSize:"10px", fontWeight:900 }}>
-                  {item.modelKey}{item.provider ? ` · ${item.provider}` : ""}
+                  {item.modelKey}{item.actualModel ? ` -> ${item.actualModel}` : ""}{item.provider ? ` · ${item.provider}` : ""}
                 </span>
               ))}
             </div>

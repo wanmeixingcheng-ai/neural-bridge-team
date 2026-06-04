@@ -77,7 +77,7 @@ describe("workflowArchive", () => {
         external:true,
         localOnlyMode:true,
         providers:["Google Gemini/Gemma"],
-        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+        models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }],
       },
       quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
@@ -113,7 +113,7 @@ describe("workflowArchive", () => {
       modelUsage:{
         external:true,
         providers:["Google Gemini/Gemma"],
-        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+        models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }],
       },
       artifacts:[
         { title:"最终产物", kind:"整合报告", version:2, hash:"a-test", content:"整合结论" },
@@ -146,7 +146,7 @@ describe("workflowArchive", () => {
         external:true,
         localOnlyMode:false,
         providers:["Google Gemini/Gemma"],
-        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+        models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }],
       },
       quality:{ complete:true, missingMembers:[] },
       artifacts:[{ title:"部署报告", kind:"审计报告", hash:"a-test", content:"已完成" }],
@@ -288,7 +288,7 @@ describe("workflowArchive", () => {
       modelUsage:{
         external:true,
         providers:["Google Gemini/Gemma"],
-        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+        models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }],
       },
       quality:{ complete:true, missingMembers:[] },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
@@ -389,7 +389,7 @@ describe("workflowArchive", () => {
       modelUsage:{
         external:true,
         providers:["Google Gemini/Gemma"],
-        models:[{ modelKey:"gemma26", provider:"Google Gemini/Gemma", external:true }],
+        models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }],
       },
       quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
       artifacts:[{ title:"最终产物", kind:"整合报告", content:"整合结论" }],
@@ -400,6 +400,7 @@ describe("workflowArchive", () => {
     assert.equal(details.plan.protocol.priority, "high");
     assert.equal(details.quality.complete, false);
     assert.match(details.modelUsage.lines[0], /Google Gemini/);
+    assert.match(details.modelUsage.lines[0], /gemma26 -> gemma-4-26b-a4b-it/);
     assert.match(details.modelUsage.disclosure.join(" "), /任务文本/);
     assert.equal(details.toolCalls.needsAttention, true);
     assert.equal(details.toolCalls.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
