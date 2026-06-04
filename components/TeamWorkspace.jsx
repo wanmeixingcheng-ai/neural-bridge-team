@@ -1245,6 +1245,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           return;
         }
         const workerFailures = [];
+        const attemptedWorkerModels = [];
         for (const worker of workers) {
           if (controller.signal.aborted) break;
           const memberTask = memberWorkflowTask(worker, modelText, results, requestLanguage);
@@ -1256,6 +1257,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
           }));
           const workerModel = controls.modelOverride || worker.model;
+          attemptedWorkerModels.push(workerModel);
           let actualWorkerModel = workerModel;
           let reply = "";
           try {
@@ -1280,6 +1282,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
                     : `【ARIA · 自动改派】${worker.name} 使用 ${workerModel} 调用失败，已改用 ${fallback.toModel} 继续执行。`,
               }]);
               try {
+                attemptedWorkerModels.push(fallback.toModel);
                 reply = await callModel(fallback.toModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
                 actualWorkerModel = fallback.toModel;
               } catch (fallbackError) {
@@ -1363,6 +1366,8 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           }
           const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
           const artifact = { title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", version:1, hash:artifactContentHash(finalText), content:finalText, createdAt:new Date().toISOString() };
+          const executedModelUsage = modelUsageSummary([...attemptedWorkerModels, effectiveModel], apiKeys);
+          executedModelUsage.localOnlyMode = !!apiKeys.localOnlyMode;
           await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"aria-workflow" });
           await saveWorkflowRecord({
             id:workflowId,
@@ -1379,7 +1384,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
                 : { id:worker.id, name:worker.name, title:worker.title, model:failure?.model || worker.model, status:"failed", error:failure?.error || "" };
             }),
             plan:workflowPlan,
-            modelUsage:workflowModelUsage,
+            modelUsage:executedModelUsage,
             quality,
             results,
             artifacts:[artifact],
@@ -1394,6 +1399,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
             updatedAt:new Date().toISOString(),
             artifacts:[artifact],
             quality,
+            modelUsage:executedModelUsage,
             progress:{ done:state.members.filter(item => item.status === "complete").length, total:state.members.length },
           }));
         }

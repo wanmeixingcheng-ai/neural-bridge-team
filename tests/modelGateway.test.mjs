@@ -38,6 +38,9 @@ describe("modelGateway", () => {
     assert.deepEqual(usage.models.map(item => item.actualModel), ["claude-sonnet-4-20250514", "gemma-4-26b-a4b-it", ""]);
     assert.equal(usage.external, true);
     assert.deepEqual(usage.providers, ["Claude / Anthropic", "Google Gemini/Gemma"]);
+
+    const fallbackUsage = modelUsageSummary(["claude", "gemma26", "claude"], {});
+    assert.deepEqual(fallbackUsage.models.map(item => item.modelKey), ["claude", "gemma26"]);
   });
 
   it("preserves actual model identifiers from provider responses", () => {
