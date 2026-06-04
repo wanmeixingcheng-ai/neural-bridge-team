@@ -222,6 +222,7 @@ const MODELS = {
 function workflowModeColor(mode) {
   if (mode === "done") return T.green;
   if (mode === "failed") return T.red;
+  if (mode === "partial_failed") return T.orange;
   if (mode === "stopped" || mode === "waiting_confirmation") return T.yellow;
   if (mode === "running" || mode === "summarizing" || mode === "planning") return T.blue;
   return T.muted;
@@ -1386,8 +1387,10 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           setMessages(m => [...m, { role:"ai", text:`【ARIA · ${lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物"}】\n${finalText}`, ...modelMessageMeta(effectiveModel, apiKeys) }]);
           onWorkflowState?.(state => ({
             ...state,
-            mode:"done",
-            phase:lang === "ja" ? "成果物生成完了" : lang === "en" ? "Output generated" : "产物已生成",
+            mode:workerFailures.length ? "partial_failed" : "done",
+            phase:workerFailures.length
+              ? (lang === "ja" ? "成果物生成完了、一部メンバー失敗" : lang === "en" ? "Output generated with failed members" : "产物已生成，部分成员失败")
+              : (lang === "ja" ? "成果物生成完了" : lang === "en" ? "Output generated" : "产物已生成"),
             updatedAt:new Date().toISOString(),
             artifacts:[artifact],
             quality,
@@ -2348,12 +2351,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const [savingArtifactId, setSavingArtifactId] = useState("");
   const modeColor = workflowModeColor(currentWorkflow.mode);
   const progress = currentWorkflow.progress || { done:0, total:0 };
-  const canRetry = ["failed", "stopped"].includes(currentWorkflow.mode);
+  const canRetry = ["failed", "partial_failed", "stopped"].includes(currentWorkflow.mode);
   const canConfirm = currentWorkflow.mode === "waiting_confirmation";
   const queue = workflowQueueSummary(currentWorkflow.members);
   const protocol = currentWorkflow.plan?.protocol || null;
   const quality = currentWorkflow.quality || null;
-  const reassignment = currentWorkflow.mode === "failed" ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
+  const reassignment = ["failed", "partial_failed"].includes(currentWorkflow.mode) ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
   const lifecycle = workflowLifecycleSteps(currentWorkflow.mode, lang);
   const auditSummary = currentWorkflow.mode !== "idle" ? workflowAuditSummary(currentWorkflow, lang) : null;
   const permissionChecklist = currentWorkflow.mode !== "idle" ? workflowPermissionChecklist(currentWorkflow, lang) : null;

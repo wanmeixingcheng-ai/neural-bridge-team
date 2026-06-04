@@ -266,10 +266,11 @@ test("workflow queue summary tracks member execution states", () => {
 
 test("workflow lifecycle steps expose the production task state machine", () => {
   const running = workflowLifecycleSteps("summarizing", "zh");
-  assert.deepEqual(running.map(item => item.status), ["planning", "dispatched", "running", "waiting_confirmation", "done", "failed", "archived"]);
+  assert.deepEqual(running.map(item => item.status), ["planning", "dispatched", "running", "waiting_confirmation", "done", "partial_failed", "failed", "archived"]);
   assert.equal(running.find(item => item.status === "running").state, "current");
   assert.equal(running.find(item => item.status === "dispatched").state, "complete");
   assert.equal(workflowLifecycleSteps("done", "en").find(item => item.status === "done").state, "complete");
+  assert.equal(workflowLifecycleSteps("partial_failed", "en").find(item => item.status === "partial_failed").state, "current");
   assert.equal(workflowLifecycleSteps("failed", "zh").find(item => item.status === "failed").state, "current");
   assert.equal(workflowLifecycleSteps("archived", "zh").find(item => item.status === "archived").state, "complete");
 });
