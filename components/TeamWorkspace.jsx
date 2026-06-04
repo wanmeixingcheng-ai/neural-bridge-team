@@ -90,6 +90,7 @@ import {
   buildWorkflowRecoveryPrompt,
   buildWorkflowRerunPrompt,
   deleteWorkflowArchive,
+  filterWorkflowRecordsByStatus,
   formatWorkflowAuditMarkdown,
   formatWorkflowArtifactMarkdown,
   formatWorkflowRecordMarkdown,
@@ -1989,11 +1990,19 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
   const [selectedId, setSelectedId] = useState("");
   const [notice, setNotice] = useState("");
   const [savingId, setSavingId] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   useEffect(() => {
     listWorkflowRecords({ limit:5 }).then(setRecords).catch(() => setRecords([]));
   }, [refreshKey]);
   if (!records.length) return null;
   const label = (zh, ja, en) => lang === "ja" ? ja : lang === "en" ? en : zh;
+  const filteredRecords = filterWorkflowRecordsByStatus(records, statusFilter);
+  const filterOptions = [
+    ["all", label("全部", "すべて", "All")],
+    ["done", label("完成", "完了", "Done")],
+    ["failed", label("失败", "失敗", "Failed")],
+    ["archived", label("归档", "アーカイブ", "Archived")],
+  ];
   const downloadRecord = async (record) => {
     const markdown = formatWorkflowRecordMarkdown(record, lang);
     const fileName = await saveToLocalOutputs({ name:"Workflow", title:record.title }, markdown);
@@ -2096,8 +2105,14 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.surface, borderRadius:"10px", padding:"12px" }}>
       <div style={{ color:T.muted, fontSize:"10.5px", fontWeight:800 }}>{label("最近工作流记录", "最近のワークフロー記録", "Recent workflow records")}</div>
       {notice && <div style={{ color:T.green, fontSize:"10.5px", lineHeight:1.45, marginTop:"7px" }}>{notice}</div>}
+      <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"8px" }}>
+        {filterOptions.map(([value, text]) => (
+          <button key={value} type="button" onClick={()=>setStatusFilter(value)} style={{ border:`1px solid ${statusFilter === value ? T.blue : T.border}`, background:statusFilter === value ? T.blueGlow : T.card, color:statusFilter === value ? T.blue : T.muted, borderRadius:"999px", padding:"4px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer" }}>{text}</button>
+        ))}
+      </div>
       <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"8px" }}>
-        {records.map(record => {
+        {!filteredRecords.length && <div style={{ color:T.faint, fontSize:"11px", lineHeight:1.5 }}>{label("当前筛选下没有记录。", "このフィルターには記録がありません。", "No records for this filter.")}</div>}
+        {filteredRecords.map(record => {
           const artifact = record.artifacts?.[0];
           const selected = selectedId === record.id;
           const details = selected ? buildWorkflowRecordDetails(record, lang) : null;

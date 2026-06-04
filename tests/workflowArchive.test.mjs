@@ -11,6 +11,7 @@ import {
   buildWorkflowRecordDetails,
   buildWorkflowRecoveryPrompt,
   buildWorkflowRerunPrompt,
+  filterWorkflowRecordsByStatus,
   formatWorkflowAuditMarkdown,
   formatWorkflowArtifactMarkdown,
   formatWorkflowRecordMarkdown,
@@ -389,6 +390,18 @@ describe("workflowArchive", () => {
     assert.equal(archived.results[0].text, "项目计划内容");
     assert.equal(archived.artifacts[0].content, "整合结论");
     assert.match(formatWorkflowRecordMarkdown(archived, "zh"), /archived/);
+  });
+
+  it("filters workflow records by normalized status", () => {
+    const records = [
+      { id:"done", status:"done", title:"完成" },
+      { id:"failed", status:"failed", title:"失败" },
+      { id:"archived", status:"archived", title:"归档" },
+    ];
+
+    assert.equal(filterWorkflowRecordsByStatus(records, "all").length, 3);
+    assert.deepEqual(filterWorkflowRecordsByStatus(records, "failed").map(item => item.id), ["failed"]);
+    assert.deepEqual(filterWorkflowRecordsByStatus(records, "archived").map(item => item.id), ["archived"]);
   });
 
   it("generates stable artifact content fingerprints", () => {
