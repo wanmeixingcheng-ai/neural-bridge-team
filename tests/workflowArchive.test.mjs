@@ -76,11 +76,14 @@ describe("workflowArchive", () => {
       task: "分析项目",
       source: "aria-workflow",
       trigger:{ type:"automation", automationId:"neural-bridge" },
-      members: [{ id: "pm", name: "林 美穂", title: "PM", model: "gemma26" }],
+      members: [{ id: "pm", name: "林 美穂", title: "PM", model: "gemma26", status:"complete" }, { id:"fe", name:"陈志远", title:"前端工程师", model:"codex", status:"queued" }],
       plan: {
         strategy:"ARIA 自动调度 · 核心判断",
         protocol:{ intent:"分析项目", task_type:"product", priority:"high", subtasks:["拆解目标", "复核风险"], expected_outputs:["报告"], risks:["范围不清"] },
-        steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"里程碑与风险拆解", subtask:"拆解目标", output:"报告", acceptanceCriteria:"输出必须覆盖：报告" }],
+        steps:[
+          { order:1, memberId:"pm", member:"林 美穂", title:"PM", model:"gemma26", purpose:"里程碑与风险拆解", subtask:"拆解目标", output:"报告", acceptanceCriteria:"输出必须覆盖：报告" },
+          { order:2, memberId:"fe", member:"陈志远", title:"前端工程师", model:"codex", purpose:"实现界面", subtask:"实现看板", input:"报告", output:"UI", dependencies:["pm"], acceptanceCriteria:"移动端稳定" },
+        ],
       },
       modelUsage:{
         external:true,
@@ -115,6 +118,9 @@ describe("workflowArchive", () => {
     assert.match(markdown, /林 美穂/);
     assert.match(markdown, /项目计划内容/);
     assert.match(markdown, /整合结论/);
+    assert.match(markdown, /## Workboard/);
+    assert.match(markdown, /摘要: 可执行 1 · 阻塞 0 · 失败 0/);
+    assert.match(markdown, /\| 陈志远 · 前端工程师 \| queued \| ready \| 实现看板 \| UI \| ARIA 整合 \|/);
     assert.match(markdown, /Workboard 评论/);
     assert.match(markdown, /请前端继续接收 PM 输出/);
     assert.match(markdown, /执行事件/);
