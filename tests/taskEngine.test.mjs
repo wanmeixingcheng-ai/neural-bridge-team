@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
+  buildWorkboardExecutionPacket,
   buildWorkflowExecutionGateEvent,
   chooseWorkflowMembers,
   ensureExecutableWorkflowMembers,
@@ -400,6 +401,8 @@ test("workboard card action prompt targets a single executable card", () => {
   assert.match(prompt, /吴晓敏 · QA/);
   assert.match(prompt, /阻塞来源: 陈志远/);
   assert.match(prompt, /验收标准: 关键状态清晰/);
+  assert.match(prompt, /## 执行包/);
+  assert.match(prompt, /输出契约/);
   assert.match(prompt, /不要只解释计划/);
 });
 
@@ -577,6 +580,36 @@ test("workflow execution gate event records blocked execution attempts", () => {
   assert.equal(event.status, "blocked_by_local_only");
   assert.match(event.detail, /Local-only/);
   assert.match(event.detail, /blockers=/);
+});
+
+test("workboard execution packet describes real tool execution needs", () => {
+  const packet = buildWorkboardExecutionPacket({
+    task:"读取 https://example.com 后让 Codex 修复并部署到 Vercel",
+    members:[{ id:"fe", name:"陈志远", title:"前端工程师", status:"queued", model:"codex" }],
+    plan:{ steps:[{ order:1, memberId:"fe", member:"陈志远", title:"前端工程师", subtask:"修复并部署", input:"网页问题", output:"部署验证", acceptanceCriteria:"生产站 200" }] },
+    modelUsage:{ external:true, models:[{ modelKey:"codex" }] },
+  }, {
+    id:"fe",
+    member:"陈志远",
+    title:"前端工程师",
+    status:"queued",
+    dependencyState:"ready",
+    task:"修复并部署",
+    input:"网页问题",
+    output:"部署验证",
+    handoffTo:"ARIA 整合",
+    acceptanceCriteria:"生产站 200",
+  }, "zh");
+
+  assert.equal(packet.id, "exec-fe");
+  assert.equal(packet.status, "blocked");
+  assert.equal(packet.canExecute, false);
+  assert.equal(packet.action, "continue");
+  assert.ok(packet.requiredTools.some(tool => tool.id === "codex-dispatch"));
+  assert.ok(packet.requiredTools.some(tool => tool.id === "vercel-deploy"));
+  assert.ok(packet.blockers.some(item => item.status === "needs_admin"));
+  assert.match(packet.instructions.join("\n"), /只执行这张 Workboard 卡片/);
+  assert.match(packet.outputContract, /实际产物/);
 });
 
 test("workflow quality check flags missing member outputs", () => {
