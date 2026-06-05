@@ -34,6 +34,7 @@ import {
   workflowQualityCheck,
   workflowToolCallChecklist,
   workflowWorkboardCards,
+  workflowWorkboardSummary,
 } from "../lib/taskEngine.mjs";
 
 const members = [
@@ -329,6 +330,23 @@ test("workflow workboard cards expose dependencies, handoffs, and comments", () 
   assert.equal(cards[1].acceptanceCriteria, "移动端不溢出");
   assert.equal(cards[2].dependencyState, "blocked");
   assert.deepEqual(cards[2].blockedBy, ["陈志远"]);
+
+  const summary = workflowWorkboardSummary(cards);
+  assert.equal(summary.total, 3);
+  assert.equal(summary.ready, 1);
+  assert.equal(summary.blocked, 1);
+  assert.equal(summary.working, 1);
+  assert.equal(summary.needsAttention, true);
+  assert.equal(summary.nextAction, "monitor_working");
+  assert.equal(summary.nextCard.member, "陈志远");
+});
+
+test("workflow workboard summary recommends the next production action", () => {
+  assert.equal(workflowWorkboardSummary([]).nextAction, "idle");
+  assert.equal(workflowWorkboardSummary([{ status:"failed", dependencyState:"ready" }]).nextAction, "retry_failed");
+  assert.equal(workflowWorkboardSummary([{ status:"queued", dependencyState:"ready", member:"FE" }]).nextAction, "start_ready");
+  assert.equal(workflowWorkboardSummary([{ status:"queued", dependencyState:"blocked", blockedBy:["PM"] }]).nextAction, "wait_dependencies");
+  assert.equal(workflowWorkboardSummary([{ status:"complete", dependencyState:"none" }]).nextAction, "integrate");
 });
 
 test("workflow lifecycle steps expose the production task state machine", () => {

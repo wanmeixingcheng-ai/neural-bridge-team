@@ -40,6 +40,7 @@ import {
   workflowStatusLabel,
   workflowToolCallChecklist,
   workflowWorkboardCards,
+  workflowWorkboardSummary,
   workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
 import {
@@ -2472,6 +2473,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
   const canConfirm = currentWorkflow.mode === "waiting_confirmation";
   const queue = workflowQueueSummary(currentWorkflow.members);
   const workboardCards = workflowWorkboardCards(currentWorkflow, lang);
+  const workboardSummary = workflowWorkboardSummary(workboardCards);
   const protocol = currentWorkflow.plan?.protocol || null;
   const quality = currentWorkflow.quality || null;
   const reassignment = ["failed", "partial_failed"].includes(currentWorkflow.mode) ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
@@ -2485,6 +2487,14 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
     continue_queue: lang==="ja" ? "次の一手：キューを続行" : lang==="en" ? "Next action: continue queue" : "下一步：继续队列",
     ready_to_integrate: lang==="ja" ? "次の一手：成果物を統合" : lang==="en" ? "Next action: integrate output" : "下一步：整合产物",
     review_queue: lang==="ja" ? "次の一手：キューを確認" : lang==="en" ? "Next action: review queue" : "下一步：复核队列",
+  };
+  const workboardActionLabel = {
+    retry_failed: lang==="ja" ? "失敗カードを再試行" : lang==="en" ? "Retry failed cards" : "重试失败卡片",
+    monitor_working: lang==="ja" ? "実行中カードを監視" : lang==="en" ? "Monitor active card" : "跟进执行中卡片",
+    start_ready: lang==="ja" ? "実行可能カードを開始" : lang==="en" ? "Start ready card" : "启动可执行卡片",
+    wait_dependencies: lang==="ja" ? "依存完了を待機" : lang==="en" ? "Wait for dependencies" : "等待依赖完成",
+    integrate: lang==="ja" ? "成果物を統合" : lang==="en" ? "Integrate outputs" : "整合成员成果",
+    idle: lang==="ja" ? "待機" : lang==="en" ? "Idle" : "待命",
   };
   const addWorkboardComment = (cardId) => {
     const text = `${workboardInputs[cardId] || ""}`.trim();
@@ -2642,6 +2652,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
               <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>Workboard</div>
               <div style={{ color:T.muted, fontSize:"9.5px", fontWeight:900 }}>{lang==="ja" ? "依存 · 引き渡し · コメント" : lang==="en" ? "Dependencies · handoffs · comments" : "依赖 · 交付 · 评论"}</div>
+            </div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"5px", alignItems:"center", marginTop:"7px" }}>
+              <span style={{ color:T.green, border:`1px solid ${T.green}40`, background:T.surface, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900 }}>{lang==="ja" ? "実行可" : lang==="en" ? "Ready" : "可执行"} {workboardSummary.ready}</span>
+              <span style={{ color:workboardSummary.blocked ? T.yellow : T.muted, border:`1px solid ${(workboardSummary.blocked ? T.yellow : T.muted)}40`, background:T.surface, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900 }}>{lang==="ja" ? "ブロック" : lang==="en" ? "Blocked" : "阻塞"} {workboardSummary.blocked}</span>
+              <span style={{ color:workboardSummary.failed ? T.red : T.muted, border:`1px solid ${(workboardSummary.failed ? T.red : T.muted)}40`, background:T.surface, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900 }}>{lang==="ja" ? "失敗" : lang==="en" ? "Failed" : "失败"} {workboardSummary.failed}</span>
+              <span style={{ color:workboardSummary.needsAttention ? T.yellow : T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>{workboardActionLabel[workboardSummary.nextAction]}{workboardSummary.nextCard ? ` · ${workboardSummary.nextCard.member} · ${workboardSummary.nextCard.title}` : ""}</span>
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"7px", marginTop:"8px" }}>
               {workboardCards.map(card => {
