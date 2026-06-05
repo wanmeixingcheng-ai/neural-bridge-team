@@ -14,6 +14,7 @@ import {
 } from "../lib/attachmentPolicy.mjs";
 import {
   emptyWorkflowState,
+  buildWorkflowExecutionGateEvent,
   buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
   buildWorkflowPlanEditPrompt,
@@ -2531,6 +2532,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
 function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
   const currentWorkflow = workflow || emptyWorkflowState(lang);
   const [artifactNotice, setArtifactNotice] = useState("");
+  const [executionNotice, setExecutionNotice] = useState("");
   const [savingArtifactId, setSavingArtifactId] = useState("");
   const [workboardInputs, setWorkboardInputs] = useState({});
   const modeColor = workflowModeColor(currentWorkflow.mode);
@@ -2583,6 +2585,16 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
     setWorkboardInputs(values => ({ ...values, [cardId]:"" }));
   };
   const runWorkboardCardAction = (card) => {
+    if (executionReadiness?.blockedByLocalOnly || executionReadiness?.needsPermission) {
+      const event = buildWorkflowExecutionGateEvent({ ...executionReadiness, nextCard:{ ...executionReadiness.nextCard, ...card } });
+      onWorkflowUpdate?.(previous => ({
+        ...(previous || currentWorkflow),
+        events:[...((previous || currentWorkflow).events || []), event].slice(-40),
+        updatedAt:event.at,
+      }));
+      setExecutionNotice(executionReadiness.action);
+      return;
+    }
     const action = card.status === "failed" ? "retry" : card.dependencyState === "blocked" ? "unblock" : "continue";
     const event = buildWorkboardCardActionEvent(card, action);
     onWorkflowUpdate?.(previous => ({
@@ -2914,6 +2926,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
               <span style={{ color:T.muted, fontSize:"9.5px", fontWeight:900 }}>{executionReadiness.status}</span>
             </div>
             <div style={{ color:T.text, fontSize:"10.4px", lineHeight:1.45, marginTop:"5px" }}>{executionReadiness.action}</div>
+            {executionNotice && <div style={{ color:executionReadiness.blockedByLocalOnly ? T.red : T.orange, fontSize:"9.8px", lineHeight:1.4, marginTop:"4px" }}>{executionNotice}</div>}
             {executionReadiness.nextCard && (
               <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"4px" }}>
                 {lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一步："}{executionReadiness.nextCard.member} · {executionReadiness.nextCard.title} · {executionReadiness.nextCard.status}

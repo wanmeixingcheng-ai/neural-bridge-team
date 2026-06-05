@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
+  buildWorkflowExecutionGateEvent,
   chooseWorkflowMembers,
   ensureExecutableWorkflowMembers,
   buildWorkflowPlanEditPrompt,
@@ -561,6 +562,21 @@ test("workflow execution readiness gates real task execution", () => {
   assert.equal(blocked.status, "blocked_by_local_only");
   assert.equal(blocked.blockedByLocalOnly, true);
   assert.equal(blocked.canExecute, false);
+});
+
+test("workflow execution gate event records blocked execution attempts", () => {
+  const readiness = workflowExecutionReadiness({
+    task:"读取 https://example.com 并部署",
+    members:[{ id:"fe", name:"陈志远", title:"前端工程师", status:"queued", model:"codex" }],
+    modelUsage:{ external:true, localOnlyMode:true, models:[{ modelKey:"codex" }] },
+  }, "zh");
+  const event = buildWorkflowExecutionGateEvent(readiness, "2026-06-05T07:14:00.000Z");
+
+  assert.equal(event.at, "2026-06-05T07:14:00.000Z");
+  assert.equal(event.type, "workflow_execution_gate");
+  assert.equal(event.status, "blocked_by_local_only");
+  assert.match(event.detail, /Local-only/);
+  assert.match(event.detail, /blockers=/);
 });
 
 test("workflow quality check flags missing member outputs", () => {
