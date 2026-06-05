@@ -300,11 +300,13 @@ test("workflow workboard cards expose dependencies, handoffs, and comments", () 
     members:[
       { id:"pm", name:"林 美穂", title:"PM", status:"complete", summary:"需求已拆完" },
       { id:"fe", name:"陈志远", title:"前端工程师", status:"working", task:"实现看板" },
+      { id:"qa", name:"吴晓敏", title:"QA", status:"queued" },
     ],
     plan:{
       steps:[
         { order:1, memberId:"pm", member:"林 美穂", title:"PM", subtask:"拆需求", input:"用户目标", output:"PRD", acceptanceCriteria:"范围清晰" },
         { order:2, memberId:"fe", member:"陈志远", title:"前端工程师", subtask:"实现看板", input:"PRD", output:"UI", dependencies:["pm"], acceptanceCriteria:"移动端不溢出" },
+        { order:3, memberId:"qa", member:"吴晓敏", title:"QA", subtask:"验收 Workboard", input:"UI", output:"QA 报告", dependencies:["fe"], acceptanceCriteria:"关键状态清晰" },
       ],
     },
     comments:[
@@ -312,14 +314,21 @@ test("workflow workboard cards expose dependencies, handoffs, and comments", () 
     ],
   }, "zh");
 
-  assert.equal(cards.length, 2);
+  assert.equal(cards.length, 3);
   assert.equal(cards[0].progress, 100);
   assert.equal(cards[0].handoffTo, "陈志远 · 前端工程师");
+  assert.deepEqual(cards[0].downstream, ["陈志远 · 前端工程师"]);
+  assert.equal(cards[0].dependencyState, "none");
   assert.equal(cards[0].agentComment, "需求已拆完");
   assert.equal(cards[1].progress, 50);
   assert.deepEqual(cards[1].dependencies, ["pm"]);
+  assert.equal(cards[1].dependencyState, "ready");
+  assert.deepEqual(cards[1].blockedBy, []);
+  assert.equal(cards[1].handoffTo, "吴晓敏 · QA");
   assert.equal(cards[1].comments[0].text, "注意手机端");
   assert.equal(cards[1].acceptanceCriteria, "移动端不溢出");
+  assert.equal(cards[2].dependencyState, "blocked");
+  assert.deepEqual(cards[2].blockedBy, ["陈志远"]);
 });
 
 test("workflow lifecycle steps expose the production task state machine", () => {

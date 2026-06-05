@@ -2646,6 +2646,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
             <div style={{ display:"flex", flexDirection:"column", gap:"7px", marginTop:"8px" }}>
               {workboardCards.map(card => {
                 const statusColor = card.status === "complete" ? T.green : card.status === "failed" ? T.red : card.status === "working" ? T.blue : T.muted;
+                const dependencyColor = card.dependencyState === "blocked" ? T.yellow : card.dependencyState === "ready" ? T.green : T.muted;
+                const dependencyLabel = card.dependencyState === "blocked"
+                  ? (lang==="ja" ? "待機中" : lang==="en" ? "Waiting" : "等待依赖")
+                  : card.dependencyState === "ready"
+                    ? (lang==="ja" ? "実行可" : lang==="en" ? "Ready" : "可执行")
+                    : (lang==="ja" ? "依存なし" : lang==="en" ? "No deps" : "无依赖");
                 return (
                   <div key={card.id} style={{ border:`1px solid ${statusColor}35`, background:T.surface, borderRadius:"8px", padding:"8px" }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
@@ -2663,6 +2669,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
                     </div>
                     <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>
                       {lang==="ja" ? "依存" : lang==="en" ? "Depends" : "依赖"}: {card.dependencies.length ? card.dependencies.join(" / ") : "-"} · {lang==="ja" ? "引き渡し" : lang==="en" ? "Handoff" : "交付"}: {card.handoffTo || "-"}
+                    </div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:"5px", alignItems:"center", marginTop:"5px" }}>
+                      <span style={{ color:dependencyColor, border:`1px solid ${dependencyColor}40`, background:T.card, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{dependencyLabel}</span>
+                      {card.blockedBy?.length > 0 && <span style={{ color:T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>{lang==="ja" ? "待ち：" : lang==="en" ? "Waiting on: " : "等待："}{card.blockedBy.join(" / ")}</span>}
+                      {card.downstream?.length > 0 && <span style={{ color:T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>{lang==="ja" ? "次へ：" : lang==="en" ? "Next: " : "流转到："}{card.downstream.join(" / ")}</span>}
                     </div>
                     {card.acceptanceCriteria && <div style={{ color:T.green, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "受入：" : lang==="en" ? "Acceptance: " : "验收："}{card.acceptanceCriteria}</div>}
                     {card.agentComment && <div style={{ color:T.text, background:T.card, border:`1px solid ${T.border}`, borderRadius:"7px", padding:"6px", fontSize:"10px", lineHeight:1.45, marginTop:"6px" }}>Agent: {card.agentComment}</div>}
