@@ -25,6 +25,7 @@ import {
   recentConversationContext,
   wantsPriorIntegration,
   workflowQueueSummary,
+  workflowExecutionReadiness,
   workflowRequiresConfirmation,
   workflowExternalDisclosureLines,
   workflowFailureReassignmentPlan,
@@ -528,6 +529,38 @@ test("workflow tool call checklist flags tool permissions and states", () => {
   assert.equal(localOnly.entries.find(item => item.id === "web-fetch").status, "blocked_by_local_only");
   assert.equal(localOnly.entries.find(item => item.id === "codex-dispatch").status, "blocked_by_local_only");
   assert.equal(localOnly.entries.find(item => item.id === "vercel-deploy").status, "blocked_by_local_only");
+});
+
+test("workflow execution readiness gates real task execution", () => {
+  const ready = workflowExecutionReadiness({
+    task:"生成 Workboard 计划",
+    members:[{ id:"pm", name:"林 美穂", title:"PM", status:"queued", model:"gemma26" }],
+    plan:{ steps:[{ order:1, memberId:"pm", member:"林 美穂", title:"PM", subtask:"拆解任务", output:"PRD" }] },
+    modelUsage:{ external:true, models:[{ modelKey:"gemma26" }] },
+  }, "zh");
+  assert.equal(ready.status, "ready_to_execute");
+  assert.equal(ready.canExecute, true);
+  assert.equal(ready.nextCard.member, "林 美穂");
+
+  const waitingPermission = workflowExecutionReadiness({
+    task:"读取 https://example.com 后部署到 Vercel",
+    members:[{ id:"fe", name:"陈志远", title:"前端工程师", status:"queued", model:"codex" }],
+    plan:{ steps:[{ order:1, memberId:"fe", member:"陈志远", title:"前端工程师", subtask:"部署", output:"验证报告" }] },
+    modelUsage:{ external:true, models:[{ modelKey:"codex" }] },
+  }, "zh");
+  assert.equal(waitingPermission.status, "waiting_permission");
+  assert.equal(waitingPermission.canExecute, false);
+  assert.equal(waitingPermission.needsPermission, true);
+  assert.ok(waitingPermission.blockers.some(item => item.status === "needs_admin"));
+
+  const blocked = workflowExecutionReadiness({
+    task:"读取 https://example.com",
+    members:[{ id:"fe", name:"陈志远", title:"前端工程师", status:"queued", model:"codex" }],
+    modelUsage:{ external:true, localOnlyMode:true, models:[{ modelKey:"codex" }] },
+  }, "zh");
+  assert.equal(blocked.status, "blocked_by_local_only");
+  assert.equal(blocked.blockedByLocalOnly, true);
+  assert.equal(blocked.canExecute, false);
 });
 
 test("workflow quality check flags missing member outputs", () => {

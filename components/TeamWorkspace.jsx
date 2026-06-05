@@ -32,6 +32,7 @@ import {
   summarizeForWorkflow,
   wantsPriorIntegration,
   workflowQueueSummary,
+  workflowExecutionReadiness,
   workflowFailureReassignmentPlan,
   workflowFallbackModelForMember,
   workflowAuditSummary,
@@ -2548,6 +2549,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
   const permissionChecklist = currentWorkflow.mode !== "idle" ? workflowPermissionChecklist(currentWorkflow, lang) : null;
   const outputQa = currentWorkflow.mode !== "idle" ? workflowOutputQaChecklist(currentWorkflow, lang) : null;
   const toolCalls = currentWorkflow.mode !== "idle" ? workflowToolCallChecklist(currentWorkflow, lang) : null;
+  const executionReadiness = currentWorkflow.mode !== "idle" ? workflowExecutionReadiness(currentWorkflow, lang) : null;
   const queueActionLabel = {
     retry_failed: lang==="ja" ? "次の一手：失敗分を再試行" : lang==="en" ? "Next action: retry failed parts" : "下一步：重试失败部分",
     continue_queue: lang==="ja" ? "次の一手：キューを続行" : lang==="en" ? "Next action: continue queue" : "下一步：继续队列",
@@ -2903,6 +2905,29 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
               <span style={{ color:auditSummary.external ? T.orange : T.muted, fontSize:"9.5px", fontWeight:900 }}>{auditSummary.external ? (lang==="ja" ? "外部送信あり" : lang==="en" ? "External" : "有外发") : (lang==="ja" ? "ローカル中心" : lang==="en" ? "Local-first" : "本地优先")}</span>
             </div>
             <div style={{ color:T.muted, fontSize:"10px", lineHeight:1.55, marginTop:"5px" }}>{auditSummary.lines.join(" / ")}</div>
+          </div>
+        )}
+        {executionReadiness && (
+          <div style={{ marginTop:"10px", border:`1px solid ${executionReadiness.canExecute ? T.green : executionReadiness.blockedByLocalOnly ? T.red : T.yellow}55`, background:executionReadiness.canExecute ? "#10b98112" : executionReadiness.blockedByLocalOnly ? "#ef444412" : "#f59e0b10", borderRadius:"8px", padding:"9px" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
+              <div style={{ color:executionReadiness.canExecute ? T.green : executionReadiness.blockedByLocalOnly ? T.red : T.yellow, fontSize:"11.5px", fontWeight:900 }}>{lang==="ja" ? "実行判定" : lang==="en" ? "Execution readiness" : "执行判定"}</div>
+              <span style={{ color:T.muted, fontSize:"9.5px", fontWeight:900 }}>{executionReadiness.status}</span>
+            </div>
+            <div style={{ color:T.text, fontSize:"10.4px", lineHeight:1.45, marginTop:"5px" }}>{executionReadiness.action}</div>
+            {executionReadiness.nextCard && (
+              <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"4px" }}>
+                {lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一步："}{executionReadiness.nextCard.member} · {executionReadiness.nextCard.title} · {executionReadiness.nextCard.status}
+              </div>
+            )}
+            {!!executionReadiness.blockers.length && (
+              <div style={{ display:"flex", flexDirection:"column", gap:"3px", marginTop:"6px" }}>
+                {executionReadiness.blockers.slice(0, 3).map(blocker => (
+                  <div key={blocker.id} style={{ color:T.muted, fontSize:"9.6px", lineHeight:1.35 }}>
+                    <span style={{ color:blocker.status === "blocked_by_local_only" ? T.red : T.orange, fontWeight:900 }}>{blocker.name}</span> · {blocker.status} · {blocker.permission}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {permissionChecklist && (
