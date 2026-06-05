@@ -637,6 +637,44 @@ test("workboard execution packet describes real tool execution needs", () => {
   assert.match(packet.outputContract, /实际产物/);
 });
 
+test("workboard execution packet carries dependency evidence for blocked cards", () => {
+  const packet = buildWorkboardExecutionPacket({
+    task:"发布 Workboard",
+    members:[
+      { id:"fe", name:"陈志远", title:"前端工程师", status:"working" },
+      { id:"qa", name:"吴晓敏", title:"QA", status:"queued" },
+    ],
+    plan:{ steps:[
+      { order:1, memberId:"fe", member:"陈志远", title:"前端工程师", subtask:"实现看板", output:"UI" },
+      { order:2, memberId:"qa", member:"吴晓敏", title:"QA", subtask:"验收 Workboard", input:"UI", output:"QA 报告", dependencies:["fe"] },
+    ] },
+  }, {
+    id:"qa",
+    member:"吴晓敏",
+    title:"QA",
+    status:"queued",
+    dependencyState:"blocked",
+    dependencies:["fe"],
+    blockedBy:["陈志远"],
+    task:"验收 Workboard",
+    input:"UI",
+    output:"QA 报告",
+    handoffTo:"ARIA 整合",
+  }, "zh");
+
+  assert.equal(packet.status, "blocked");
+  assert.equal(packet.card.dependencyEvidence.length, 1);
+  assert.deepEqual(packet.card.dependencyEvidence[0], {
+    dependency:"fe",
+    member:"陈志远",
+    title:"前端工程师",
+    status:"working",
+    output:"UI",
+    blocked:true,
+  });
+  assert.match(packet.instructions.join("\n"), /依赖证据: 陈志远 · 前端工程师 · working · UI · blocked/);
+});
+
 test("workboard execution packet event records executable tool contract", () => {
   const packet = buildWorkboardExecutionPacket({}, {
     id:"fe",
