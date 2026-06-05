@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
+  buildWorkboardCommentEvent,
   buildWorkboardExecutionPacket,
   buildWorkboardExecutionPacketEvent,
   buildWorkflowExecutionGateEvent,
@@ -424,6 +425,23 @@ test("workboard card action event records auditable card operations", () => {
   assert.match(event.detail, /dependency=blocked/);
   assert.match(event.detail, /blocked_by=陈志远/);
   assert.match(event.detail, /handoff=ARIA 整合/);
+});
+
+test("workboard comment event records human and agent collaboration", () => {
+  const event = buildWorkboardCommentEvent({
+    targetMemberId:"fe",
+    targetMember:"陈志远",
+    author:"human",
+    text:"请接收 PM 输出并补移动端验收",
+    at:"2026-06-05T08:10:00.000Z",
+  });
+
+  assert.equal(event.at, "2026-06-05T08:10:00.000Z");
+  assert.equal(event.type, "workboard_comment");
+  assert.equal(event.member, "陈志远");
+  assert.equal(event.status, "human");
+  assert.match(event.detail, /card=fe/);
+  assert.match(event.detail, /移动端验收/);
 });
 
 test("workflow lifecycle steps expose the production task state machine", () => {

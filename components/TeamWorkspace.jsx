@@ -17,6 +17,7 @@ import {
   buildWorkflowExecutionGateEvent,
   buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
+  buildWorkboardCommentEvent,
   buildWorkboardExecutionPacket,
   buildWorkboardExecutionPacketEvent,
   buildWorkflowPlanEditPrompt,
@@ -2579,9 +2580,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
       text,
       at:new Date().toISOString(),
     };
+    const event = buildWorkboardCommentEvent(comment);
     onWorkflowUpdate?.(previous => ({
       ...(previous || currentWorkflow),
       comments:[...((previous || currentWorkflow).comments || []), comment],
+      events:[...((previous || currentWorkflow).events || []), event].slice(-40),
       updatedAt:comment.at,
     }));
     setWorkboardInputs(values => ({ ...values, [cardId]:"" }));
