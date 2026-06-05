@@ -464,11 +464,14 @@ describe("workflowArchive", () => {
       title:"综合报告",
       task:"分析项目",
       source:"aria-workflow",
-      members:[{ name:"林 美穂", title:"PM", model:"gemma26" }, { name:"陈志远", title:"前端工程师", model:"codex" }],
+      members:[{ id:"pm", name:"林 美穂", title:"PM", model:"gemma26", status:"complete" }, { id:"fe", name:"陈志远", title:"前端工程师", model:"codex", status:"queued" }],
       plan:{
         strategy:"ARIA 自动调度",
         protocol:{ intent:"分析项目", task_type:"product", priority:"high", expected_outputs:["报告"], risks:["范围不清"] },
-        steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解" }],
+        steps:[
+          { order:1, memberId:"pm", member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解", output:"PRD" },
+          { order:2, memberId:"fe", member:"陈志远", title:"前端工程师", model:"codex", purpose:"实现界面", dependencies:["pm"], output:"UI" },
+        ],
       },
       modelUsage:{
         external:true,
@@ -494,6 +497,10 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.disclosure.join(" "), /任务文本/);
     assert.match(details.modelUsage.routeLines.join(" "), /陈志远 · 前端工程师: codex/);
     assert.match(details.modelUsage.routeLines.join(" "), /claude -> gemma26/);
+    assert.equal(details.workboard.summary.ready, 1);
+    assert.equal(details.workboard.cards[0].title, "林 美穂 · PM");
+    assert.equal(details.workboard.cards[1].dependencyState, "ready");
+    assert.equal(details.workboard.cards[0].handoffTo, "陈志远 · 前端工程师");
     assert.equal(details.events[0].title, "auto_reassignment · 吴晓敏");
     assert.match(details.events[0].detail, /busy/);
     assert.equal(details.recoveryActions.length, 3);

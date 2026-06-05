@@ -2361,6 +2361,31 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       )}
                     </div>
                   )}
+                  {details?.workboard && (
+                    <div style={{ border:`1px solid ${details.workboard.summary.needsAttention ? T.yellow : T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
+                        <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.workboard.title}</div>
+                        <div style={{ color:details.workboard.summary.needsAttention ? T.yellow : T.muted, fontSize:"9.5px", fontWeight:900 }}>
+                          {label("可执行", "実行可", "Ready")} {details.workboard.summary.ready} · {label("阻塞", "ブロック", "Blocked")} {details.workboard.summary.blocked} · {label("失败", "失敗", "Failed")} {details.workboard.summary.failed}
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
+                        {details.workboard.cards.map((card, index) => {
+                          const color = card.status === "complete" ? T.green : card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue;
+                          return (
+                            <div key={`${card.title}-${index}`} style={{ border:`1px solid ${color}35`, background:T.surface, borderRadius:"6px", padding:"6px", minWidth:0 }}>
+                              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"6px" }}>
+                                <div style={{ color:T.text, fontSize:"10px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{card.title}</div>
+                                <span style={{ color, fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{card.status} · {card.dependencyState}</span>
+                              </div>
+                              <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{card.task || "-"}{card.output ? ` · ${label("输出", "出力", "Output")}: ${card.output}` : ""}</div>
+                              <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{label("交付", "引き渡し", "Handoff")}: {card.handoffTo || "-"}{card.blockedBy?.length ? ` · ${label("等待", "待ち", "Waiting")}: ${card.blockedBy.join(" / ")}` : ""}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {details?.toolCalls && (
                     <div style={{ border:`1px solid ${details.toolCalls.needsAttention ? T.orange : T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ color:details.toolCalls.needsAttention ? T.orange : T.text, fontSize:"10.8px", fontWeight:900 }}>{label("工具调用", "ツール呼び出し", "Tool calls")}</div>
