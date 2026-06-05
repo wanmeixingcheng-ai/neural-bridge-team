@@ -2386,6 +2386,22 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       </div>
                     </div>
                   )}
+                  {!!details?.comments?.length && (
+                    <div style={{ border:`1px solid ${T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
+                      <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{label("Workboard 评论", "Workboard コメント", "Workboard comments")}</div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
+                        {details.comments.map((comment, index) => (
+                          <div key={`${comment.title}-${index}`} style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"6px", padding:"6px", minWidth:0 }}>
+                            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"6px" }}>
+                              <div style={{ color:T.text, fontSize:"10px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{comment.title}</div>
+                              <span style={{ color:T.muted, fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{comment.meta || "-"}</span>
+                            </div>
+                            <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.4, marginTop:"2px", whiteSpace:"pre-wrap" }}>{comment.detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {details?.toolCalls && (
                     <div style={{ border:`1px solid ${details.toolCalls.needsAttention ? T.orange : T.border}`, background:T.card, borderRadius:"7px", padding:"7px", marginBottom:"8px" }}>
                       <div style={{ color:details.toolCalls.needsAttention ? T.orange : T.text, fontSize:"10.8px", fontWeight:900 }}>{label("工具调用", "ツール呼び出し", "Tool calls")}</div>
