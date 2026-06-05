@@ -342,11 +342,17 @@ describe("workflowArchive", () => {
       title: "综合报告",
       task: "分析项目",
       source: "aria-workflow",
-      members:[{ id:"pm", name:"林 美穂", title:"PM", model:"gemma26", status:"complete" }],
+      members:[
+        { id:"pm", name:"林 美穂", title:"PM", model:"gemma26", status:"complete" },
+        { id:"fe", name:"陈志远", title:"前端工程师", model:"codex", status:"queued" },
+      ],
       plan: {
         strategy:"ARIA 自动调度",
         protocol:{ intent:"分析项目", task_type:"product", priority:"high" },
-        steps:[{ order:1, member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解" }],
+        steps:[
+          { order:1, memberId:"pm", member:"林 美穂", title:"PM", model:"gemma26", purpose:"项目拆解", output:"PRD" },
+          { order:2, memberId:"fe", member:"陈志远", title:"前端工程师", model:"codex", purpose:"实现界面", output:"UI", dependencies:["pm"] },
+        ],
       },
       modelUsage:{
         external:true,
@@ -374,16 +380,20 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.requiresApproval, false);
     assert.match(payload.memory.metadata.approvalSummary, /工作流记录/);
     assert.match(payload.memory.metadata.approvalSummary, /记忆 approved/);
-    assert.match(payload.memory.metadata.approvalSummary, /成员 1/);
+    assert.match(payload.memory.metadata.approvalSummary, /成员 2/);
     assert.equal(payload.memory.metadata.status, "done");
     assert.equal(payload.memory.metadata.taskType, "product");
     assert.equal(payload.memory.metadata.priority, "high");
     assert.equal(payload.memory.metadata.qualityComplete, true);
-    assert.deepEqual(payload.memory.metadata.members, ["林 美穂 · PM"]);
+    assert.deepEqual(payload.memory.metadata.members, ["林 美穂 · PM", "陈志远 · 前端工程师"]);
+    assert.equal(payload.memory.metadata.workboardHandoffs[0].from, "林 美穂 · PM");
+    assert.equal(payload.memory.metadata.workboardHandoffs[0].to, "陈志远 · 前端工程师");
+    assert.equal(payload.memory.metadata.workboardHandoffs[0].status, "ready");
     assert.equal(payload.memory.metadata.artifactVersions[0].version, 1);
     assert.match(payload.memory.metadata.artifactVersions[0].hash, /^a-/);
     assert.match(payload.memory.content, /taskType: product/);
     assert.match(payload.memory.content, /qualityComplete: yes/);
+    assert.match(payload.memory.content, /workboardHandoffs: 林 美穂 · PM -> 陈志远 · 前端工程师 · ready · PRD/);
     assert.match(payload.memory.content, /整合结论/);
   });
 
