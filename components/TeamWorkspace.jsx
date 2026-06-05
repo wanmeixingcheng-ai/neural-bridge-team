@@ -42,6 +42,7 @@ import {
   workflowStatusLabel,
   workflowToolCallChecklist,
   workflowWorkboardCards,
+  workflowWorkboardHandoffs,
   workflowWorkboardSummary,
   workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
@@ -2523,6 +2524,7 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
   const queue = workflowQueueSummary(currentWorkflow.members);
   const workboardCards = workflowWorkboardCards(currentWorkflow, lang);
   const workboardSummary = workflowWorkboardSummary(workboardCards);
+  const workboardHandoffs = workflowWorkboardHandoffs(workboardCards);
   const protocol = currentWorkflow.plan?.protocol || null;
   const quality = currentWorkflow.quality || null;
   const reassignment = ["failed", "partial_failed"].includes(currentWorkflow.mode) ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
@@ -2720,6 +2722,28 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
               <span style={{ color:workboardSummary.failed ? T.red : T.muted, border:`1px solid ${(workboardSummary.failed ? T.red : T.muted)}40`, background:T.surface, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900 }}>{lang==="ja" ? "失敗" : lang==="en" ? "Failed" : "失败"} {workboardSummary.failed}</span>
               <span style={{ color:workboardSummary.needsAttention ? T.yellow : T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>{workboardActionLabel[workboardSummary.nextAction]}{workboardSummary.nextCard ? ` · ${workboardSummary.nextCard.member} · ${workboardSummary.nextCard.title}` : ""}</span>
             </div>
+            {!!workboardHandoffs.length && (
+              <div style={{ display:"flex", flexDirection:"column", gap:"4px", marginTop:"7px", border:`1px solid ${T.border}`, background:T.surface, borderRadius:"7px", padding:"7px" }}>
+                <div style={{ color:T.text, fontSize:"10.3px", fontWeight:900 }}>{lang==="ja" ? "引き渡しチェーン" : lang==="en" ? "Handoff chain" : "交接链路"}</div>
+                {workboardHandoffs.slice(0, 4).map((handoff, index) => {
+                  const color = handoff.status === "ready" ? T.green : handoff.status === "failed_source" ? T.red : handoff.status === "blocked_source" ? T.yellow : T.muted;
+                  const statusText = handoff.status === "ready"
+                    ? (lang==="ja" ? "引き渡し可" : lang==="en" ? "Ready to hand off" : "可交付")
+                    : handoff.status === "in_progress"
+                      ? (lang==="ja" ? "作業中" : lang==="en" ? "In progress" : "执行中")
+                      : handoff.status === "failed_source"
+                        ? (lang==="ja" ? "元カード失敗" : lang==="en" ? "Source failed" : "源卡失败")
+                        : handoff.status === "blocked_source"
+                          ? (lang==="ja" ? "元カード待機" : lang==="en" ? "Source blocked" : "源卡阻塞")
+                          : (lang==="ja" ? "待機中" : lang==="en" ? "Waiting" : "等待源产物");
+                  return (
+                    <div key={`${handoff.from}-${handoff.to}-${index}`} style={{ color:T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>
+                      <span style={{ color, fontWeight:900 }}>{statusText}</span> · {handoff.from || "-"} → {handoff.to || "-"}{handoff.output ? ` · ${handoff.output}` : ""}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div style={{ display:"flex", flexDirection:"column", gap:"7px", marginTop:"8px" }}>
               {workboardCards.map(card => {
                 const statusColor = card.status === "complete" ? T.green : card.status === "failed" ? T.red : card.status === "working" ? T.blue : T.muted;

@@ -36,6 +36,7 @@ import {
   workflowQualityCheck,
   workflowToolCallChecklist,
   workflowWorkboardCards,
+  workflowWorkboardHandoffs,
   workflowWorkboardSummary,
 } from "../lib/taskEngine.mjs";
 
@@ -349,6 +350,28 @@ test("workflow workboard summary recommends the next production action", () => {
   assert.equal(workflowWorkboardSummary([{ status:"queued", dependencyState:"ready", member:"FE" }]).nextAction, "start_ready");
   assert.equal(workflowWorkboardSummary([{ status:"queued", dependencyState:"blocked", blockedBy:["PM"] }]).nextAction, "wait_dependencies");
   assert.equal(workflowWorkboardSummary([{ status:"complete", dependencyState:"none" }]).nextAction, "integrate");
+});
+
+test("workflow workboard handoffs summarize agent data flow", () => {
+  const handoffs = workflowWorkboardHandoffs([
+    { id:"pm", member:"林 美穂", title:"PM", status:"complete", dependencyState:"none", output:"PRD", downstream:["陈志远 · 前端工程师"] },
+    { id:"fe", member:"陈志远", title:"前端工程师", status:"working", dependencyState:"ready", output:"UI", handoffTo:"吴晓敏 · QA" },
+    { id:"qa", member:"吴晓敏", title:"QA", status:"queued", dependencyState:"blocked", blockedBy:["陈志远"], handoffTo:"ARIA 整合" },
+  ]);
+
+  assert.equal(handoffs.length, 3);
+  assert.deepEqual(handoffs[0], {
+    from:"林 美穂 · PM",
+    to:"陈志远 · 前端工程师",
+    status:"ready",
+    output:"PRD",
+    ready:true,
+    blockedBy:[],
+  });
+  assert.equal(handoffs[1].status, "in_progress");
+  assert.equal(handoffs[1].ready, false);
+  assert.equal(handoffs[2].status, "blocked_source");
+  assert.deepEqual(handoffs[2].blockedBy, ["陈志远"]);
 });
 
 test("workboard card action prompt targets a single executable card", () => {
