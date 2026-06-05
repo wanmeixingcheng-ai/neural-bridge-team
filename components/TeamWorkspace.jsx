@@ -39,6 +39,7 @@ import {
   workflowOutputQaChecklist,
   workflowStatusLabel,
   workflowToolCallChecklist,
+  workflowWorkboardCards,
   workflowExternalDisclosureLines,
 } from "../lib/taskEngine.mjs";
 import {
@@ -2464,11 +2465,17 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const currentWorkflow = workflow || emptyWorkflowState(lang);
   const [artifactNotice, setArtifactNotice] = useState("");
   const [savingArtifactId, setSavingArtifactId] = useState("");
+  const [workboardComments, setWorkboardComments] = useState([]);
+  const [workboardInputs, setWorkboardInputs] = useState({});
   const modeColor = workflowModeColor(currentWorkflow.mode);
   const progress = currentWorkflow.progress || { done:0, total:0 };
   const canRetry = ["failed", "partial_failed", "stopped"].includes(currentWorkflow.mode);
   const canConfirm = currentWorkflow.mode === "waiting_confirmation";
   const queue = workflowQueueSummary(currentWorkflow.members);
+  const workboardCards = workflowWorkboardCards({
+    ...currentWorkflow,
+    comments:[...(currentWorkflow.comments || []), ...workboardComments],
+  }, lang);
   const protocol = currentWorkflow.plan?.protocol || null;
   const quality = currentWorkflow.quality || null;
   const reassignment = ["failed", "partial_failed"].includes(currentWorkflow.mode) ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
@@ -2482,6 +2489,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
     continue_queue: lang==="ja" ? "次の一手：キューを続行" : lang==="en" ? "Next action: continue queue" : "下一步：继续队列",
     ready_to_integrate: lang==="ja" ? "次の一手：成果物を統合" : lang==="en" ? "Next action: integrate output" : "下一步：整合产物",
     review_queue: lang==="ja" ? "次の一手：キューを確認" : lang==="en" ? "Next action: review queue" : "下一步：复核队列",
+  };
+  const addWorkboardComment = (cardId) => {
+    const text = `${workboardInputs[cardId] || ""}`.trim();
+    if (!text) return;
+    setWorkboardComments(items => [...items, { targetMemberId:cardId, author:"human", text, at:new Date().toISOString() }]);
+    setWorkboardInputs(values => ({ ...values, [cardId]:"" }));
   };
   const downloadCurrentArtifact = async (index = 0) => {
     const markdown = formatWorkflowArtifactMarkdown(currentWorkflow, index, lang);
@@ -2613,6 +2626,54 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        {!!workboardCards.length && (
+          <div style={{ marginTop:"10px", border:`1px solid ${T.border}`, background:T.card, borderRadius:"8px", padding:"9px" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
+              <div style={{ color:T.text, fontSize:"11.5px", fontWeight:900 }}>Workboard</div>
+              <div style={{ color:T.muted, fontSize:"9.5px", fontWeight:900 }}>{lang==="ja" ? "依存 · 引き渡し · コメント" : lang==="en" ? "Dependencies · handoffs · comments" : "依赖 · 交付 · 评论"}</div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:"7px", marginTop:"8px" }}>
+              {workboardCards.map(card => {
+                const statusColor = card.status === "complete" ? T.green : card.status === "failed" ? T.red : card.status === "working" ? T.blue : T.muted;
+                return (
+                  <div key={card.id} style={{ border:`1px solid ${statusColor}35`, background:T.surface, borderRadius:"8px", padding:"8px" }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ color:T.text, fontSize:"11px", fontWeight:900, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{card.member} · {card.title}</div>
+                        <div style={{ color:T.muted, fontSize:"9.8px", marginTop:"2px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{card.task || "-"}</div>
+                      </div>
+                      <span style={{ color:statusColor, border:`1px solid ${statusColor}40`, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{workflowStatusLabel(lang, card.status)} · {card.progress}%</span>
+                    </div>
+                    <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"6px" }}>
+                      {lang==="ja" ? "入力" : lang==="en" ? "Input" : "输入"}: {card.input || "-"}
+                    </div>
+                    <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>
+                      {lang==="ja" ? "出力" : lang==="en" ? "Output" : "输出"}: {card.output || "-"}
+                    </div>
+                    <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>
+                      {lang==="ja" ? "依存" : lang==="en" ? "Depends" : "依赖"}: {card.dependencies.length ? card.dependencies.join(" / ") : "-"} · {lang==="ja" ? "引き渡し" : lang==="en" ? "Handoff" : "交付"}: {card.handoffTo || "-"}
+                    </div>
+                    {card.acceptanceCriteria && <div style={{ color:T.green, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "受入：" : lang==="en" ? "Acceptance: " : "验收："}{card.acceptanceCriteria}</div>}
+                    {card.agentComment && <div style={{ color:T.text, background:T.card, border:`1px solid ${T.border}`, borderRadius:"7px", padding:"6px", fontSize:"10px", lineHeight:1.45, marginTop:"6px" }}>Agent: {card.agentComment}</div>}
+                    {!!card.comments.length && (
+                      <div style={{ display:"flex", flexDirection:"column", gap:"4px", marginTop:"6px" }}>
+                        {card.comments.map((comment, index) => (
+                          <div key={`${card.id}-comment-${index}`} style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.35 }}>
+                            {comment.author || "human"}: {comment.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display:"flex", gap:"6px", marginTop:"6px" }}>
+                      <input value={workboardInputs[card.id] || ""} onChange={e=>setWorkboardInputs(values => ({ ...values, [card.id]:e.target.value }))} onKeyDown={e=>{ if (e.key === "Enter") addWorkboardComment(card.id); }} placeholder={lang==="ja" ? "コメント" : lang==="en" ? "Comment" : "评论"} style={{ flex:1, minWidth:0, border:`1px solid ${T.border}`, background:T.card, color:T.text, borderRadius:"7px", padding:"6px", fontSize:"10px" }} />
+                      <button type="button" onClick={()=>addWorkboardComment(card.id)} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.blue, borderRadius:"7px", padding:"6px 8px", fontSize:"10px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{lang==="ja" ? "追加" : lang==="en" ? "Add" : "添加"}</button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

@@ -33,6 +33,7 @@ import {
   workflowOutputQaChecklist,
   workflowQualityCheck,
   workflowToolCallChecklist,
+  workflowWorkboardCards,
 } from "../lib/taskEngine.mjs";
 
 const members = [
@@ -290,6 +291,34 @@ test("workflow queue summary tracks member execution states", () => {
   assert.equal(workflowQueueSummary([{ status:"complete" }]).nextAction, "ready_to_integrate");
   assert.equal(workflowQueueSummary([{ status:"stopped" }]).nextAction, "review_queue");
   assert.equal(workflowQueueSummary([]).nextAction, "idle");
+});
+
+test("workflow workboard cards expose dependencies, handoffs, and comments", () => {
+  const cards = workflowWorkboardCards({
+    task:"发布 Workboard",
+    members:[
+      { id:"pm", name:"林 美穂", title:"PM", status:"complete", summary:"需求已拆完" },
+      { id:"fe", name:"陈志远", title:"前端工程师", status:"working", task:"实现看板" },
+    ],
+    plan:{
+      steps:[
+        { order:1, memberId:"pm", member:"林 美穂", title:"PM", subtask:"拆需求", input:"用户目标", output:"PRD", acceptanceCriteria:"范围清晰" },
+        { order:2, memberId:"fe", member:"陈志远", title:"前端工程师", subtask:"实现看板", input:"PRD", output:"UI", dependencies:["pm"], acceptanceCriteria:"移动端不溢出" },
+      ],
+    },
+    comments:[
+      { targetMemberId:"fe", author:"human", text:"注意手机端" },
+    ],
+  }, "zh");
+
+  assert.equal(cards.length, 2);
+  assert.equal(cards[0].progress, 100);
+  assert.equal(cards[0].handoffTo, "陈志远 · 前端工程师");
+  assert.equal(cards[0].agentComment, "需求已拆完");
+  assert.equal(cards[1].progress, 50);
+  assert.deepEqual(cards[1].dependencies, ["pm"]);
+  assert.equal(cards[1].comments[0].text, "注意手机端");
+  assert.equal(cards[1].acceptanceCriteria, "移动端不溢出");
 });
 
 test("workflow lifecycle steps expose the production task state machine", () => {

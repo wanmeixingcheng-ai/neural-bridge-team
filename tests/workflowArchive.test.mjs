@@ -402,17 +402,24 @@ describe("workflowArchive", () => {
       task:"分析项目",
       source:"aria-workflow",
       status:"done",
-      artifacts:[{ title:"最终产物", version:3, hash:"a-v3", content:"第三版结论" }],
-    }, 0, "zh");
+      artifacts:[
+        { title:"最终产物", version:2, hash:"a-v2", content:"第二版结论" },
+        { title:"最终产物", version:3, hash:"a-v3", content:"第三版结论" },
+      ],
+    }, 1, "zh");
 
     assert.equal(payload.document.status, "candidate");
     assert.equal(payload.memory.status, "candidate");
     assert.equal(payload.document.source, "workflow-artifact:wf-artifact:a-v3");
     assert.match(payload.document.title, /工作流产物版本/);
     assert.match(payload.document.text, /artifactVersion: v3/);
+    assert.match(payload.document.text, /previousArtifactHash: a-v2/);
+    assert.match(payload.document.text, /nextVersion: v4/);
     assert.match(payload.document.text, /第三版结论/);
     assert.equal(payload.memory.metadata.artifactVersion, 3);
     assert.equal(payload.memory.metadata.artifactHash, "a-v3");
+    assert.equal(payload.memory.metadata.previousArtifactHash, "a-v2");
+    assert.equal(payload.memory.metadata.nextVersion, 4);
     assert.equal(payload.memory.metadata.workflowRecordId, "wf-artifact");
     assert.equal(payload.memory.metadata.sourceType, "workflow_artifact_version");
     assert.equal(payload.memory.metadata.ingestAction, "artifact_version_candidate");
