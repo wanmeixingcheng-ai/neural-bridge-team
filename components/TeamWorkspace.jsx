@@ -2375,6 +2375,21 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                           {label("可执行", "実行可", "Ready")} {details.workboard.summary.ready} · {label("阻塞", "ブロック", "Blocked")} {details.workboard.summary.blocked} · {label("失败", "失敗", "Failed")} {details.workboard.summary.failed}
                         </div>
                       </div>
+                      {!!details.workboard.handoffs?.length && (
+                        <div style={{ border:`1px solid ${T.border}`, background:T.surface, borderRadius:"6px", padding:"6px", marginTop:"6px" }}>
+                          <div style={{ color:T.text, fontSize:"10px", fontWeight:900 }}>{label("交接链路", "引き渡しチェーン", "Handoff chain")}</div>
+                          <div style={{ display:"flex", flexDirection:"column", gap:"3px", marginTop:"4px" }}>
+                            {details.workboard.handoffs.slice(0, 5).map((handoff, index) => {
+                              const color = handoff.status === "ready" ? T.green : handoff.status === "failed_source" ? T.red : handoff.status === "blocked_source" ? T.yellow : T.muted;
+                              return (
+                                <div key={`${handoff.from}-${handoff.to}-${index}`} style={{ color:T.muted, fontSize:"9.4px", lineHeight:1.35 }}>
+                                  <span style={{ color, fontWeight:900 }}>{handoff.status}</span> · {handoff.from || "-"} → {handoff.to || "-"}{handoff.output ? ` · ${handoff.output}` : ""}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
                         {details.workboard.cards.map((card, index) => {
                           const color = card.status === "complete" ? T.green : card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue;

@@ -121,6 +121,9 @@ describe("workflowArchive", () => {
     assert.match(markdown, /## Workboard/);
     assert.match(markdown, /摘要: 可执行 1 · 阻塞 0 · 失败 0/);
     assert.match(markdown, /\| 陈志远 · 前端工程师 \| queued \| ready \| 实现看板 \| UI \| ARIA 整合 \|/);
+    assert.match(markdown, /### 交接链路/);
+    assert.match(markdown, /ready: 林 美穂 · PM -> 陈志远 · 前端工程师 · 报告/);
+    assert.match(markdown, /waiting_source: 陈志远 · 前端工程师 -> ARIA 整合 · UI/);
     assert.match(markdown, /Workboard 评论/);
     assert.match(markdown, /请前端继续接收 PM 输出/);
     assert.match(markdown, /执行事件/);
@@ -509,6 +512,9 @@ describe("workflowArchive", () => {
     assert.equal(details.workboard.cards[1].role, "前端工程师");
     assert.equal(details.workboard.cards[1].dependencyState, "ready");
     assert.equal(details.workboard.cards[0].handoffTo, "陈志远 · 前端工程师");
+    assert.equal(details.workboard.handoffs[0].from, "林 美穂 · PM");
+    assert.equal(details.workboard.handoffs[0].to, "陈志远 · 前端工程师");
+    assert.equal(details.workboard.handoffs[0].status, "ready");
     assert.equal(details.events[0].title, "auto_reassignment · 吴晓敏");
     assert.match(details.events[0].detail, /busy/);
     assert.equal(details.recoveryActions.length, 3);
