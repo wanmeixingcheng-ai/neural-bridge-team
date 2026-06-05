@@ -345,6 +345,8 @@ test("workflow workboard cards expose dependencies, handoffs, and comments", () 
   assert.equal(summary.blocked, 1);
   assert.equal(summary.working, 1);
   assert.equal(summary.completionRate, 33);
+  assert.equal(summary.handoffReady, 1);
+  assert.equal(summary.handoffBlocked, 1);
   assert.equal(summary.needsAttention, true);
   assert.equal(summary.nextAction, "monitor_working");
   assert.equal(summary.nextCard.member, "陈志远");
