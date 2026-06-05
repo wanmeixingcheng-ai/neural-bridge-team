@@ -616,6 +616,26 @@ describe("workflowArchive", () => {
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "needs_attention").map(item => item.id), ["partial", "failed", "approval", "codex"]);
   });
 
+  it("adds stop automation recovery action for quota exhausted events", () => {
+    const details = buildWorkflowRecordDetails({
+      id:"quota",
+      status:"partial_failed",
+      title:"额度用尽",
+      events:[{
+        type:"model_request_failed",
+        member:"ARIA",
+        status:"quota_exhausted",
+        detail:"Resource exhausted, please check quota",
+        at:"2026-06-06T13:00:00.000Z",
+      }],
+    }, "zh");
+
+    const action = details.recoveryActions.find(item => item.type === "stop_quota_exhausted_automation");
+    assert.ok(action);
+    assert.match(action.label, /停止自动化/);
+    assert.match(action.detail, /quota/i);
+  });
+
   it("generates stable artifact content fingerprints", () => {
     assert.equal(artifactContentHash("same output"), artifactContentHash("same output"));
     assert.notEqual(artifactContentHash("same output"), artifactContentHash("different output"));
