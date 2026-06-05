@@ -14,6 +14,7 @@ import {
 } from "../lib/attachmentPolicy.mjs";
 import {
   emptyWorkflowState,
+  buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
   buildWorkflowPlanEditPrompt,
   buildWorkflowReassignmentPrompt,
@@ -2517,6 +2518,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
   };
   const runWorkboardCardAction = (card) => {
     const action = card.status === "failed" ? "retry" : card.dependencyState === "blocked" ? "unblock" : "continue";
+    const event = buildWorkboardCardActionEvent(card, action);
+    onWorkflowUpdate?.(previous => ({
+      ...(previous || currentWorkflow),
+      events:[...((previous || currentWorkflow).events || []), event].slice(-40),
+      updatedAt:event.at,
+    }));
     const prompt = buildWorkboardCardActionPrompt(currentWorkflow, card, action, lang);
     if (action === "retry") onRetryWorkflow?.(prompt);
     else onContinueWorkflow?.(prompt);

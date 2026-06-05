@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
   chooseWorkflowMembers,
   ensureExecutableWorkflowMembers,
@@ -375,6 +376,25 @@ test("workboard card action prompt targets a single executable card", () => {
   assert.match(prompt, /阻塞来源: 陈志远/);
   assert.match(prompt, /验收标准: 关键状态清晰/);
   assert.match(prompt, /不要只解释计划/);
+});
+
+test("workboard card action event records auditable card operations", () => {
+  const event = buildWorkboardCardActionEvent({
+    id:"qa",
+    member:"吴晓敏",
+    title:"QA",
+    dependencyState:"blocked",
+    blockedBy:["陈志远"],
+    handoffTo:"ARIA 整合",
+  }, "unblock", "2026-06-05T01:56:00.000Z");
+
+  assert.equal(event.at, "2026-06-05T01:56:00.000Z");
+  assert.equal(event.type, "workboard_card_action");
+  assert.equal(event.member, "吴晓敏");
+  assert.equal(event.status, "unblock");
+  assert.match(event.detail, /dependency=blocked/);
+  assert.match(event.detail, /blocked_by=陈志远/);
+  assert.match(event.detail, /handoff=ARIA 整合/);
 });
 
 test("workflow lifecycle steps expose the production task state machine", () => {
