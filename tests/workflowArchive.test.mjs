@@ -502,6 +502,7 @@ describe("workflowArchive", () => {
         { type:"auto_reassignment", member:"吴晓敏", model:"claude -> gemma26", status:"running", detail:"busy" },
         { type:"fallback_failed", member:"吴晓敏", model:"gemma26", status:"failed", detail:"timeout" },
         { type:"manual_confirmation", member:"陈志远", model:"codex", status:"failed", detail:"admin token required" },
+        { type:"workflow_execution_gate", member:"陈志远", status:"blocked_by_local_only", detail:"Local-only 阻止 Codex/GitHub 投递" },
       ],
       comments:[{ targetMemberId:"fe", targetMember:"陈志远", author:"human", text:"继续接 QA 结果", at:"2026-06-04T00:02:00.000Z" }],
       artifacts:[{ title:"最终产物", kind:"整合报告", content:"整合结论" }],
@@ -527,9 +528,10 @@ describe("workflowArchive", () => {
     assert.equal(details.workboard.handoffs[0].status, "ready");
     assert.equal(details.events[0].title, "auto_reassignment · 吴晓敏");
     assert.match(details.events[0].detail, /busy/);
-    assert.equal(details.recoveryActions.length, 3);
+    assert.equal(details.recoveryActions.length, 4);
     assert.equal(details.recoveryActions.find(item => item.type === "retry_or_reassign").member, "吴晓敏");
     assert.match(details.recoveryActions.find(item => item.type === "manual_confirmation").label, /人工确认/);
+    assert.match(details.recoveryActions.find(item => item.type === "resolve_local_only_gate").label, /Local-only/);
     assert.equal(details.toolCalls.needsAttention, true);
     assert.equal(details.comments[0].title, "human · 陈志远");
     assert.equal(details.comments[0].detail, "继续接 QA 结果");
