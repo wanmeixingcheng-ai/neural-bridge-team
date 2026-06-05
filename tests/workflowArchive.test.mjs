@@ -318,6 +318,23 @@ describe("workflowArchive", () => {
     assert.match(prompt, /旧版上线方案/);
   });
 
+  it("builds a recovery prompt for gated execution events", () => {
+    const prompt = buildWorkflowEventRecoveryPrompt({
+      title:"执行被阻止",
+      task:"读取网页并投递 Codex",
+      members:[{ name:"陈志远", title:"前端工程师", status:"queued" }],
+      events:[
+        { type:"workflow_execution_gate", member:"陈志远", status:"blocked_by_local_only", detail:"Local-only 阻止 Codex/GitHub 投递" },
+      ],
+    }, 0, "zh");
+
+    assert.match(prompt, /处理 Local-only 阻塞/);
+    assert.match(prompt, /闸门处理/);
+    assert.match(prompt, /不要绕过 Local-only/);
+    assert.match(prompt, /本地可执行步骤/);
+    assert.match(prompt, /只恢复被阻塞的卡片/);
+  });
+
   it("builds a batch recovery prompt for records needing attention", () => {
     const prompt = buildWorkflowAttentionRecoveryPrompt([
       { id:"ok", title:"完成记录", status:"done", task:"已完成" },
