@@ -17,6 +17,8 @@ import {
   buildWorkflowExecutionGateEvent,
   buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
+  buildWorkboardExecutionPacket,
+  buildWorkboardExecutionPacketEvent,
   buildWorkflowPlanEditPrompt,
   buildWorkflowReassignmentPrompt,
   buildWorkflowRetryPrompt,
@@ -2597,9 +2599,11 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
     }
     const action = card.status === "failed" ? "retry" : card.dependencyState === "blocked" ? "unblock" : "continue";
     const event = buildWorkboardCardActionEvent(card, action);
+    const packet = buildWorkboardExecutionPacket(currentWorkflow, card, lang);
+    const packetEvent = buildWorkboardExecutionPacketEvent(packet, event.at);
     onWorkflowUpdate?.(previous => ({
       ...(previous || currentWorkflow),
-      events:[...((previous || currentWorkflow).events || []), event].slice(-40),
+      events:[...((previous || currentWorkflow).events || []), event, packetEvent].slice(-40),
       updatedAt:event.at,
     }));
     const prompt = buildWorkboardCardActionPrompt(currentWorkflow, card, action, lang);

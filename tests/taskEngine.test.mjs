@@ -5,6 +5,7 @@ import {
   buildWorkboardCardActionEvent,
   buildWorkboardCardActionPrompt,
   buildWorkboardExecutionPacket,
+  buildWorkboardExecutionPacketEvent,
   buildWorkflowExecutionGateEvent,
   chooseWorkflowMembers,
   ensureExecutableWorkflowMembers,
@@ -610,6 +611,28 @@ test("workboard execution packet describes real tool execution needs", () => {
   assert.ok(packet.blockers.some(item => item.status === "needs_admin"));
   assert.match(packet.instructions.join("\n"), /只执行这张 Workboard 卡片/);
   assert.match(packet.outputContract, /实际产物/);
+});
+
+test("workboard execution packet event records executable tool contract", () => {
+  const packet = buildWorkboardExecutionPacket({}, {
+    id:"fe",
+    member:"陈志远",
+    title:"前端工程师",
+    status:"queued",
+    dependencyState:"ready",
+    task:"修复",
+    output:"验证报告",
+    handoffTo:"ARIA 整合",
+    acceptanceCriteria:"测试通过",
+  }, "zh");
+  const event = buildWorkboardExecutionPacketEvent(packet, "2026-06-05T07:24:00.000Z");
+
+  assert.equal(event.type, "workboard_execution_packet");
+  assert.equal(event.member, "陈志远");
+  assert.equal(event.status, "ready");
+  assert.match(event.detail, /action=continue/);
+  assert.match(event.detail, /handoff=ARIA 整合/);
+  assert.match(event.detail, /acceptance=测试通过/);
 });
 
 test("workflow quality check flags missing member outputs", () => {
