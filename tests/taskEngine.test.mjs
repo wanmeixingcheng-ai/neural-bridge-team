@@ -567,6 +567,7 @@ test("workflow execution readiness gates real task execution", () => {
   assert.equal(ready.status, "ready_to_execute");
   assert.equal(ready.canExecute, true);
   assert.equal(ready.nextCard.member, "林 美穂");
+  assert.equal(ready.summary.completionRate, 0);
 
   const waitingPermission = workflowExecutionReadiness({
     task:"读取 https://example.com 后部署到 Vercel",

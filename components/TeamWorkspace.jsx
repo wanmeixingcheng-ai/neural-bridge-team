@@ -2940,6 +2940,9 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
                 {lang==="ja" ? "次：" : lang==="en" ? "Next: " : "下一步："}{executionReadiness.nextCard.member} · {executionReadiness.nextCard.title} · {executionReadiness.nextCard.status}
               </div>
             )}
+            <div style={{ color:T.muted, fontSize:"9.8px", lineHeight:1.4, marginTop:"4px" }}>
+              {lang==="ja" ? "Workboard 進捗" : lang==="en" ? "Workboard progress" : "Workboard 进度"}: {executionReadiness.summary.completionRate}%
+            </div>
             {!!executionReadiness.blockers.length && (
               <div style={{ display:"flex", flexDirection:"column", gap:"3px", marginTop:"6px" }}>
                 {executionReadiness.blockers.slice(0, 3).map(blocker => (
