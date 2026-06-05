@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { detectInputLanguage, extractUrls, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, normalizeModelResponse, outboundBlockedByLocalOnly, outboundBlockedModelKeys, outboundProviderLabel, workflowLocalOnlyBlockMessage } from "../lib/modelGateway.mjs";
+import { detectInputLanguage, extractUrls, isQuotaExhaustionMessage, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, normalizeModelResponse, outboundBlockedByLocalOnly, outboundBlockedModelKeys, outboundProviderLabel, workflowLocalOnlyBlockMessage } from "../lib/modelGateway.mjs";
 
 describe("modelGateway", () => {
   it("detects the user input language", () => {
@@ -15,6 +15,13 @@ describe("modelGateway", () => {
     assert.deepEqual(extractUrls("看 https://example.com/a，和 https://example.com/a."), [
       "https://example.com/a",
     ]);
+  });
+
+  it("detects quota exhaustion and rate limit provider failures", () => {
+    assert.equal(isQuotaExhaustionMessage("Resource exhausted, please check quota"), true);
+    assert.equal(isQuotaExhaustionMessage("Too many requests", 0), true);
+    assert.equal(isQuotaExhaustionMessage("temporary internal error", 429), true);
+    assert.equal(isQuotaExhaustionMessage("permission denied", 403), false);
   });
 
   it("labels outbound model providers", () => {

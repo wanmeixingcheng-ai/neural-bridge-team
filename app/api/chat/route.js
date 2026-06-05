@@ -2,6 +2,7 @@ import { isAuthenticatedAsync } from "../auth/session.js";
 import { readJsonLimited, requestBodyTooLargeResponse } from "../../../lib/requestBody.mjs";
 import { checkRateLimitAsync, rateLimitResponse } from "../../../lib/rateLimit.mjs";
 import { auditEvent } from "../../../lib/auditLog.mjs";
+import { isQuotaExhaustionMessage } from "../../../lib/modelGateway.mjs";
 
 const CHAT_MAX_REQUEST_BYTES = 3 * 1024 * 1024;
 const CHAT_RATE_WINDOW_MS = 60_000;
@@ -237,7 +238,7 @@ function providerError(provider, message, status, modelLabel = "") {
   if (lower.includes("internal error encountered") || lower.includes("internal error")) {
     return `${prefix} 服务端内部错误。通常是模型服务临时异常或该模型当前不可用，请稍后重试，或手动切换到 Gemini 2.5 Flash。`;
   }
-  if (lower.includes("quota") || lower.includes("rate limit")) {
+  if (isQuotaExhaustionMessage(text, status)) {
     return `${prefix} 额度或频率限制不足：${text}`;
   }
   if (lower.includes("api key") || lower.includes("permission") || lower.includes("unauthorized") || status === 401 || status === 403) {
