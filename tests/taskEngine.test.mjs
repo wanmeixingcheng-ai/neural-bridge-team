@@ -396,6 +396,7 @@ test("workboard card action prompt targets a single executable card", () => {
     handoffTo:"ARIA 整合",
     acceptanceCriteria:"关键状态清晰",
     agentComment:"等待前端输出",
+    comments:[{ author:"human", text:"先检查移动端卡片是否溢出" }],
   }, "unblock", "zh");
 
   assert.match(prompt, /解除/);
@@ -403,6 +404,7 @@ test("workboard card action prompt targets a single executable card", () => {
   assert.match(prompt, /吴晓敏 · QA/);
   assert.match(prompt, /阻塞来源: 陈志远/);
   assert.match(prompt, /验收标准: 关键状态清晰/);
+  assert.match(prompt, /最近评论: human: 先检查移动端卡片是否溢出/);
   assert.match(prompt, /## 执行包/);
   assert.match(prompt, /输出契约/);
   assert.match(prompt, /不要只解释计划/);
