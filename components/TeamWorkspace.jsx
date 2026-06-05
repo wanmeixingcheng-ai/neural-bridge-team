@@ -2377,7 +2377,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
                         <div style={{ color:T.text, fontSize:"10.8px", fontWeight:900 }}>{details.workboard.title}</div>
                         <div style={{ color:details.workboard.summary.needsAttention ? T.yellow : T.muted, fontSize:"9.5px", fontWeight:900 }}>
-                          {label("可执行", "実行可", "Ready")} {details.workboard.summary.ready} · {label("阻塞", "ブロック", "Blocked")} {details.workboard.summary.blocked} · {label("失败", "失敗", "Failed")} {details.workboard.summary.failed}
+                          {label("可执行", "実行可", "Ready")} {details.workboard.summary.ready} · {label("阻塞", "ブロック", "Blocked")} {details.workboard.summary.blocked} · {label("失败", "失敗", "Failed")} {details.workboard.summary.failed} · {label("进度", "進捗", "Progress")} {details.workboard.summary.completionRate}% · {label("交付", "引き渡し", "Handoffs")} {details.workboard.summary.handoffReady}/{details.workboard.summary.handoffBlocked}
                         </div>
                       </div>
                       {!!details.workboard.handoffs?.length && (

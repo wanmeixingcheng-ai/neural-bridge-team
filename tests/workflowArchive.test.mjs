@@ -535,6 +535,9 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.routeLines.join(" "), /陈志远 · 前端工程师: codex/);
     assert.match(details.modelUsage.routeLines.join(" "), /claude -> gemma26/);
     assert.equal(details.workboard.summary.ready, 1);
+    assert.equal(details.workboard.summary.completionRate, 50);
+    assert.equal(details.workboard.summary.handoffReady, 1);
+    assert.equal(details.workboard.summary.handoffBlocked, 0);
     assert.equal(details.workboard.cards[0].title, "林 美穂 · PM");
     assert.equal(details.workboard.cards[1].member, "陈志远");
     assert.equal(details.workboard.cards[1].role, "前端工程师");
