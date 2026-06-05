@@ -2461,21 +2461,17 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
   );
 }
 
-function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
+function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
   const currentWorkflow = workflow || emptyWorkflowState(lang);
   const [artifactNotice, setArtifactNotice] = useState("");
   const [savingArtifactId, setSavingArtifactId] = useState("");
-  const [workboardComments, setWorkboardComments] = useState([]);
   const [workboardInputs, setWorkboardInputs] = useState({});
   const modeColor = workflowModeColor(currentWorkflow.mode);
   const progress = currentWorkflow.progress || { done:0, total:0 };
   const canRetry = ["failed", "partial_failed", "stopped"].includes(currentWorkflow.mode);
   const canConfirm = currentWorkflow.mode === "waiting_confirmation";
   const queue = workflowQueueSummary(currentWorkflow.members);
-  const workboardCards = workflowWorkboardCards({
-    ...currentWorkflow,
-    comments:[...(currentWorkflow.comments || []), ...workboardComments],
-  }, lang);
+  const workboardCards = workflowWorkboardCards(currentWorkflow, lang);
   const protocol = currentWorkflow.plan?.protocol || null;
   const quality = currentWorkflow.quality || null;
   const reassignment = ["failed", "partial_failed"].includes(currentWorkflow.mode) ? workflowFailureReassignmentPlan(currentWorkflow.members, lang) : { needed:false, actions:[] };
@@ -2493,7 +2489,19 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onContinueWorkflow,
   const addWorkboardComment = (cardId) => {
     const text = `${workboardInputs[cardId] || ""}`.trim();
     if (!text) return;
-    setWorkboardComments(items => [...items, { targetMemberId:cardId, author:"human", text, at:new Date().toISOString() }]);
+    const card = workboardCards.find(item => item.id === cardId);
+    const comment = {
+      targetMemberId:cardId,
+      targetMember:card?.member || "",
+      author:"human",
+      text,
+      at:new Date().toISOString(),
+    };
+    onWorkflowUpdate?.(previous => ({
+      ...(previous || currentWorkflow),
+      comments:[...((previous || currentWorkflow).comments || []), comment],
+      updatedAt:comment.at,
+    }));
     setWorkboardInputs(values => ({ ...values, [cardId]:"" }));
   };
   const downloadCurrentArtifact = async (index = 0) => {
@@ -3184,17 +3192,17 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
   );
 }
 
-function RightWorkPanel({ open, onToggle, title, subtitle, lang, workflow, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
+function RightWorkPanel({ open, onToggle, title, subtitle, lang, workflow, onWorkflowUpdate, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
   if (!open) return null;
   return (
     <aside className={`nb-work-panel ${open ? "open" : "collapsed"}`}>
       <button className="nb-work-toggle" onClick={onToggle}>{open ? "›" : "‹"}</button>
-      {open && <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} onContinueWorkflow={onContinueWorkflow} onRetryWorkflow={onRetryWorkflow} onReassignWorkflow={onReassignWorkflow} onSkipWorkflow={onSkipWorkflow} />}
+      {open && <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} onWorkflowUpdate={onWorkflowUpdate} onContinueWorkflow={onContinueWorkflow} onRetryWorkflow={onRetryWorkflow} onReassignWorkflow={onReassignWorkflow} onSkipWorkflow={onSkipWorkflow} />}
     </aside>
   );
 }
 
-function MobileWorkDrawer({ open, onClose, title, subtitle, lang, workflow, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
+function MobileWorkDrawer({ open, onClose, title, subtitle, lang, workflow, onWorkflowUpdate, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
   if (!open) return null;
   return (
     <div className="nb-mobile-work-backdrop" onClick={onClose}>
@@ -3203,7 +3211,7 @@ function MobileWorkDrawer({ open, onClose, title, subtitle, lang, workflow, onCo
           <div style={{ color:T.text, fontSize:"14px", fontWeight:900 }}>{lang==="ja" ? "状態と成果物" : lang==="en" ? "Status and artifacts" : "状态与产物"}</div>
           <button onClick={onClose} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"8px", width:"32px", height:"32px", cursor:"pointer" }}>×</button>
         </div>
-        <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} onContinueWorkflow={onContinueWorkflow} onRetryWorkflow={onRetryWorkflow} onReassignWorkflow={onReassignWorkflow} onSkipWorkflow={onSkipWorkflow} />
+        <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} onWorkflowUpdate={onWorkflowUpdate} onContinueWorkflow={onContinueWorkflow} onRetryWorkflow={onRetryWorkflow} onReassignWorkflow={onReassignWorkflow} onSkipWorkflow={onSkipWorkflow} />
       </div>
     </div>
   );
@@ -3340,6 +3348,10 @@ export default function App() {
     setMembers(values);
     localStorage.setItem("nb_members", JSON.stringify(values));
     if (!values.find(m => m.id === selected.id)) setSelected(values[0] || TEAM[0]);
+  };
+
+  const updateWorkflowState = (updater) => {
+    setWorkflowState(previous => typeof updater === "function" ? updater(previous) : updater);
   };
 
   const clearLocalData = async () => {
@@ -3562,9 +3574,9 @@ export default function App() {
           : activeGroup
             ? <GroupChat key={activeGroup.id} group={activeGroup} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} onWorkflowState={setWorkflowState} />
             : <WorkspaceChat key={selected.id} member={selected} apiKeys={apiConfig} onMenu={()=>setSidebarOpen(true)} onWorkPanel={openWorkPanel} onSessionUpdate={updateChatSession} activeSession={activeSession} lang={lang} allMembers={members} onWorkflowState={setWorkflowState} draftPrompt={draftPrompt} />}
-        <RightWorkPanel open={rightPanelOpen} onToggle={()=>setRightPanelOpen(v=>!v)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} onContinueWorkflow={continueWorkflow} onRetryWorkflow={retryWorkflow} onReassignWorkflow={reassignWorkflow} onSkipWorkflow={skipWorkflow} />
+        <RightWorkPanel open={rightPanelOpen} onToggle={()=>setRightPanelOpen(v=>!v)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} onWorkflowUpdate={updateWorkflowState} onContinueWorkflow={continueWorkflow} onRetryWorkflow={retryWorkflow} onReassignWorkflow={reassignWorkflow} onSkipWorkflow={skipWorkflow} />
       </div>
-      <MobileWorkDrawer open={mobileWorkOpen} onClose={()=>setMobileWorkOpen(false)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} onContinueWorkflow={continueWorkflow} onRetryWorkflow={retryWorkflow} onReassignWorkflow={reassignWorkflow} onSkipWorkflow={skipWorkflow} />
+      <MobileWorkDrawer open={mobileWorkOpen} onClose={()=>setMobileWorkOpen(false)} title={panelTitle} subtitle={panelSubtitle} lang={lang} workflow={workflowState} onWorkflowUpdate={updateWorkflowState} onContinueWorkflow={continueWorkflow} onRetryWorkflow={retryWorkflow} onReassignWorkflow={reassignWorkflow} onSkipWorkflow={skipWorkflow} />
       <AppSettings open={settingsOpen} settings={settings} members={members} onSave={saveSettings} onMembersSave={saveMembers} onClearLocalData={clearLocalData} onClose={()=>setSettingsOpen(false)} lang={lang} />
       <CustomGroupModal open={customOpen} members={members} selectedIds={customIds} onChange={setCustomIds} onStart={startCustomGroup} onClose={()=>setCustomOpen(false)} lang={lang} />
     </div>

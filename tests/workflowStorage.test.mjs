@@ -68,6 +68,13 @@ describe("workflowStorage", () => {
       members: [{ id: "aria", name: "ARIA", summary: "x".repeat(3000) }],
       quality:{ complete:false, missingMembers:Array.from({ length:30 }, (_, index) => ({ id:`m-${index}`, name:"n".repeat(300), title:"t".repeat(300) })) },
       artifacts: [{ title: "产物", content: "y".repeat(12000) }],
+      comments:Array.from({ length:85 }, (_, index) => ({
+        targetMemberId:index === 84 ? "fe" : `member-${index}`,
+        targetMember:"陈志远".repeat(80),
+        author:"human",
+        text:index === 84 ? "请注意移动端任务卡片不要溢出" : "c".repeat(2000),
+        at:`2026-06-04T01:${String(index).padStart(2, "0")}:00.000Z`,
+      })),
       events:Array.from({ length:45 }, (_, index) => ({
         at:`2026-06-04T00:${String(index).padStart(2, "0")}:00.000Z`,
         type:index === 44 ? "fallback_failed" : "auto_reassignment",
@@ -108,6 +115,11 @@ describe("workflowStorage", () => {
     assert.ok(restored.quality.missingMembers[0].name.length <= 120);
     assert.equal(restored.artifacts[0].version, 1);
     assert.match(restored.artifacts[0].hash, /^a-/);
+    assert.equal(restored.comments.length, 80);
+    assert.equal(restored.comments[79].targetMemberId, "fe");
+    assert.equal(restored.comments[79].text, "请注意移动端任务卡片不要溢出");
+    assert.ok(restored.comments[0].targetMember.length <= 120);
+    assert.ok(restored.comments[0].text.length < 1300);
     assert.equal(restored.events.length, 40);
     assert.equal(restored.events[39].type, "fallback_failed");
     assert.ok(restored.events[0].member.length <= 120);

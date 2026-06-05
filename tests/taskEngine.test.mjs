@@ -47,6 +47,7 @@ const members = [
 test("empty workflow state is stable and localized", () => {
   assert.equal(emptyWorkflowState("zh").mode, "idle");
   assert.equal(emptyWorkflowState("en").title, "No task yet");
+  assert.deepEqual(emptyWorkflowState("zh").comments, []);
 });
 
 test("fallback planner can dispatch explicit groups", () => {

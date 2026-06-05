@@ -45,6 +45,7 @@ describe("workflowArchive", () => {
       },
       results: [{ member: "林 美穂", title: "PM", text: "r".repeat(9000) }],
       artifacts: [{ title: "报告", content: "a".repeat(16000) }],
+      comments:[{ targetMemberId:"fe", targetMember:"陈志远", author:"human", text:"Workboard 评论".repeat(200), at:"2026-06-04T00:01:00.000Z" }],
       modelUsage:{ models:[{ modelKey:"gemma26", actualModel:"gemma-4-26b-a4b-it", provider:"Google Gemini/Gemma", external:true }] },
       events:[{ at:"2026-06-04T00:00:00.000Z", type:"auto_reassignment", member:"CTO", model:"claude -> gemma26", status:"running", detail:"busy" }],
     });
@@ -64,6 +65,8 @@ describe("workflowArchive", () => {
     assert.ok(record.results[0].text.length < 6200);
     assert.ok(record.artifacts[0].content.length < 12200);
     assert.equal(record.modelUsage.models[0].actualModel, "gemma-4-26b-a4b-it");
+    assert.equal(record.comments[0].targetMember, "陈志远");
+    assert.ok(record.comments[0].text.length < 1300);
     assert.equal(record.events[0].type, "auto_reassignment");
   });
 
@@ -88,6 +91,7 @@ describe("workflowArchive", () => {
       quality:{ complete:false, missingMembers:[{ id:"qa", name:"吴晓敏", title:"QA" }] },
       results: [{ member: "林 美穂", title: "PM", text: "项目计划内容" }],
       artifacts: [{ title: "最终产物", content: "整合结论" }],
+      comments:[{ targetMemberId:"fe", targetMember:"陈志远", author:"human", text:"请前端继续接收 PM 输出", at:"2026-06-04T00:02:00.000Z" }],
       events:[{ at:"2026-06-04T00:00:00.000Z", type:"fallback_failed", member:"QA", model:"gemma26", status:"failed", detail:"timeout" }],
     }, "zh");
 
@@ -111,6 +115,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /林 美穂/);
     assert.match(markdown, /项目计划内容/);
     assert.match(markdown, /整合结论/);
+    assert.match(markdown, /Workboard 评论/);
+    assert.match(markdown, /请前端继续接收 PM 输出/);
     assert.match(markdown, /执行事件/);
     assert.match(markdown, /fallback_failed/);
   });
@@ -475,6 +481,7 @@ describe("workflowArchive", () => {
         { type:"fallback_failed", member:"吴晓敏", model:"gemma26", status:"failed", detail:"timeout" },
         { type:"manual_confirmation", member:"陈志远", model:"codex", status:"failed", detail:"admin token required" },
       ],
+      comments:[{ targetMemberId:"fe", targetMember:"陈志远", author:"human", text:"继续接 QA 结果", at:"2026-06-04T00:02:00.000Z" }],
       artifacts:[{ title:"最终产物", kind:"整合报告", content:"整合结论" }],
     }, "zh");
 
@@ -493,6 +500,8 @@ describe("workflowArchive", () => {
     assert.equal(details.recoveryActions.find(item => item.type === "retry_or_reassign").member, "吴晓敏");
     assert.match(details.recoveryActions.find(item => item.type === "manual_confirmation").label, /人工确认/);
     assert.equal(details.toolCalls.needsAttention, true);
+    assert.equal(details.comments[0].title, "human · 陈志远");
+    assert.equal(details.comments[0].detail, "继续接 QA 结果");
     assert.equal(details.toolCalls.entries.find(item => item.id === "codex-dispatch").status, "needs_admin");
     assert.match(details.toolCalls.entries.find(item => item.id === "codex-dispatch").detail, /管理员 token/);
     assert.match(details.artifacts[0].title, /^v1/);
@@ -509,6 +518,7 @@ describe("workflowArchive", () => {
       members:[{ name:"林 美穂", title:"PM", status:"complete" }],
       results:[{ member:"林 美穂", title:"PM", text:"项目计划内容" }],
       artifacts:[{ title:"最终产物", content:"整合结论" }],
+      comments:[{ targetMemberId:"pm", targetMember:"林 美穂", author:"human", text:"归档前确认", at:"2026-06-04T00:03:00.000Z" }],
     }, "2026-06-03T20:30:00.000Z");
 
     assert.equal(archived.status, "archived");
@@ -516,6 +526,7 @@ describe("workflowArchive", () => {
     assert.equal(archived.members[0].name, "林 美穂");
     assert.equal(archived.results[0].text, "项目计划内容");
     assert.equal(archived.artifacts[0].content, "整合结论");
+    assert.equal(archived.comments[0].text, "归档前确认");
     assert.match(formatWorkflowRecordMarkdown(archived, "zh"), /archived/);
   });
 
