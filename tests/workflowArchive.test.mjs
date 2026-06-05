@@ -505,6 +505,8 @@ describe("workflowArchive", () => {
     assert.match(details.modelUsage.routeLines.join(" "), /claude -> gemma26/);
     assert.equal(details.workboard.summary.ready, 1);
     assert.equal(details.workboard.cards[0].title, "林 美穂 · PM");
+    assert.equal(details.workboard.cards[1].member, "陈志远");
+    assert.equal(details.workboard.cards[1].role, "前端工程师");
     assert.equal(details.workboard.cards[1].dependencyState, "ready");
     assert.equal(details.workboard.cards[0].handoffTo, "陈志远 · 前端工程师");
     assert.equal(details.events[0].title, "auto_reassignment · 吴晓敏");

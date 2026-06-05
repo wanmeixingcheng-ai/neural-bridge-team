@@ -2223,6 +2223,11 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
     onContinue?.(buildWorkflowEventRecoveryPrompt(record, actionIndex, lang), label("按事件恢复", "イベントから復旧", "Recover event"));
     setNotice(label("已交给 ARIA 按该事件恢复。", "ARIA にこのイベントからの復旧を依頼しました。", "Sent to ARIA to recover this event."));
   };
+  const continueWorkboardCard = (record, card) => {
+    const action = card.status === "failed" ? "retry" : card.dependencyState === "blocked" ? "unblock" : "continue";
+    onContinue?.(buildWorkboardCardActionPrompt(record, { ...card, title:card.role || card.title }, action, lang), label("继续 Workboard 卡片", "Workboard カードを続行", "Continue Workboard card"));
+    setNotice(label("已交给 ARIA 继续这张 Workboard 卡片。", "ARIA にこの Workboard カードの続行を依頼しました。", "Sent this Workboard card to ARIA."));
+  };
   const reassignRecord = (record) => {
     onContinue?.(buildWorkflowReassignmentPrompt({ ...record, mode:record.status }, lang), label("按改派恢复", "再割当で復旧", "Recover with reassignment"));
     setNotice(label("已交给 ARIA 按改派方案恢复。", "ARIA に再割当での復旧を依頼しました。", "Sent to ARIA for reassignment recovery."));
@@ -2380,6 +2385,7 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                               </div>
                               <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{card.task || "-"}{card.output ? ` · ${label("输出", "出力", "Output")}: ${card.output}` : ""}</div>
                               <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{label("交付", "引き渡し", "Handoff")}: {card.handoffTo || "-"}{card.blockedBy?.length ? ` · ${label("等待", "待ち", "Waiting")}: ${card.blockedBy.join(" / ")}` : ""}</div>
+                              <button type="button" onClick={()=>continueWorkboardCard(record, card)} style={{ marginTop:"5px", border:`1px solid ${color}55`, background:T.card, color, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{card.status === "failed" ? label("重试卡片", "カード再試行", "Retry card") : card.dependencyState === "blocked" ? label("解除依赖", "依存解除", "Unblock") : label("继续卡片", "カード続行", "Continue card")}</button>
                             </div>
                           );
                         })}
