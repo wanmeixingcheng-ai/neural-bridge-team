@@ -119,7 +119,7 @@ describe("workflowArchive", () => {
     assert.match(markdown, /项目计划内容/);
     assert.match(markdown, /整合结论/);
     assert.match(markdown, /## Workboard/);
-    assert.match(markdown, /摘要: 可执行 1 · 阻塞 0 · 失败 0/);
+    assert.match(markdown, /摘要: 可执行 1 · 阻塞 0 · 失败 0 · 进度 50% · 交接 1\/0/);
     assert.match(markdown, /\| 陈志远 · 前端工程师 \| queued \| ready \| 实现看板 \| UI \| ARIA 整合 \|/);
     assert.match(markdown, /### 交接链路/);
     assert.match(markdown, /ready: 林 美穂 · PM -> 陈志远 · 前端工程师 · 报告/);
