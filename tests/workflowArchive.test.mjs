@@ -606,14 +606,15 @@ describe("workflowArchive", () => {
       { id:"failed", status:"failed", title:"失败" },
       { id:"approval", status:"waiting_confirmation", title:"待确认" },
       { id:"codex", status:"done", title:"Codex", members:[{ name:"Codex", title:"开发", model:"codex" }] },
+      { id:"quota", status:"done", title:"额度用尽", events:[{ type:"model_request_failed", status:"quota_exhausted", detail:"Resource exhausted" }] },
       { id:"archived", status:"archived", title:"归档" },
     ];
 
-    assert.equal(filterWorkflowRecordsByStatus(records, "all").length, 6);
+    assert.equal(filterWorkflowRecordsByStatus(records, "all").length, 7);
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "failed").map(item => item.id), ["failed"]);
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "partial_failed").map(item => item.id), ["partial"]);
     assert.deepEqual(filterWorkflowRecordsByStatus(records, "archived").map(item => item.id), ["archived"]);
-    assert.deepEqual(filterWorkflowRecordsByStatus(records, "needs_attention").map(item => item.id), ["partial", "failed", "approval", "codex"]);
+    assert.deepEqual(filterWorkflowRecordsByStatus(records, "needs_attention").map(item => item.id), ["partial", "failed", "approval", "codex", "quota"]);
   });
 
   it("adds stop automation recovery action for quota exhausted events", () => {
