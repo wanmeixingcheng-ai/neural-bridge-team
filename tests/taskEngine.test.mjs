@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildWorkboardCardActionPrompt,
   chooseWorkflowMembers,
   ensureExecutableWorkflowMembers,
   buildWorkflowPlanEditPrompt,
@@ -347,6 +348,33 @@ test("workflow workboard summary recommends the next production action", () => {
   assert.equal(workflowWorkboardSummary([{ status:"queued", dependencyState:"ready", member:"FE" }]).nextAction, "start_ready");
   assert.equal(workflowWorkboardSummary([{ status:"queued", dependencyState:"blocked", blockedBy:["PM"] }]).nextAction, "wait_dependencies");
   assert.equal(workflowWorkboardSummary([{ status:"complete", dependencyState:"none" }]).nextAction, "integrate");
+});
+
+test("workboard card action prompt targets a single executable card", () => {
+  const prompt = buildWorkboardCardActionPrompt({
+    title:"Workboard 生产化",
+    mode:"running",
+  }, {
+    member:"吴晓敏",
+    title:"QA",
+    status:"queued",
+    dependencyState:"blocked",
+    task:"验收 Workboard",
+    input:"UI",
+    output:"QA 报告",
+    dependencies:["fe"],
+    blockedBy:["陈志远"],
+    handoffTo:"ARIA 整合",
+    acceptanceCriteria:"关键状态清晰",
+    agentComment:"等待前端输出",
+  }, "unblock", "zh");
+
+  assert.match(prompt, /解除/);
+  assert.match(prompt, /Workboard 生产化/);
+  assert.match(prompt, /吴晓敏 · QA/);
+  assert.match(prompt, /阻塞来源: 陈志远/);
+  assert.match(prompt, /验收标准: 关键状态清晰/);
+  assert.match(prompt, /不要只解释计划/);
 });
 
 test("workflow lifecycle steps expose the production task state machine", () => {

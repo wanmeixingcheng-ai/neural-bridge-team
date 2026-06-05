@@ -14,6 +14,7 @@ import {
 } from "../lib/attachmentPolicy.mjs";
 import {
   emptyWorkflowState,
+  buildWorkboardCardActionPrompt,
   buildWorkflowPlanEditPrompt,
   buildWorkflowReassignmentPrompt,
   buildWorkflowRetryPrompt,
@@ -2514,6 +2515,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
     }));
     setWorkboardInputs(values => ({ ...values, [cardId]:"" }));
   };
+  const runWorkboardCardAction = (card) => {
+    const action = card.status === "failed" ? "retry" : card.dependencyState === "blocked" ? "unblock" : "continue";
+    const prompt = buildWorkboardCardActionPrompt(currentWorkflow, card, action, lang);
+    if (action === "retry") onRetryWorkflow?.(prompt);
+    else onContinueWorkflow?.(prompt);
+  };
   const downloadCurrentArtifact = async (index = 0) => {
     const markdown = formatWorkflowArtifactMarkdown(currentWorkflow, index, lang);
     const artifact = currentWorkflow.artifacts?.[index] || { title:currentWorkflow.title };
@@ -2692,6 +2699,13 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
                       {card.downstream?.length > 0 && <span style={{ color:T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>{lang==="ja" ? "次へ：" : lang==="en" ? "Next: " : "流转到："}{card.downstream.join(" / ")}</span>}
                     </div>
                     {card.acceptanceCriteria && <div style={{ color:T.green, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "受入：" : lang==="en" ? "Acceptance: " : "验收："}{card.acceptanceCriteria}</div>}
+                    <button type="button" onClick={()=>runWorkboardCardAction(card)} style={{ marginTop:"6px", border:`1px solid ${card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue}55`, background:T.card, color:card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue, borderRadius:"7px", padding:"5px 8px", fontSize:"9.8px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>
+                      {card.status === "failed"
+                        ? (lang==="ja" ? "このカードを再試行" : lang==="en" ? "Retry card" : "重试此卡")
+                        : card.dependencyState === "blocked"
+                          ? (lang==="ja" ? "依存を解除" : lang==="en" ? "Unblock" : "解除依赖")
+                          : (lang==="ja" ? "このカードを続行" : lang==="en" ? "Continue card" : "继续此卡")}
+                    </button>
                     {card.agentComment && <div style={{ color:T.text, background:T.card, border:`1px solid ${T.border}`, borderRadius:"7px", padding:"6px", fontSize:"10px", lineHeight:1.45, marginTop:"6px" }}>Agent: {card.agentComment}</div>}
                     {!!card.comments.length && (
                       <div style={{ display:"flex", flexDirection:"column", gap:"4px", marginTop:"6px" }}>
