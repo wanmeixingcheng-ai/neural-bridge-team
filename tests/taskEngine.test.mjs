@@ -689,6 +689,11 @@ test("workboard execution packet describes real tool execution needs", () => {
   assert.ok(packet.requiredTools.some(tool => tool.id === "codex-dispatch"));
   assert.ok(packet.requiredTools.some(tool => tool.id === "vercel-deploy"));
   assert.ok(packet.blockers.some(item => item.status === "needs_admin"));
+  assert.equal(packet.completionGate.mayMarkComplete, false);
+  assert.equal(packet.completionGate.requiresArtifact, false);
+  assert.equal(packet.completionGate.requiresToolEvidence, false);
+  assert.ok(packet.completionGate.requiredEvidence.includes("codex-dispatch"));
+  assert.match(packet.instructions.join("\n"), /完成门槛:/);
   assert.match(packet.instructions.join("\n"), /只执行这张 Workboard 卡片/);
   assert.match(packet.outputContract, /实际产物/);
 });
@@ -719,6 +724,8 @@ test("workboard execution packet carries dependency evidence for blocked cards",
   }, "zh");
 
   assert.equal(packet.status, "blocked");
+  assert.equal(packet.completionGate.mayMarkComplete, false);
+  assert.deepEqual(packet.completionGate.requiredEvidence, ["workboard-dependency"]);
   assert.equal(packet.card.dependencyEvidence.length, 1);
   assert.deepEqual(packet.card.dependencyEvidence[0], {
     dependency:"fe",
@@ -760,6 +767,8 @@ test("workboard execution packet event records executable tool contract", () => 
   assert.equal(event.status, "ready");
   assert.match(event.detail, /action=continue/);
   assert.match(event.detail, /execution=model_output/);
+  assert.match(event.detail, /mark_complete=yes/);
+  assert.match(event.detail, /required_evidence=成员产物/);
   assert.match(event.detail, /deps=pm:complete/);
   assert.match(event.detail, /handoff=ARIA 整合/);
   assert.match(event.detail, /acceptance=测试通过/);
