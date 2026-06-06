@@ -3,6 +3,7 @@ import { readJsonLimited, requestBodyTooLargeResponse } from "../../../lib/reque
 import { checkRateLimitAsync, rateLimitResponse } from "../../../lib/rateLimit.mjs";
 import { auditEvent } from "../../../lib/auditLog.mjs";
 import { isQuotaExhaustionMessage } from "../../../lib/modelGateway.mjs";
+import { containsSensitiveSecret, sensitiveContentResponse } from "../../../lib/secretPolicy.mjs";
 
 const CHAT_MAX_REQUEST_BYTES = 3 * 1024 * 1024;
 const CHAT_RATE_WINDOW_MS = 60_000;
@@ -92,6 +93,15 @@ function lastUserText(messages = []) {
 
 function lastUserImages(messages = []) {
   return [...messages].reverse().find(m => m.role === "user" && Array.isArray(m.images))?.images || [];
+}
+
+function chatSecretScanText(systemPrompt, messages = []) {
+  return [
+    systemPrompt || "",
+    ...messages
+      .filter(message => message && (message.role === "user" || message.role === "ai"))
+      .map(message => message.text || ""),
+  ].join("\n");
 }
 
 function simpleGreetingReply(text, lang = "zh") {
@@ -276,6 +286,10 @@ export async function POST(request) {
   const directReply = simpleGreetingReply(userText, lang);
   if (directReply) {
     return Response.json({ text: directReply });
+  }
+  if (containsSensitiveSecret(chatSecretScanText(systemPrompt, messages))) {
+    await auditEvent(request, { type:"chat.secret_blocked", status:"blocked" });
+    return sensitiveContentResponse();
   }
 
   if (modelKey === "claude") {

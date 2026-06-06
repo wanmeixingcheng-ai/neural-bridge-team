@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   createSessionToken,
   verifySessionToken,
+  SESSION_COOKIE,
 } from "../app/api/auth/session.js";
+import { POST as chatPost } from "../app/api/chat/route.js";
 import { checkRateLimit } from "../lib/rateLimit.mjs";
 import { containsSensitiveSecret } from "../lib/secretPolicy.mjs";
 
@@ -45,6 +47,59 @@ test("secret detector blocks common credentials before external transit", () => 
   assert.equal(containsSensitiveSecret("GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz1234567890"), true);
   assert.equal(containsSensitiveSecret("-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----"), true);
   assert.equal(containsSensitiveSecret("api_key: sk-proj-abcdefghijklmnopqrstuvwxyz123456"), true);
+});
+
+test("chat blocks secret-like content before model dispatch", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  process.env.ANTHROPIC_API_KEY = "test-api-key-that-should-not-be-used";
+  const token = createSessionToken();
+  let fetchCalled = false;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("model provider should not be called");
+  };
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        modelKey: "claude",
+        systemPrompt: "You are ARIA.",
+        messages: [
+          {
+            role: "user",
+            text: "Please use this token: ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+          },
+        ],
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await chatPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(payload.forwarded, false);
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+    if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  }
 });
 
 test("rate limiter enforces namespace and window limits", () => {
