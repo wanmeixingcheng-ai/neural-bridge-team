@@ -406,11 +406,22 @@ describe("workflowArchive", () => {
     assert.equal(payload.memory.metadata.workboardHandoffs[0].from, "林 美穂 · PM");
     assert.equal(payload.memory.metadata.workboardHandoffs[0].to, "陈志远 · 前端工程师");
     assert.equal(payload.memory.metadata.workboardHandoffs[0].status, "ready");
+    assert.deepEqual(payload.memory.metadata.workboardDependencies[0], {
+      cardId:"fe",
+      card:"陈志远 · 前端工程师",
+      dependency:"pm",
+      member:"林 美穂",
+      title:"PM",
+      status:"complete",
+      output:"PRD",
+      blocked:false,
+    });
     assert.equal(payload.memory.metadata.artifactVersions[0].version, 1);
     assert.match(payload.memory.metadata.artifactVersions[0].hash, /^a-/);
     assert.match(payload.memory.content, /taskType: product/);
     assert.match(payload.memory.content, /qualityComplete: yes/);
     assert.match(payload.memory.content, /workboardHandoffs: 林 美穂 · PM -> 陈志远 · 前端工程师 · ready · PRD/);
+    assert.match(payload.memory.content, /workboardDependencies: 陈志远 · 前端工程师 depends on 林 美穂 · complete · PRD/);
     assert.match(payload.memory.content, /整合结论/);
   });
 
