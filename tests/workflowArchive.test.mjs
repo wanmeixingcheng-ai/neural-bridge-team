@@ -255,6 +255,16 @@ describe("workflowArchive", () => {
     const prompt = buildWorkflowArtifactRevisionPrompt({
       title:"综合报告",
       task:"分析项目",
+      members:[
+        { id:"pm", name:"林 美穂", title:"PM", status:"complete" },
+        { id:"fe", name:"陈志远", title:"前端工程师", status:"queued" },
+      ],
+      plan:{
+        steps:[
+          { order:1, memberId:"pm", member:"林 美穂", title:"PM", output:"PRD" },
+          { order:2, memberId:"fe", member:"陈志远", title:"前端工程师", output:"UI", dependencies:["pm"] },
+        ],
+      },
       results:[{ member:"林 美穂", title:"PM", text:"范围和里程碑证据" }],
       artifacts:[
         { title:"最终产物", kind:"整合报告", version:2, hash:"a-v2", content:"v2 内容" },
@@ -269,6 +279,10 @@ describe("workflowArchive", () => {
     assert.match(prompt, /a-v2/);
     assert.match(prompt, /v2 内容/);
     assert.match(prompt, /林 美穂 · PM/);
+    assert.match(prompt, /Workboard 交接证据/);
+    assert.match(prompt, /林 美穂 · PM -> 陈志远 · 前端工程师 · ready · PRD/);
+    assert.match(prompt, /Workboard 依赖证据/);
+    assert.match(prompt, /陈志远 · 前端工程师 depends on 林 美穂 · PM · complete · PRD/);
     assert.match(prompt, /v3 完整产物/);
   });
 
