@@ -1302,8 +1302,11 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           attemptedWorkerModels.push(workerModel);
           let actualWorkerModel = workerModel;
           let reply = "";
+          let workerResponseMeta = null;
           try {
-            reply = await callModel(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+            workerResponseMeta = await callModelWithMeta(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+            reply = workerResponseMeta.text || "";
+            actualWorkerModel = workerResponseMeta.actualModel || workerModel;
           } catch (workerError) {
             if (workerError.name === "AbortError") throw workerError;
             const fallback = workflowFallbackModelForMember({ ...worker, model:workerModel, error:workerError.message }, requestLanguage);
@@ -1332,8 +1335,9 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
               }]);
               try {
                 attemptedWorkerModels.push(fallback.toModel);
-                reply = await callModel(fallback.toModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
-                actualWorkerModel = fallback.toModel;
+                workerResponseMeta = await callModelWithMeta(fallback.toModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+                reply = workerResponseMeta.text || "";
+                actualWorkerModel = workerResponseMeta.actualModel || fallback.toModel;
               } catch (fallbackError) {
                 if (fallbackError.name === "AbortError") throw fallbackError;
                 workerFailures.push({ ...worker, model:fallback.toModel, status:"failed", error:fallbackError.message || workerError.message || t(lang, "unknownError") });
@@ -1381,7 +1385,14 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
             }
           }
           const safeReply = reply || (lang === "en" ? "No response." : lang === "ja" ? "応答がありません。" : "无响应");
-          results.push({ member:worker.name, title:worker.title, model:actualWorkerModel, text:safeReply, summary:summarizeForWorkflow(safeReply) });
+          const executionEvidence = {
+            kind:worker.model === "codex" ? "tool_dispatch" : "model_provider",
+            requestedModel:workerModel,
+            actualModel:actualWorkerModel,
+            provider:outboundProviderLabel(actualWorkerModel || workerModel, apiKeys),
+            verifiedAt:new Date().toISOString(),
+          };
+          results.push({ member:worker.name, title:worker.title, model:actualWorkerModel, text:safeReply, summary:summarizeForWorkflow(safeReply), executionEvidence });
           setMessages(m => [...m, { role:"ai", text:`【${worker.name} · ${worker.title}】\n${safeReply}`, ...modelMessageMeta(actualWorkerModel, apiKeys) }]);
           onWorkflowState?.(state => ({
             ...state,
@@ -1773,16 +1784,25 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
           members:state.members.map(item => item.id === member.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
         }));
         const effectiveModel = controls.modelOverride || member.model;
-        const reply = await callModel(effectiveModel, member.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+        const response = await callModelWithMeta(effectiveModel, member.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+        const actualModel = response.actualModel || effectiveModel;
+        const reply = response.text || "";
         const safeReply = reply || (lang === "en" ? "No response." : lang === "ja" ? "応答がありません。" : "无响应");
-        results.push({ member:member.name, title:member.title, model:effectiveModel, text:safeReply, summary:summarizeForWorkflow(safeReply) });
-        setMessages(m => [...m, { role:"ai", member:member.name, title:member.title, emoji:member.emoji, text:safeReply, ...modelMessageMeta(effectiveModel, apiKeys) }]);
+        const executionEvidence = {
+          kind:member.model === "codex" ? "tool_dispatch" : "model_provider",
+          requestedModel:effectiveModel,
+          actualModel,
+          provider:outboundProviderLabel(actualModel || effectiveModel, apiKeys),
+          verifiedAt:new Date().toISOString(),
+        };
+        results.push({ member:member.name, title:member.title, model:actualModel, text:safeReply, summary:summarizeForWorkflow(safeReply), executionEvidence });
+        setMessages(m => [...m, { role:"ai", member:member.name, title:member.title, emoji:member.emoji, text:safeReply, ...modelMessageMeta(actualModel, apiKeys) }]);
         onWorkflowState?.(state => ({
           ...state,
           mode:"running",
           phase:lang === "ja" ? "次の担当へ引き継ぎ中" : lang === "en" ? "Handing off to next member" : "正在移交下一位成员",
           updatedAt:new Date().toISOString(),
-          members:state.members.map(item => item.id === member.id ? { ...item, status:"complete", summary:summarizeForWorkflow(safeReply) } : item),
+          members:state.members.map(item => item.id === member.id ? { ...item, status:"complete", summary:summarizeForWorkflow(safeReply), model:actualModel, executionEvidence } : item),
           progress:{ done:state.members.filter(item => item.status === "complete").length + 1, total:state.members.length },
         }));
         await learnFromExchange({ member, userText:text, reply, lang:requestLanguage });
@@ -1812,13 +1832,32 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
 2. 合并重复内容，保留冲突和风险。
 3. 不要自我介绍，不要展示内部推理。`;
         let finalText = "";
+        let finalModel = controls.modelOverride || aria.model;
+        let finalExecutionEvidence = null;
         try {
-          finalText = await callModel(controls.modelOverride || aria.model, aria.systemPrompt, [{ role:"user", text:integrationPrompt }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+          const finalResponse = await callModelWithMeta(finalModel, aria.systemPrompt, [{ role:"user", text:integrationPrompt }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+          finalText = finalResponse.text || "";
+          finalModel = finalResponse.actualModel || finalModel;
+          finalExecutionEvidence = {
+            kind:"model_provider",
+            requestedModel:controls.modelOverride || aria.model,
+            actualModel:finalModel,
+            provider:outboundProviderLabel(finalModel, apiKeys),
+            verifiedAt:new Date().toISOString(),
+          };
         } catch (summaryError) {
           finalText = `${lang === "ja" ? "統合モデルの呼び出しに失敗したため、メンバー成果をローカルで整理しました。" : lang === "en" ? "The integration model failed, so member results were organized locally." : "整合模型调用失败，已在本地整理成员成果。"}\n\n${results.map(item => `## ${item.member} · ${item.title}\n${item.text}`).join("\n\n")}`;
+          finalExecutionEvidence = {
+            kind:"local_fallback",
+            requestedModel:finalModel,
+            actualModel:"local-fallback",
+            provider:"Local fallback",
+            verifiedAt:new Date().toISOString(),
+            error:summaryError.message || "integration model failed",
+          };
         }
         const artifactTitle = firstUserTitle([{ role:"user", text }], lang === "en" ? "Workflow output" : lang === "ja" ? "ワークフロー成果" : "工作流产物");
-        const artifact = { title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", version:1, hash:artifactContentHash(finalText), content:finalText, createdAt:new Date().toISOString() };
+        const artifact = { title:artifactTitle, kind:lang === "en" ? "Integrated report" : lang === "ja" ? "統合レポート" : "整合报告", version:1, hash:artifactContentHash(finalText), content:finalText, createdAt:new Date().toISOString(), executionEvidence:finalExecutionEvidence };
         await rememberWorkflowArtifact({ task:text, results, finalText, lang:requestLanguage, source:"group-workflow" });
         await saveWorkflowRecord({
           id:workflowId,
@@ -1828,14 +1867,17 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           trigger:workflowTrigger,
           status:"done",
           language:requestLanguage,
-          members:workers.map(member => ({ id:member.id, name:member.name, title:member.title, model:member.model, status:"complete" })),
+          members:workers.map(member => {
+            const result = results.find(item => item.member === member.name && item.title === member.title);
+            return { id:member.id, name:member.name, title:member.title, model:result?.model || member.model, status:"complete", executionEvidence:result?.executionEvidence };
+          }),
           plan:workflowPlan,
           modelUsage:workflowModelUsage,
           quality,
           results,
           artifacts:[artifact],
         }).catch(() => {});
-        setMessages(m => [...m, { role:"ai", member:"ARIA", title:lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物", emoji:aria.emoji || "◎", text:finalText, ...modelMessageMeta(controls.modelOverride || aria.model, apiKeys) }]);
+        setMessages(m => [...m, { role:"ai", member:"ARIA", title:lang === "ja" ? "統合成果" : lang === "en" ? "Integrated output" : "整合产物", emoji:aria.emoji || "◎", text:finalText, ...modelMessageMeta(finalModel, apiKeys) }]);
         onWorkflowState?.(state => ({
           ...state,
           mode:"done",
@@ -1843,6 +1885,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           updatedAt:new Date().toISOString(),
           artifacts:[artifact],
           quality,
+          finalExecutionEvidence,
           progress:{ done:state.members.length, total:state.members.length },
         }));
       }

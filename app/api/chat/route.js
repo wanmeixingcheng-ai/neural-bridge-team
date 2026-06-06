@@ -150,7 +150,23 @@ function enforceOutputLanguage(text, lang = "zh") {
   return value;
 }
 
-function sanitizeModelText(text, lang = "zh") {
+function fallbackAfterMetaLeak(lang = "zh") {
+  if (lang === "ja") return "具体的なタスク指示または関連文書を送ってください。";
+  if (lang === "en") return "Please send the specific task instructions or relevant documents.";
+  return "请发送具体任务指令或上传相关文档。";
+}
+
+function isInternalAnalysisLeak(value) {
+  return [
+    /\bThe user (?:said|previously|current|prompt|includes|wants)\b/i,
+    /\b(?:Rule|Constraint|Total Task|Standard professional greeting|Brief and direct)\b/i,
+    /\b(?:Since the user|This is a simple greeting|I should acknowledge|internal reasoning|prompt analysis)\b/i,
+    /\b(?:Refined Task Plan|Target Response|Self-Correction|Persona|Current Task)\b/i,
+    /(?:No English|No self-intro|No internal reasoning|Professional\/Direct)\?\s*Yes/i,
+  ].some(pattern => pattern.test(value));
+}
+
+export function sanitizeModelText(text, lang = "zh") {
   let value = `${text || ""}`.trim();
   if (!value) return "无响应";
   value = value
@@ -162,6 +178,9 @@ function sanitizeModelText(text, lang = "zh") {
     /\*(?:Wait|Actually|Self-Correction|Refined Task Plan|Target Response)[\s\S]{0,3000}/i.test(value) ||
     /User wants to .*?system prompt/i.test(value) ||
     /(?:No English|No self-intro|No internal reasoning|Professional\/Direct)\?\s*Yes/i.test(value);
+  if (isInternalAnalysisLeak(value) && !/^(任务类型|任务分析|成员调度|建议分工|整合建议|下一步|已成功读取|已读取|根据文档|以下是)/.test(lines[0] || "")) {
+    return fallbackAfterMetaLeak(lang);
+  }
   if (!hasMetaLeak) return enforceOutputLanguage(value, lang);
 
   const explicitFinalIndex = lines.findIndex(line => /^(?:\*|-)?\s*(?:Refined Task Plan|Target Response)\s*:?\s*$/i.test(line));
