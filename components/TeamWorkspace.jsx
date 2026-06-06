@@ -47,6 +47,7 @@ import {
   workflowStatusLabel,
   workflowToolCallChecklist,
   workflowWorkboardCards,
+  workflowWorkboardExecutionMode,
   workflowWorkboardHandoffs,
   workflowWorkboardSummary,
   workflowExternalDisclosureLines,
@@ -2595,19 +2596,20 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
     setWorkboardInputs(values => ({ ...values, [cardId]:"" }));
   };
   const runWorkboardCardAction = (card) => {
-    if (executionReadiness?.blockedByLocalOnly || executionReadiness?.needsPermission) {
-      const event = buildWorkflowExecutionGateEvent({ ...executionReadiness, nextCard:{ ...executionReadiness.nextCard, ...card } });
+    const packet = buildWorkboardExecutionPacket(currentWorkflow, card, lang);
+    if (!packet.canExecute) {
+      const event = buildWorkflowExecutionGateEvent({ ...executionReadiness, status:packet.status, action:packet.execution?.reason || executionReadiness?.action, blockers:packet.blockers, nextCard:{ ...executionReadiness?.nextCard, ...card } });
+      const packetEvent = buildWorkboardExecutionPacketEvent(packet, event.at);
       onWorkflowUpdate?.(previous => ({
         ...(previous || currentWorkflow),
-        events:[...((previous || currentWorkflow).events || []), event].slice(-40),
+        events:[...((previous || currentWorkflow).events || []), event, packetEvent].slice(-40),
         updatedAt:event.at,
       }));
-      setExecutionNotice(executionReadiness.action);
+      setExecutionNotice(packet.execution?.reason || executionReadiness?.action);
       return;
     }
     const action = card.status === "failed" ? "retry" : card.dependencyState === "blocked" ? "unblock" : "continue";
     const event = buildWorkboardCardActionEvent(card, action);
-    const packet = buildWorkboardExecutionPacket(currentWorkflow, card, lang);
     const packetEvent = buildWorkboardExecutionPacketEvent(packet, event.at);
     onWorkflowUpdate?.(previous => ({
       ...(previous || currentWorkflow),
@@ -2796,6 +2798,14 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
                   : card.dependencyState === "ready"
                     ? (lang==="ja" ? "実行可" : lang==="en" ? "Ready" : "可执行")
                     : (lang==="ja" ? "依存なし" : lang==="en" ? "No deps" : "无依赖");
+                const executionMode = workflowWorkboardExecutionMode(currentWorkflow, card, lang);
+                const executionColor = executionMode.kind === "tool_dispatch"
+                  ? T.codex
+                  : executionMode.kind === "model_output"
+                    ? T.blue
+                    : executionMode.kind === "blocked_dependency"
+                      ? T.yellow
+                      : T.red;
                 return (
                   <div key={card.id} style={{ border:`1px solid ${statusColor}35`, background:T.surface, borderRadius:"8px", padding:"8px" }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px" }}>
@@ -2816,9 +2826,16 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
                     </div>
                     <div style={{ display:"flex", flexWrap:"wrap", gap:"5px", alignItems:"center", marginTop:"5px" }}>
                       <span style={{ color:dependencyColor, border:`1px solid ${dependencyColor}40`, background:T.card, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{dependencyLabel}</span>
+                      <span title={executionMode.reason} style={{ color:executionColor, border:`1px solid ${executionColor}40`, background:T.card, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{executionMode.label}</span>
                       {card.blockedBy?.length > 0 && <span style={{ color:T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>{lang==="ja" ? "待ち：" : lang==="en" ? "Waiting on: " : "等待："}{card.blockedBy.join(" / ")}</span>}
                       {card.downstream?.length > 0 && <span style={{ color:T.muted, fontSize:"9.6px", lineHeight:1.35, minWidth:0 }}>{lang==="ja" ? "次へ：" : lang==="en" ? "Next: " : "流转到："}{card.downstream.join(" / ")}</span>}
                     </div>
+                    <div style={{ color:executionColor, fontSize:"9.6px", lineHeight:1.4, marginTop:"4px" }}>
+                      {lang==="ja" ? "実行タイプ" : lang==="en" ? "Execution" : "执行类型"}: {executionMode.kind}
+                      {!!executionMode.blockers?.length && ` · ${lang==="ja" ? "ブロック" : lang==="en" ? "Blocked" : "阻塞"}: ${executionMode.blockers.map(item => `${item.name || item.id}:${item.status}`).join(" / ")}`}
+                      {!executionMode.blockers?.length && !!executionMode.tools?.length && ` · ${lang==="ja" ? "ツール" : lang==="en" ? "Tools" : "工具"}: ${executionMode.tools.map(item => item.name || item.id).join(" / ")}`}
+                    </div>
+                    {executionMode.reason && <div style={{ color:T.muted, fontSize:"9.4px", lineHeight:1.35, marginTop:"2px" }}>{executionMode.reason}</div>}
                     {card.acceptanceCriteria && <div style={{ color:T.green, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "受入：" : lang==="en" ? "Acceptance: " : "验收："}{card.acceptanceCriteria}</div>}
                     <button type="button" onClick={()=>runWorkboardCardAction(card)} style={{ marginTop:"6px", border:`1px solid ${card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue}55`, background:T.card, color:card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue, borderRadius:"7px", padding:"5px 8px", fontSize:"9.8px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>
                       {card.status === "failed"
