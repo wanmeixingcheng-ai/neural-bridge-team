@@ -1,82 +1,83 @@
-# AI Workflow v2.1
-## ChatGPT + Codex + Claude 自动化开发工作流
+# AI Workflow v2.2 — No-Copy Handoff
 
-> 跨项目通用 AI 工作流框架
-> 默认 CI 适用于 **Node.js + npm** 项目
-> 其他技术栈（pnpm / yarn / Python / 静态站点）需替换 `.github/workflows/ai-ci.yml`
+> 目标：把 GitHub 作为唯一任务中枢，尽量消除 ChatGPT / Claude / Codex / GitHub 之间的反复复制粘贴。
 
----
+## 这版修正了 v2.1 的核心问题
 
-## 三个 AI 的分工
+v2.1 主要是“Prompt 手册”，很多步骤仍要求人手动复制：
+- ChatGPT 输出 Issue → 复制到 GitHub
+- GitHub Issue → 复制到 Claude
+- PR diff → 复制到 Claude
+- Claude Review → 复制回 PR
+- Issue + PR + Review → 复制给 ChatGPT 生成报告
 
-| AI | 角色 | 做什么 |
-|----|------|--------|
-| **ChatGPT** | 需求翻译官 | 把人类需求翻译成结构化 Issue，最后生成交付报告 |
-| **Codex** | 执行者 | 读 Issue 写代码、开 PR、修 CI（最多一次）|
-| **Claude** | 审查官 | 架构评估、PR Review、风险判断 |
-| **Human** | 决策者 | 标记 Risk Level、批准 High Risk、最终合并 |
+v2.2 的原则是：
 
----
+**所有上下文都留在 GitHub；每个 AI 只读取 GitHub 里的 Issue / PR / Repo 文件，不靠人类搬运上下文。**
 
-## 自动化率说明
+## 真实边界
 
-本方案的目标是提高重复开发流程的自动化程度。
+这套方案能减少重复搬运，但不能突破各产品的权限边界：
 
-**自动化率提升不代表允许 AI 绕过以下控制点：**
-- GitHub Issue（所有任务从 Issue 开始）
-- Pull Request（所有代码通过 PR 合并）
-- CI 检查（自动修复最多一次）
-- Claude Review（Medium/High Risk 必须）
-- Branch protection（禁止直接推送 main）
-- Human 最终合并
-- Human 生产部署确认
+- ChatGPT 当前不能自动登录你的 Private GitHub 仓库。
+- 不应把 GitHub 密码、PAT、Secret 发给 ChatGPT。
+- 如果某个 AI 没有 GitHub 仓库访问权，它就不能直接审计 Private 仓库。
 
-自动化只适用于可重复、可验证、可回滚的开发流程环节。
-生产权限、secrets、部署、认证、数据库迁移等高风险操作始终需要人工确认。
+因此，v2.2 的正确用法是：
 
----
+- **GitHub = 任务与上下文中心**
+- **Codex = 仓库内执行 / 审计 / PR 创建者**
+- **Claude = 仓库内架构审查 / PR Review（需要 Claude 具备 GitHub 访问权）**
+- **ChatGPT = 上游产品经理 / 规则设计者 / 报告复核者，不再承担必须读取 Private Repo 的环节**
 
-## 快速接入（3步）
+## 每次任务的最少操作
 
-1. 将本目录所有文件复制到项目根目录
-2. 填写 `PROJECT_CONSTRAINTS.md`（唯一需要定制的文件）
-3. 确认 GitHub Actions 已启用，打开 `prompts/` 目录，按需使用 Prompt 模板
+### 普通开发任务
 
----
+1. 你在 GitHub 新建 Issue，只写自然语言需求。
+2. 打标签：`ai:triage`。
+3. Codex 读取 Issue + 仓库规则，整理计划并实现。
+4. Codex 开 PR。
+5. CI 自动检查。
+6. Claude 直接读取 PR URL 或 GitHub PR 内容做 Review。
+7. 你只做最终合并判断。
+
+### 仓库审计任务
+
+1. 你在 GitHub 新建 Issue：`请只读审计本仓库，不要修改代码`。
+2. 打标签：`audit-only`。
+3. Codex / Claude 在 Issue 或 PR 评论里输出审计报告。
+4. 不创建代码修改 PR；除非你明确要求生成报告文件。
 
 ## 文件说明
 
-```
+```text
 README.md                         本文件
-AGENTS.md                         Codex 的行为规范（Codex 自动读取）
-CLAUDE.md                         Claude 的角色和审查规范
-AI_WORKFLOW.md                    完整工作流 SOP
-PROJECT_CONSTRAINTS.md            ⭐ 项目专属约束（必须填写）
-AUTOMATION_POLICY.md              自动化权限边界
-RISK_LEVELS.md                    风险分级标准
-CI_REPAIR_POLICY.md               CI 自动修复边界
-prompts/
-  chatgpt_issue.md                生成 Issue 的 Prompt
-  chatgpt_report.md               生成交付报告的 Prompt
-  claude_architecture.md          架构审查的 Prompt
-  claude_review.md                PR Review 的 Prompt
-.github/
-  PULL_REQUEST_TEMPLATE.md        PR 标准模板
-  ISSUE_TEMPLATE/ai_task.md       Issue 标准模板
-  workflows/ai-ci.yml             GitHub Actions（Node.js + npm）
+AI_WORKFLOW.md                    No-Copy 工作流
+AGENTS.md                         Codex 行为规范
+CLAUDE.md                         Claude 审查规范
+PROJECT_CONSTRAINTS.md            项目约束模板
+NO_COPY_POLICY.md                 禁止反复复制粘贴的原则
+AUDIT_ONLY_POLICY.md              只读审计规则
+AUTOMATION_POLICY.md              自动化边界
+RISK_LEVELS.md                    风险分级
+CI_REPAIR_POLICY.md               CI 修复边界
+GITHUB_LABELS.md                  标签清单
+.github/ISSUE_TEMPLATE/ai_request.yml
+.github/PULL_REQUEST_TEMPLATE.md
+.github/workflows/ai-governance.yml
+scripts/collect_audit_context.py  可选：生成审计上下文文件
+prompts/codex_issue_runner.md     给 Codex 的一次性启动提示
+prompts/claude_pr_review_by_url.md
+prompts/claude_audit_by_url.md
 ```
 
----
+## 一次性接入
 
-## 其他技术栈的 CI
+1. 把本目录文件复制到项目根目录。
+2. 填写 `PROJECT_CONSTRAINTS.md`。
+3. 创建 `GITHUB_LABELS.md` 里的标签。
+4. 设置 Branch Protection：禁止直接推送 main，要求 PR + CI。
+5. 确认 Codex / Claude 已被授权访问该 Private Repo。
 
-如果你的项目不使用 Node.js + npm，请替换 `.github/workflows/ai-ci.yml`：
-
-| 技术栈 | 替换方式 |
-|--------|---------|
-| pnpm | 将 `npm ci` 改为 `pnpm install --frozen-lockfile`，`npm run *` 改为 `pnpm *` |
-| yarn | 将 `npm ci` 改为 `yarn install --frozen-lockfile`，`npm run *` 改为 `yarn *` |
-| Python | 替换为 `pip install` + `pytest` |
-| 静态站点 | 保留 protect-workflow-files 和 check-risk-label 两个 job，删除 validate job |
-
-`protect-workflow-files` 和 `check-risk-label` 两个 job 与技术栈无关，所有项目都应保留。
+完成后，每次任务不再需要把 Issue、diff、Review 反复复制来回。

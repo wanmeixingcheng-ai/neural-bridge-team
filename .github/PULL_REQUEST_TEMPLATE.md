@@ -1,11 +1,9 @@
 ## Summary
-<!-- 一句话说明本 PR 做了什么 -->
 
 ## Linked Issue
 Closes #
 
 ## Changes
-- 
 - 
 
 ## Testing
@@ -13,31 +11,31 @@ Closes #
 - [ ] Type check passed
 - [ ] Tests passed
 - [ ] Build passed
-- [ ] Manual verification completed
+- [ ] Manual verification notes included
 
 ## Risk Level
 - [ ] risk:low
 - [ ] risk:medium
 - [ ] risk:high
 
-## CI Repair
-Was CI auto-repair used: yes / no
+## AI Mode
+- [ ] normal implementation
+- [ ] CI repair
+- [ ] review response
 
-<!-- 如果使用了 CI 自动修复，填写以下内容 -->
-- Failing check:
-- Suspected cause:
-- Files changed for repair:
-- Result:
+## Constraints Checked
+- [ ] PROJECT_CONSTRAINTS.md followed
+- [ ] No unapproved dependencies
+- [ ] No secrets committed
+- [ ] Protected workflow files not modified without approval
 
 ## Claude Review
-- [ ] Not required (risk:low)
+- [ ] Not required
 - [ ] Required — pending
-- [ ] Completed — result:
+- [ ] Completed
 
 ## Human Final Checklist
 - [ ] Acceptance criteria satisfied
 - [ ] CI passed
-- [ ] Risk label confirmed
-- [ ] Claude Review checked (if required)
-- [ ] No protected files modified without `human-approved-workflow-change` label
+- [ ] Review checked
 - [ ] Ready to merge

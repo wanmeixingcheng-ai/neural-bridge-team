@@ -1,65 +1,37 @@
 # RISK_LEVELS.md
-## 风险分级标准
+## 风险分级
 
----
+## Low Risk
 
-## 三级分类
+- 文案、样式、小型 UI 调整
+- 单文件 bug 修复
+- 小工具函数
+- 文档更新
 
-### 🟢 Low Risk — Codex 直接实现，无需 Review
+Codex 可实现，Human 可直接审查合并。
 
-**特征：**
-- 变更范围局限于单一模块
-- 无数据库操作
-- 无外部 API 变更
-- 有现有测试覆盖
+## Medium Risk
 
-**典型场景：**
-- UI 样式调整、文案修改
-- 修复明确的 bug（已有复现步骤）
-- 新增工具函数（有测试）
-- 配置文件调整（非 Secret）
+- 新增页面 / 组件
+- 跨文件业务逻辑
+- API 调用方式变化
+- 状态管理变化
+- 用户可见行为变化
 
----
+Codex 可实现，合并前需要 Claude Review。
 
-### 🟡 Medium Risk — Codex 实现后需要 Claude Review
+## High Risk
 
-**特征：**
-- 跨越 2 个以上模块
-- 新增 API endpoint 或修改现有接口
-- 涉及状态管理或数据流变更
-- 引入新的业务逻辑
+- 认证 / 授权
+- 数据库 schema
+- Secrets / CI/CD / 部署
+- 支付
+- 新外部服务
+- 架构迁移
+- 核心 Prompt / Agent 规则
 
-**典型场景：**
-- 新增功能页面或组件
-- 修改数据查询逻辑
-- 新增服务端 API
-- 修改现有功能的行为
-- 单个 Prompt 优化
+需要 Claude Architecture Review + Human 批准。
 
----
+## Audit-only
 
-### 🔴 High Risk — 需要 Claude 架构审查 + Human 批准后 Codex 才能实现
-
-**特征：**
-- 架构层面的变更
-- 数据库 Schema 变更
-- 安全相关逻辑（认证、授权、加密）
-- 影响多个 Agent 或核心系统
-- 引入新的外部服务
-
-**典型场景：**
-- 数据库新增/修改表结构
-- 修改认证流程
-- 修改 MASTER_PROMPT 或多个 Agent Prompt
-- 新增外部 API 集成
-- 重构核心模块
-- 生产环境配置变更
-
----
-
-## 升级规则
-
-遇到以下情况，自动将 Risk Level 升级一级：
-- 任务实现过程中发现隐藏依赖
-- 涉及 `PROJECT_CONSTRAINTS.md` 中标注为高风险的内容
-- CI 连续失败，原因不明
+只读审计，不修改代码，不创建修复 PR。
