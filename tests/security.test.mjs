@@ -5,6 +5,7 @@ import {
   createSessionToken,
   verifySessionToken,
 } from "../app/api/auth/session.js";
+import { auditEvent } from "../lib/auditLog.mjs";
 import { checkRateLimit } from "../lib/rateLimit.mjs";
 import { containsSensitiveSecret } from "../lib/secretPolicy.mjs";
 
@@ -45,6 +46,39 @@ test("secret detector blocks common credentials before external transit", () => 
   assert.equal(containsSensitiveSecret("GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz1234567890"), true);
   assert.equal(containsSensitiveSecret("-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----"), true);
   assert.equal(containsSensitiveSecret("api_key: sk-proj-abcdefghijklmnopqrstuvwxyz123456"), true);
+});
+
+test("audit events expose disabled persistence in production", async () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  const previousWarn = console.warn;
+  process.env.NODE_ENV = "production";
+  delete process.env.DATABASE_URL;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args.join(" "));
+
+  try {
+    const request = {
+      headers: {
+        get(name) {
+          if (name === "x-forwarded-for") return "203.0.113.20";
+          if (name === "user-agent") return "node-test";
+          return "";
+        },
+      },
+    };
+    const record = await auditEvent(request, { type:"test.audit", status:"blocked" });
+
+    assert.equal(record.persistence, "memory");
+    assert.equal(record.ip, "203.0.113.20");
+    assert.equal(warnings.some(message => message.includes("DATABASE_URL is not configured")), true);
+  } finally {
+    console.warn = previousWarn;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDatabaseUrl;
+  }
 });
 
 test("rate limiter enforces namespace and window limits", () => {
