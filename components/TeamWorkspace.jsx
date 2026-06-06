@@ -2405,6 +2405,11 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                                 <span style={{ color, fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{card.status} · {card.dependencyState}</span>
                               </div>
                               <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{card.task || "-"}{card.output ? ` · ${label("输出", "出力", "Output")}: ${card.output}` : ""}</div>
+                              {!!card.dependencyEvidence?.length && (
+                                <div style={{ color:T.muted, fontSize:"9.3px", lineHeight:1.35, marginTop:"2px" }}>
+                                  {label("依赖证据", "依存エビデンス", "Dependency evidence")}: {card.dependencyEvidence.map(item => `${item.member || item.dependency}${item.title ? ` · ${item.title}` : ""} · ${item.status || "unknown"}${item.output ? ` · ${item.output}` : ""}${item.blocked ? " · blocked" : ""}`).join(" / ")}
+                                </div>
+                              )}
                               <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{label("交付", "引き渡し", "Handoff")}: {card.handoffTo || "-"}{card.blockedBy?.length ? ` · ${label("等待", "待ち", "Waiting")}: ${card.blockedBy.join(" / ")}` : ""}</div>
                               <button type="button" onClick={()=>continueWorkboardCard(record, card)} style={{ marginTop:"5px", border:`1px solid ${color}55`, background:T.card, color, borderRadius:"7px", padding:"4px 7px", fontSize:"9.5px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>{card.status === "failed" ? label("重试卡片", "カード再試行", "Retry card") : card.dependencyState === "blocked" ? label("解除依赖", "依存解除", "Unblock") : label("继续卡片", "カード続行", "Continue card")}</button>
                             </div>

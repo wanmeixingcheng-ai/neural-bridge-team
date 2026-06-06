@@ -542,6 +542,14 @@ describe("workflowArchive", () => {
     assert.equal(details.workboard.cards[1].member, "陈志远");
     assert.equal(details.workboard.cards[1].role, "前端工程师");
     assert.equal(details.workboard.cards[1].dependencyState, "ready");
+    assert.deepEqual(details.workboard.cards[1].dependencyEvidence[0], {
+      dependency:"pm",
+      member:"林 美穂",
+      title:"PM",
+      status:"complete",
+      output:"PRD",
+      blocked:false,
+    });
     assert.equal(details.workboard.cards[0].handoffTo, "陈志远 · 前端工程师");
     assert.equal(details.workboard.handoffs[0].from, "林 美穂 · PM");
     assert.equal(details.workboard.handoffs[0].to, "陈志远 · 前端工程师");
