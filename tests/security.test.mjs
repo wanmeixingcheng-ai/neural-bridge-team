@@ -121,6 +121,47 @@ test("chat sanitization blocks model prompt-analysis leakage", () => {
   assert.equal(sanitized.includes("Total Task"), false);
 });
 
+test("chat greetings are not answered by a local canned shortcut", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  delete process.env.ANTHROPIC_API_KEY;
+  const token = createSessionToken();
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        modelKey: "claude",
+        systemPrompt: "You are ARIA.",
+        messages: [{ role: "user", text: "你好" }],
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await chatPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 500);
+    assert.equal(payload.text, undefined);
+    assert.equal(payload.error, "ANTHROPIC_API_KEY is not configured");
+  } finally {
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+    if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  }
+});
+
 test("rate limiter enforces namespace and window limits", () => {
   const request = {
     headers: {
