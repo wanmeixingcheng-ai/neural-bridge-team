@@ -6,7 +6,7 @@ import {
   verifySessionToken,
   SESSION_COOKIE,
 } from "../app/api/auth/session.js";
-import { POST as chatPost } from "../app/api/chat/route.js";
+import { POST as chatPost, sanitizeModelText } from "../app/api/chat/route.js";
 import { checkRateLimit } from "../lib/rateLimit.mjs";
 import { containsSensitiveSecret } from "../lib/secretPolicy.mjs";
 
@@ -100,6 +100,25 @@ test("chat blocks secret-like content before model dispatch", async () => {
     if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = previousAnthropic;
   }
+});
+
+test("chat sanitization blocks model prompt-analysis leakage", () => {
+  const leaked = [
+    '[ARIA · 总调度]',
+    'The user said "你好" (Hello).',
+    'The user previously interacted, and the last assistant response was "ARIA 已启动自动调度...".',
+    '* Rule 1: Only Chinese.',
+    '* Constraint: "Do not introduce yourself".',
+    '* Total Task is "你好".',
+    'Since the user said "你好", I should acknowledge the greeting.',
+  ].join("\n");
+
+  const sanitized = sanitizeModelText(leaked, "zh");
+
+  assert.equal(sanitized, "请发送具体任务指令或上传相关文档。");
+  assert.equal(sanitized.includes("The user said"), false);
+  assert.equal(sanitized.includes("Rule 1"), false);
+  assert.equal(sanitized.includes("Total Task"), false);
 });
 
 test("rate limiter enforces namespace and window limits", () => {

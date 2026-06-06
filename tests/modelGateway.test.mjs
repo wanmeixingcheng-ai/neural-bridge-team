@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { detectInputLanguage, extractUrls, isQuotaExhaustionMessage, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, normalizeModelResponse, outboundBlockedByLocalOnly, outboundBlockedModelKeys, outboundProviderLabel, workflowLocalOnlyBlockMessage } from "../lib/modelGateway.mjs";
+import { callCodexHandoff, detectInputLanguage, extractUrls, isQuotaExhaustionMessage, localOnlyBlockMessage, modelExternalConfigSummary, modelProviderInfo, modelUsageSummary, normalizeModelResponse, outboundBlockedByLocalOnly, outboundBlockedModelKeys, outboundProviderLabel, workflowLocalOnlyBlockMessage } from "../lib/modelGateway.mjs";
 
 describe("modelGateway", () => {
   it("detects the user input language", () => {
@@ -87,5 +87,51 @@ describe("modelGateway", () => {
     assert.equal(summary.entries.find(entry => entry.id === "google").configured, false);
     assert.equal(summary.entries.find(entry => entry.id === "knowledge").blocked, true);
     assert.equal(JSON.stringify(summary).includes("secret"), false);
+  });
+
+  it("dispatches Codex tasks through the backend queue instead of local text", async () => {
+    const previousFetch = globalThis.fetch;
+    let requestBody = null;
+    globalThis.fetch = async (url, options) => {
+      assert.equal(url, "/api/codex-tasks");
+      requestBody = JSON.parse(options.body);
+      return Response.json({
+        ok:true,
+        forwarded:true,
+        taskId:"nb-test-123",
+        issueUrl:"https://github.com/example/repo/issues/1",
+        pendingApproval:false,
+      });
+    };
+
+    try {
+      const text = await callCodexHandoff("system prompt", [{ role:"user", text:"实现登录审计日志" }], { codexAdminToken:"admin-token" });
+
+      assert.equal(requestBody.confirmCodexDispatch, true);
+      assert.equal(requestBody.adminToken, "admin-token");
+      assert.match(text, /Codex 开发任务已真实投递到执行队列/);
+      assert.match(text, /nb-test-123/);
+      assert.match(text, /issues\/1/);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("fails Codex execution when the backend queue is not configured", async () => {
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => Response.json({
+      ok:false,
+      forwarded:false,
+      error:"Task delivery is not configured.",
+    }, { status:503 });
+
+    try {
+      await assert.rejects(
+        () => callCodexHandoff("system prompt", [{ role:"user", text:"实现任务" }], {}),
+        /Codex 真实投递失败/
+      );
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
 });
