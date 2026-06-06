@@ -1,82 +1,122 @@
 # PROJECT_CONSTRAINTS.md
-## 项目专属约束模板
 
-> 这是每个项目唯一必须人工填写的文件。
-
-## 1. 项目基本信息
+## 1. Project Basics
 
 ```text
-项目名称：
-仓库地址：
-技术栈：
-部署环境：
-主要用户：
+Project name: Neural Bridge Team
+Repository: https://github.com/wanmeixingcheng-ai/neural-bridge-team
+Primary production URL: https://neural-bridge-team.vercel.app
+Technology stack: Next.js 16, React 18, Node.js 22, npm, Node test runner, Vercel deployment
+Known services/dependencies: Neon serverless driver, Upstash Redis, PDF/DOCX parsing via pdfjs-dist and mammoth
+Deployment environment: Vercel production. AI must not change production deployment settings without explicit human approval.
+Primary users: project manager, internal team, future customers
 ```
 
-## 2. AI 权限边界
+## 2. AI Permission Boundary
 
-### AI 可以做
+### AI may do
+
 ```text
-- 读取仓库源码
-- 创建 feature branch
-- 创建 PR
-- 评论 Issue / PR
-- 修复 Low / Medium Risk 任务
+- Read repository source code
+- Create feature branches
+- Create pull requests
+- Comment on Issues and PRs
+- Run read-only audits
+- Implement and test Low / Medium Risk tasks after the required labels are present
+- Propose remediation plans and split audit findings into follow-up Issues
 ```
 
-### AI 不可以做
+### AI must not do
+
 ```text
-- 合并 PR
-- 推送 main/master
-- 读取或修改生产数据
-- 修改 GitHub Secrets
-- 修改生产部署配置
-- 输出 secret/token/password 真实值
+- Merge PRs
+- Push directly to main/master after branch protection is enabled
+- Modify GitHub Secrets
+- Modify production database data or schema without explicit human approval
+- Modify production deployment configuration without explicit human approval
+- Print or expose real API keys, tokens, passwords, cookies, or private credentials
+- Automatically deploy or promote production changes outside the approved CI/deployment flow
+- Bypass audit-only, Local-only, risk, or human approval labels
 ```
 
-## 3. 技术边界
+## 3. Approved Technical Baseline
 
-### 已批准依赖
 ```text
-- 
+- Package manager: npm with package-lock.json
+- Runtime: Node.js 22.x
+- Framework: Next.js app router
+- UI: React 18 components
+- Tests: npm run test
+- Production build: npm run build
+- Deployment target: Vercel
 ```
 
-### 禁止新增依赖
+## 4. Dependency Policy
+
+### Approved existing dependencies
+
 ```text
-- 
+- next
+- react
+- react-dom
+- @neondatabase/serverless
+- @upstash/redis
+- mammoth
+- pdfjs-dist
 ```
 
-## 4. 数据隐私边界
+### New dependency rules
 
-### 只能本地保存的数据
 ```text
-- 
+- Do not add runtime dependencies for simple utilities that can be implemented locally.
+- Any dependency touching auth, secrets, networking, storage, payments, AI execution, or deployment is at least Medium Risk.
+- New dependencies with install scripts, native binaries, telemetry, or unclear maintenance status require review before merge.
 ```
 
-### 允许服务端保存的数据
+## 5. Data and Privacy Boundary
+
+### Local-only or client-side data
+
 ```text
-- 
+- Temporary uploaded files before user-confirmed processing
+- Local workflow drafts and transient UI state
+- Debug outputs that may contain user-provided task text
 ```
 
-### 绝对禁止上传的数据
+### Server-side data allowed only when intended by product behavior
+
 ```text
-- 
+- Workflow records
+- Workboard task state
+- Artifact metadata and approved knowledge entries
+- Audit logs that redact secrets
 ```
 
-## 5. 外部 API / 服务
+### Never upload or print
 
-### 已批准服务
 ```text
-- 
+- API keys
+- GitHub tokens
+- Vercel tokens
+- Database URLs
+- Redis URLs or tokens
+- Passwords
+- Session secrets
+- Unredacted .env values
 ```
 
-### Secret 管理方式
+## 6. External API / Service Boundary
+
 ```text
-- GitHub Secrets / Vercel Env / Supabase Dashboard 等
-- 禁止 hardcode
+- Approved model providers must be configured through environment variables only.
+- Secrets must live in GitHub Secrets, Vercel environment variables, or the relevant provider dashboard.
+- Secrets must never be hardcoded, committed, logged, or copied into Issue / PR comments.
+- Local-only mode must block external model, web, deployment, and repository write actions unless explicitly overridden by policy.
 ```
 
-## 6. Protected Files
+## 7. Protected Files
+
+Changes to these files are High Risk unless explicitly approved:
 
 ```text
 - AGENTS.md
@@ -86,20 +126,36 @@
 - AUDIT_ONLY_POLICY.md
 - AUTOMATION_POLICY.md
 - PROJECT_CONSTRAINTS.md
+- RISK_LEVELS.md
+- CI_REPAIR_POLICY.md
+- GITHUB_LABELS.md
 - .github/workflows/
+- .github/ISSUE_TEMPLATE/
+- .github/PULL_REQUEST_TEMPLATE.md
+- prompts/
+- scripts/collect_audit_context.py
 ```
 
-## 7. High Risk 自动判定
+## 8. High Risk Automatic Classification
 
-以下修改必须标记 High Risk：
+The following must be labeled `risk:high` and require explicit human approval before implementation:
 
 ```text
-- Auth / 登录 / 权限
-- 数据库 schema
-- 支付
-- CI/CD
-- Secrets
-- 外部服务接入
-- 生产部署
-- 多 Agent Prompt / 系统提示词
+- Login, auth, sessions, permissions, or access control
+- Database schema or production data migration
+- API keys, secrets, environment variables, or credential handling
+- GitHub Actions, CI/CD, branch protection, or workflow governance
+- Vercel or other production deployment configuration
+- Payment, billing, or customer account data
+- Multi-agent prompts, system prompts, ARIA scheduling policy, Codex/Claude execution policy
+- Local-only mode, audit-only mode, or tool permission gates
+- Any change that can automatically execute external tools or write to GitHub
+```
+
+## 9. First Formal Task
+
+```text
+Before new feature development, create and process an audit-only Issue for this repository.
+The audit must be read-only, must not modify files, must not create commits, and must not create PRs.
+Use labels: audit-only, risk:medium.
 ```
