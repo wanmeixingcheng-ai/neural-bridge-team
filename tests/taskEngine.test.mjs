@@ -676,12 +676,22 @@ test("workboard execution packet carries dependency evidence for blocked cards",
 });
 
 test("workboard execution packet event records executable tool contract", () => {
-  const packet = buildWorkboardExecutionPacket({}, {
+  const packet = buildWorkboardExecutionPacket({
+    members:[
+      { id:"pm", name:"林 美穂", title:"PM", status:"complete" },
+      { id:"fe", name:"陈志远", title:"前端工程师", status:"queued" },
+    ],
+    plan:{ steps:[
+      { order:1, memberId:"pm", member:"林 美穂", title:"PM", output:"PRD" },
+      { order:2, memberId:"fe", member:"陈志远", title:"前端工程师", output:"验证报告", dependencies:["pm"] },
+    ] },
+  }, {
     id:"fe",
     member:"陈志远",
     title:"前端工程师",
     status:"queued",
     dependencyState:"ready",
+    dependencies:["pm"],
     task:"修复",
     output:"验证报告",
     handoffTo:"ARIA 整合",
@@ -693,6 +703,7 @@ test("workboard execution packet event records executable tool contract", () => 
   assert.equal(event.member, "陈志远");
   assert.equal(event.status, "ready");
   assert.match(event.detail, /action=continue/);
+  assert.match(event.detail, /deps=pm:complete/);
   assert.match(event.detail, /handoff=ARIA 整合/);
   assert.match(event.detail, /acceptance=测试通过/);
 });
