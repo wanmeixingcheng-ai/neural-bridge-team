@@ -2399,13 +2399,25 @@ function WorkflowArchiveList({ lang, refreshKey, onContinue }) {
                       <div style={{ display:"flex", flexDirection:"column", gap:"5px", marginTop:"6px" }}>
                         {details.workboard.cards.map((card, index) => {
                           const color = card.status === "complete" ? T.green : card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue;
+                          const executionMode = card.executionMode || {};
+                          const executionKind = executionMode.kind || "model_output";
+                          const executionColor = executionKind === "tool_dispatch" ? T.codex : executionKind === "model_output" ? T.blue : executionKind === "blocked_dependency" ? T.yellow : T.red;
+                          const executionTools = Array.isArray(executionMode.tools) ? executionMode.tools.map(item => item?.name || item?.id).filter(Boolean) : [];
+                          const executionBlockers = Array.isArray(executionMode.blockers) ? executionMode.blockers.map(item => `${item?.name || item?.id || "-"}:${item?.status || "unknown"}`).filter(Boolean) : [];
                           return (
                             <div key={`${card.title}-${index}`} style={{ border:`1px solid ${color}35`, background:T.surface, borderRadius:"6px", padding:"6px", minWidth:0 }}>
                               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"6px" }}>
                                 <div style={{ color:T.text, fontSize:"10px", fontWeight:900, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{card.title}</div>
                                 <span style={{ color, fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{card.status} · {card.dependencyState}</span>
                               </div>
+                              <div style={{ display:"flex", alignItems:"center", gap:"5px", flexWrap:"wrap", marginTop:"4px" }}>
+                                <span style={{ color:executionColor, border:`1px solid ${executionColor}45`, background:T.card, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{label("执行", "実行", "Execution")}: {executionKind}</span>
+                                {card.model && <span style={{ color:T.muted, border:`1px solid ${T.border}`, background:T.card, borderRadius:"999px", padding:"2px 6px", fontSize:"9px", fontWeight:900, whiteSpace:"nowrap" }}>{label("模型", "モデル", "Model")}: {card.model}</span>}
+                              </div>
                               <div style={{ color:T.muted, fontSize:"9.5px", lineHeight:1.35, marginTop:"2px" }}>{card.task || "-"}{card.output ? ` · ${label("输出", "出力", "Output")}: ${card.output}` : ""}</div>
+                              {executionMode.reason && <div style={{ color:executionColor, fontSize:"9.3px", lineHeight:1.35, marginTop:"2px" }}>{executionMode.reason}</div>}
+                              {!!executionTools.length && <div style={{ color:T.muted, fontSize:"9.3px", lineHeight:1.35, marginTop:"2px" }}>{label("工具", "ツール", "Tools")}: {executionTools.join(" / ")}</div>}
+                              {!!executionBlockers.length && <div style={{ color:T.yellow, fontSize:"9.3px", lineHeight:1.35, marginTop:"2px" }}>{label("阻塞", "ブロック", "Blockers")}: {executionBlockers.join(" / ")}</div>}
                               {!!card.dependencyEvidence?.length && (
                                 <div style={{ color:T.muted, fontSize:"9.3px", lineHeight:1.35, marginTop:"2px" }}>
                                   {label("依赖证据", "依存エビデンス", "Dependency evidence")}: {card.dependencyEvidence.map(item => `${item.member || item.dependency}${item.title ? ` · ${item.title}` : ""} · ${item.status || "unknown"}${item.output ? ` · ${item.output}` : ""}${item.blocked ? " · blocked" : ""}`).join(" / ")}
