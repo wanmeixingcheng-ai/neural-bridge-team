@@ -41,6 +41,7 @@ import {
   workflowQualityCheck,
   workflowToolCallChecklist,
   workflowWorkboardCards,
+  workflowWorkboardExecutionMode,
   workflowWorkboardHandoffs,
   workflowWorkboardSummary,
 } from "../lib/taskEngine.mjs";
@@ -607,6 +608,59 @@ test("workflow execution gate event records blocked execution attempts", () => {
   assert.match(event.detail, /blockers=/);
 });
 
+test("workboard execution mode separates model output, tools, and blockers", () => {
+  const modelCard = workflowWorkboardExecutionMode({
+    task:"生成项目计划",
+    members:[{ id:"pm", name:"林 美穂", title:"PM", status:"queued", model:"gemma26" }],
+    plan:{ steps:[{ order:1, memberId:"pm", member:"林 美穂", title:"PM", subtask:"拆解计划", output:"PRD" }] },
+    modelUsage:{ external:true, models:[{ modelKey:"gemma26" }] },
+  }, {
+    id:"pm",
+    member:"林 美穂",
+    title:"PM",
+    model:"gemma26",
+    status:"queued",
+    dependencyState:"none",
+    task:"拆解计划",
+    output:"PRD",
+  }, "zh");
+  assert.equal(modelCard.kind, "model_output");
+  assert.equal(modelCard.canStart, true);
+
+  const toolCard = workflowWorkboardExecutionMode({
+    task:"修复前端并部署到 Vercel",
+    members:[{ id:"fe", name:"陈志远", title:"前端工程师", status:"queued", model:"codex" }],
+    plan:{ steps:[{ order:1, memberId:"fe", member:"陈志远", title:"前端工程师", subtask:"修复并部署", output:"验证报告" }] },
+    modelUsage:{ external:true, models:[{ modelKey:"codex" }] },
+  }, {
+    id:"fe",
+    member:"陈志远",
+    title:"前端工程师",
+    model:"codex",
+    status:"queued",
+    dependencyState:"ready",
+    task:"修复并部署",
+    output:"验证报告",
+  }, "zh");
+  assert.equal(toolCard.kind, "blocked_permission");
+  assert.equal(toolCard.canStart, false);
+  assert.ok(toolCard.tools.some(tool => tool.id === "codex-dispatch"));
+  assert.ok(toolCard.tools.some(tool => tool.id === "vercel-deploy"));
+  assert.ok(toolCard.blockers.some(blocker => blocker.status === "needs_admin"));
+
+  const dependencyCard = workflowWorkboardExecutionMode({}, {
+    id:"qa",
+    member:"吴晓敏",
+    title:"QA",
+    status:"queued",
+    dependencyState:"blocked",
+    blockedBy:["陈志远"],
+  }, "zh");
+  assert.equal(dependencyCard.kind, "blocked_dependency");
+  assert.equal(dependencyCard.canStart, false);
+  assert.equal(dependencyCard.blockers[0].id, "workboard-dependency");
+});
+
 test("workboard execution packet describes real tool execution needs", () => {
   const packet = buildWorkboardExecutionPacket({
     task:"读取 https://example.com 后让 Codex 修复并部署到 Vercel",
@@ -630,6 +684,8 @@ test("workboard execution packet describes real tool execution needs", () => {
   assert.equal(packet.status, "blocked");
   assert.equal(packet.canExecute, false);
   assert.equal(packet.action, "continue");
+  assert.equal(packet.execution.kind, "blocked_permission");
+  assert.match(packet.instructions.join("\n"), /执行类型: blocked_permission/);
   assert.ok(packet.requiredTools.some(tool => tool.id === "codex-dispatch"));
   assert.ok(packet.requiredTools.some(tool => tool.id === "vercel-deploy"));
   assert.ok(packet.blockers.some(item => item.status === "needs_admin"));
@@ -703,6 +759,7 @@ test("workboard execution packet event records executable tool contract", () => 
   assert.equal(event.member, "陈志远");
   assert.equal(event.status, "ready");
   assert.match(event.detail, /action=continue/);
+  assert.match(event.detail, /execution=model_output/);
   assert.match(event.detail, /deps=pm:complete/);
   assert.match(event.detail, /handoff=ARIA 整合/);
   assert.match(event.detail, /acceptance=测试通过/);
