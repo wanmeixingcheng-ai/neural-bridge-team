@@ -2811,6 +2811,9 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
                     ? (lang==="ja" ? "実行可" : lang==="en" ? "Ready" : "可执行")
                     : (lang==="ja" ? "依存なし" : lang==="en" ? "No deps" : "无依赖");
                 const executionMode = workflowWorkboardExecutionMode(currentWorkflow, card, lang);
+                const executionPacket = buildWorkboardExecutionPacket(currentWorkflow, card, lang);
+                const completionGate = executionPacket.completionGate || {};
+                const requiredEvidence = Array.isArray(completionGate.requiredEvidence) ? completionGate.requiredEvidence : [];
                 const executionColor = executionMode.kind === "tool_dispatch"
                   ? T.codex
                   : executionMode.kind === "model_output"
@@ -2848,6 +2851,12 @@ function WorkPanelContent({ title, subtitle, lang, workflow, onWorkflowUpdate, o
                       {!executionMode.blockers?.length && !!executionMode.tools?.length && ` · ${lang==="ja" ? "ツール" : lang==="en" ? "Tools" : "工具"}: ${executionMode.tools.map(item => item.name || item.id).join(" / ")}`}
                     </div>
                     {executionMode.reason && <div style={{ color:T.muted, fontSize:"9.4px", lineHeight:1.35, marginTop:"2px" }}>{executionMode.reason}</div>}
+                    {completionGate.policy && (
+                      <div style={{ color:completionGate.mayMarkComplete ? T.green : T.orange, border:`1px solid ${completionGate.mayMarkComplete ? T.green : T.orange}35`, background:T.card, borderRadius:"7px", padding:"5px 6px", fontSize:"9.4px", lineHeight:1.35, marginTop:"5px" }}>
+                        <span style={{ fontWeight:900 }}>{lang==="ja" ? "完了ゲート" : lang==="en" ? "Completion gate" : "完成门槛"}:</span> {completionGate.policy}
+                        {!!requiredEvidence.length && ` · ${lang==="ja" ? "証拠" : lang==="en" ? "Evidence" : "证据"}: ${requiredEvidence.join(" / ")}`}
+                      </div>
+                    )}
                     {card.acceptanceCriteria && <div style={{ color:T.green, fontSize:"9.8px", lineHeight:1.4, marginTop:"2px" }}>{lang==="ja" ? "受入：" : lang==="en" ? "Acceptance: " : "验收："}{card.acceptanceCriteria}</div>}
                     <button type="button" onClick={()=>runWorkboardCardAction(card)} style={{ marginTop:"6px", border:`1px solid ${card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue}55`, background:T.card, color:card.status === "failed" ? T.red : card.dependencyState === "blocked" ? T.yellow : T.blue, borderRadius:"7px", padding:"5px 8px", fontSize:"9.8px", fontWeight:900, cursor:"pointer", whiteSpace:"nowrap" }}>
                       {card.status === "failed"

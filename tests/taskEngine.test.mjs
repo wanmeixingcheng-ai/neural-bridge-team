@@ -410,6 +410,8 @@ test("workboard card action prompt targets a single executable card", () => {
   assert.match(prompt, /验收标准: 关键状态清晰/);
   assert.match(prompt, /最近评论: human: 先检查移动端卡片是否溢出/);
   assert.match(prompt, /## 执行包/);
+  assert.match(prompt, /完成门槛/);
+  assert.match(prompt, /所需证据: workboard-dependency/);
   assert.match(prompt, /输出契约/);
   assert.match(prompt, /不要只解释计划/);
 });
