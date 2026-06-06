@@ -18,9 +18,12 @@ function safeIssueTitle(text, fallback) {
     .slice(0, 80) || fallback || "Codex task";
 }
 
-function isCodexAutoRunEnabled() {
-  if (process.env.CODEX_TASK_AUTO_RUN !== "true") return false;
-  return process.env.NODE_ENV !== "production";
+export function isCodexAutoRunEnabled(env = process.env) {
+  if (env.CODEX_TASK_AUTO_RUN !== "true") return false;
+  if (env.NODE_ENV === "production") {
+    return env.ALLOW_PRODUCTION_CODEX_AUTO_RUN === "true";
+  }
+  return true;
 }
 
 function secureCompare(a, b) {
