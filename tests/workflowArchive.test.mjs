@@ -120,7 +120,8 @@ describe("workflowArchive", () => {
     assert.match(markdown, /整合结论/);
     assert.match(markdown, /## Workboard/);
     assert.match(markdown, /摘要: 可执行 1 · 阻塞 0 · 失败 0 · 进度 50% · 交接 1\/0/);
-    assert.match(markdown, /\| 陈志远 · 前端工程师 \| queued \| ready \| 实现看板 \| UI \| ARIA 整合 \|/);
+    assert.match(markdown, /\| Agent \| Status \| Dependency \| Execution \| Task \| Output \| Handoff \|/);
+    assert.match(markdown, /\| 陈志远 · 前端工程师 \| queued \| ready \| blocked_permission \(codex-dispatch:blocked_by_local_only\) \| 实现看板 \| UI \| ARIA 整合 \|/);
     assert.match(markdown, /### 交接链路/);
     assert.match(markdown, /ready: 林 美穂 · PM -> 陈志远 · 前端工程师 · 报告/);
     assert.match(markdown, /waiting_source: 陈志远 · 前端工程师 -> ARIA 整合 · UI/);
@@ -566,7 +567,10 @@ describe("workflowArchive", () => {
     assert.equal(details.workboard.cards[0].title, "林 美穂 · PM");
     assert.equal(details.workboard.cards[1].member, "陈志远");
     assert.equal(details.workboard.cards[1].role, "前端工程师");
+    assert.equal(details.workboard.cards[1].model, "codex");
     assert.equal(details.workboard.cards[1].dependencyState, "ready");
+    assert.equal(details.workboard.cards[1].executionMode.kind, "blocked_permission");
+    assert.ok(details.workboard.cards[1].executionMode.blockers.some(item => item.id === "codex-dispatch"));
     assert.deepEqual(details.workboard.cards[1].dependencyEvidence[0], {
       dependency:"pm",
       member:"林 美穂",
