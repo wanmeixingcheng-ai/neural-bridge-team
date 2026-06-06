@@ -104,17 +104,6 @@ function chatSecretScanText(systemPrompt, messages = []) {
   ].join("\n");
 }
 
-function simpleGreetingReply(text, lang = "zh") {
-  const normalized = text.replace(/[，。！？!?\s.、~～]/g, "").toLowerCase();
-  if (!normalized) return "";
-  if (["你好", "您好", "嗨", "哈喽", "hello", "hi", "hey", "こんにちは", "おはよう", "こんばんは"].includes(normalized)) {
-    if (lang === "en") return "Hello. Please send your task.";
-    if (lang === "ja") return "こんにちは。ご用件を送ってください。";
-    return "您好，请发送您的任务。";
-  }
-  return "";
-}
-
 function isForeignLanguageLine(line, lang) {
   const stripped = line.replace(/[`*_#>\-\d.\s:：()[\]【】"'“”]+/g, "");
   if (!stripped) return false;
@@ -302,10 +291,6 @@ export async function POST(request) {
   const userText = lastUserText(messages);
   const lang = detectLanguage(userText, options.language || "zh");
   const effectiveOptions = { ...options, language:lang };
-  const directReply = simpleGreetingReply(userText, lang);
-  if (directReply) {
-    return Response.json({ text: directReply });
-  }
   if (containsSensitiveSecret(chatSecretScanText(systemPrompt, messages))) {
     await auditEvent(request, { type:"chat.secret_blocked", status:"blocked" });
     return sensitiveContentResponse();
