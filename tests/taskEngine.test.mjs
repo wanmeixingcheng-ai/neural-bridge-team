@@ -20,6 +20,7 @@ import {
   emptyWorkflowState,
   extractPriorWorkflowResults,
   inferWorkflowTaskType,
+  isWorkflowConfirmationCommand,
   normalizeWorkflowProtocol,
   parseAutomationDirective,
   parsePlannerJson,
@@ -27,7 +28,9 @@ import {
   planWorkflowDispatchWithModel,
   planWorkflowMembersWithModel,
   recentConversationContext,
+  resolveWorkflowExecutionMembers,
   wantsPriorIntegration,
+  workflowCompletedResultsFromState,
   workflowQueueSummary,
   workflowExecutionReadiness,
   workflowRequiresConfirmation,
@@ -212,6 +215,42 @@ test("confirmation prompt resumes a reviewed high-risk workflow plan", () => {
   assert.match(prompt, /部署验证/);
   assert.match(prompt, /生产回归/);
   assert.match(prompt, /Google Gemini\/Gemma/);
+});
+
+test("workflow confirmation command is recognized without replanning text", () => {
+  assert.equal(isWorkflowConfirmationCommand("确认继续"), true);
+  assert.equal(isWorkflowConfirmationCommand("Confirm and continue"), true);
+  assert.equal(isWorkflowConfirmationCommand("continue workflow"), true);
+  assert.equal(isWorkflowConfirmationCommand("请重新规划一下"), false);
+});
+
+test("confirmed workflow state resolves queued members and keeps execution evidence", () => {
+  const workflow = {
+    task:"请让 Codex 创建一个测试 Issue，不要修改代码，只验证任务投递",
+    mode:"waiting_confirmation",
+    members:[
+      { id:"pm", name:"林 美穂", title:"PM", model:"gemma26", status:"complete", summary:"已完成任务拆解", executionEvidence:{ kind:"model_provider", actualModel:"gemma26" } },
+      { id:"fe", name:"陈志远", title:"前端工程师", model:"codex", status:"queued" },
+      { id:"qa", name:"吴晓敏", title:"QA", model:"gemma26", status:"queued" },
+    ],
+    plan:{
+      steps:[
+        { order:1, memberId:"fe", member:"陈志远", title:"前端工程师", model:"codex", subtask:"投递 GitHub Issue 创建任务" },
+        { order:2, memberId:"qa", member:"吴晓敏", title:"QA", model:"gemma26", subtask:"验证 Issue URL 和队列证据" },
+      ],
+    },
+  };
+
+  const executionMembers = resolveWorkflowExecutionMembers(workflow, members);
+  assert.deepEqual(executionMembers.map(member => member.id), ["fe", "qa"]);
+  assert.equal(executionMembers[0].model, "codex");
+  assert.equal(executionMembers[0].systemPrompt, members.find(member => member.id === "fe").systemPrompt || "");
+  assert.equal(executionMembers[1].task, "验证 Issue URL 和队列证据");
+
+  const completed = workflowCompletedResultsFromState(workflow);
+  assert.equal(completed.length, 1);
+  assert.equal(completed[0].summary, "已完成任务拆解");
+  assert.deepEqual(completed[0].executionEvidence, { kind:"model_provider", actualModel:"gemma26" });
 });
 
 test("workflow plan explains dispatch order without changing selected workers", () => {
