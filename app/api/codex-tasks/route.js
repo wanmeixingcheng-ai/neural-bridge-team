@@ -26,6 +26,13 @@ export function isCodexAutoRunEnabled(env = process.env) {
   return true;
 }
 
+export function codexTaskIssueLabels({ autoRunEnabled = false } = {}) {
+  return [
+    autoRunEnabled ? "approved-for-codex" : "ready-for-codex",
+    "risk:medium",
+  ];
+}
+
 function secureCompare(a, b) {
   const left = createHash("sha256").update(`${a || ""}`).digest();
   const right = createHash("sha256").update(`${b || ""}`).digest();
@@ -101,7 +108,7 @@ export async function POST(request) {
 
   if (process.env.GITHUB_TASK_TOKEN && process.env.GITHUB_TASK_REPO) {
     const autoRunEnabled = isCodexAutoRunEnabled();
-    const labels = autoRunEnabled ? ["codex-task"] : ["codex-pending"];
+    const labels = codexTaskIssueLabels({ autoRunEnabled });
     const response = await fetch(`https://api.github.com/repos/${process.env.GITHUB_TASK_REPO}/issues`, {
       method: "POST",
       headers: {
