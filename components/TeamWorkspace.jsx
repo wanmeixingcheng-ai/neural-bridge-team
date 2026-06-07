@@ -1058,6 +1058,7 @@ function modelMessageMeta(modelKey, apiKeys = {}, actualModel = "") {
 function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activeSession, lang, allMembers = TEAM, onWorkflowState, workflow, draftPrompt }) {
   const [controls, setControls] = useState({ thinkingMode:"off", modelOverride:"", reasoningLevel:"medium" });
   const effectiveModel = controls.modelOverride || member.model;
+  const workflowWorkerModel = (worker) => `${worker?.model || ""}`.toLowerCase() === "codex" ? "codex" : (controls.modelOverride || worker.model);
   const model = MODELS[effectiveModel] || MODELS[member.model];
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -1141,7 +1142,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
 
     const workflowId = workflowRecord.id || `wf-${Date.now().toString(36)}`;
     const workflowPlan = workflowRecord.plan || buildWorkflowPlan({ taskText, workers, mode:"auto", lang:requestLanguage, protocol:null });
-    const workflowModelKeys = [...workers.map(worker => controls.modelOverride || worker.model), effectiveModel];
+    const workflowModelKeys = [...workers.map(worker => workflowWorkerModel(worker)), effectiveModel];
     const workflowLocalOnlyNotice = workflowLocalOnlyBlockMessage(workflowModelKeys, apiKeys, lang, { hasWeb:extractUrls(taskText).length > 0, hasKnowledge:false });
     if (workflowLocalOnlyNotice) {
       setNotice(workflowLocalOnlyNotice);
@@ -1207,7 +1208,7 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
         updatedAt:new Date().toISOString(),
         members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", task:memberTask.slice(0, 180), error:"" } : item),
       }));
-      const workerModel = controls.modelOverride || worker.model;
+      const workerModel = workflowWorkerModel(worker);
       attemptedWorkerModels.push(workerModel);
       let actualWorkerModel = workerModel;
       let reply = "";
@@ -1476,7 +1477,7 @@ ${workerFailures.length ? workerFailures.map(item => `- ${item.name || item.id} 
           protocol:dispatch.protocol,
         });
         const workflowModelKeys = [
-          ...workers.map(worker => controls.modelOverride || worker.model),
+          ...workers.map(worker => workflowWorkerModel(worker)),
           effectiveModel,
         ];
         const workflowLocalOnlyNotice = integrateExisting ? "" : workflowLocalOnlyBlockMessage(workflowModelKeys, apiKeys, lang, { hasWeb:hasUrls, hasKnowledge:!!brainPrompt });
@@ -1570,7 +1571,7 @@ ${workerFailures.length ? workerFailures.map(item => `- ${item.name || item.id} 
             updatedAt:new Date().toISOString(),
             members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
           }));
-          const workerModel = controls.modelOverride || worker.model;
+          const workerModel = workflowWorkerModel(worker);
           attemptedWorkerModels.push(workerModel);
           let actualWorkerModel = workerModel;
           let reply = "";
@@ -1872,6 +1873,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
 
 function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activeSession, lang, onWorkflowState }) {
   const [controls, setControls] = useState({ thinkingMode:"off", modelOverride:"", reasoningLevel:"medium" });
+  const workflowWorkerModel = (member) => `${member?.model || ""}`.toLowerCase() === "codex" ? "codex" : (controls.modelOverride || member.model);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState([]);
@@ -1977,7 +1979,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
       const workflowId = `wf-${Date.now().toString(36)}`;
       const workflowPlan = buildWorkflowPlan({ taskText:text, workers, mode:"auto", lang:requestLanguage, protocol:dispatch.protocol });
       const workflowModelKeys = [
-        ...workers.map(member => controls.modelOverride || member.model),
+        ...workers.map(member => workflowWorkerModel(member)),
         controls.modelOverride || router.model,
       ];
       const workflowLocalOnlyNotice = workflowLocalOnlyBlockMessage(workflowModelKeys, apiKeys, lang, { hasWeb:hasUrls, hasKnowledge:!!brainPrompt });
@@ -2055,7 +2057,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
           updatedAt:new Date().toISOString(),
           members:state.members.map(item => item.id === member.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
         }));
-        const effectiveModel = controls.modelOverride || member.model;
+        const effectiveModel = workflowWorkerModel(member);
         const response = await callModelWithMeta(effectiveModel, member.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
         const actualModel = response.actualModel || effectiveModel;
         const reply = response.text || "";
