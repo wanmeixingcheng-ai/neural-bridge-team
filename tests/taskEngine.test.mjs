@@ -71,6 +71,14 @@ test("fallback planner can dispatch explicit groups", () => {
 
 test("forced workflow actions always resolve to executable members", () => {
   assert.deepEqual(
+    chooseWorkflowMembers({ members }, "请让 Codex 创建一个测试 Issue，不要修改代码，只验证任务投递").map(item => item.id),
+    ["fe"],
+  );
+  assert.deepEqual(
+    ensureExecutableWorkflowMembers([], members, "请让 Codex 创建一个测试 Issue，不要修改代码，只验证任务投递").map(item => item.id),
+    ["fe"],
+  );
+  assert.deepEqual(
     ensureExecutableWorkflowMembers([{ id:"aria", name:"ARIA" }], members, "请开发并测试这个功能").map(item => item.id),
     ["cto", "fe", "qa"],
   );
