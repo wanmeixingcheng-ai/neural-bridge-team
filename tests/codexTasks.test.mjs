@@ -14,9 +14,9 @@ test("codex task auto-run requires explicit production opt-in", () => {
   }), true);
 });
 
-test("codex task issues use repository labels that enter the real Codex workflow", () => {
-  assert.deepEqual(codexTaskIssueLabels({ autoRunEnabled:false }), ["ready-for-codex", "risk:medium"]);
-  assert.deepEqual(codexTaskIssueLabels({ autoRunEnabled:true }), ["approved-for-codex", "risk:medium"]);
+test("codex task issues use labels that trigger the runner workflow", () => {
+  assert.deepEqual(codexTaskIssueLabels({ autoRunEnabled:false }), ["codex-pending", "risk:medium"]);
+  assert.deepEqual(codexTaskIssueLabels({ autoRunEnabled:true }), ["codex-task", "risk:medium"]);
 });
 
 test("authenticated codex dispatch can avoid exposing admin token to the browser", () => {

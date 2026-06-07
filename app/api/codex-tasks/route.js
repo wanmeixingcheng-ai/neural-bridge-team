@@ -28,7 +28,7 @@ export function isCodexAutoRunEnabled(env = process.env) {
 
 export function codexTaskIssueLabels({ autoRunEnabled = false } = {}) {
   return [
-    autoRunEnabled ? "approved-for-codex" : "ready-for-codex",
+    autoRunEnabled ? "codex-task" : "codex-pending",
     "risk:medium",
   ];
 }
