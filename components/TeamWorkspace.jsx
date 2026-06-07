@@ -1200,7 +1200,9 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
 
     for (const worker of workers) {
       if (controller.signal.aborted) break;
+      const workerModel = workflowWorkerModel(worker);
       const memberTask = memberWorkflowTask(worker, modelText || taskText, results, requestLanguage);
+      const workerInput = workerModel === "codex" ? taskText : memberTask;
       onWorkflowState?.(state => ({
         ...state,
         mode:"running",
@@ -1208,13 +1210,12 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
         updatedAt:new Date().toISOString(),
         members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", task:memberTask.slice(0, 180), error:"" } : item),
       }));
-      const workerModel = workflowWorkerModel(worker);
       attemptedWorkerModels.push(workerModel);
       let actualWorkerModel = workerModel;
       let reply = "";
       let workerResponseMeta = null;
       try {
-        workerResponseMeta = await callModelWithMeta(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+        workerResponseMeta = await callModelWithMeta(workerModel, worker.systemPrompt, [{ role:"user", text:workerInput, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
         reply = workerResponseMeta.text || "";
         actualWorkerModel = workerResponseMeta.actualModel || workerModel;
       } catch (workerError) {
@@ -1231,7 +1232,8 @@ function WorkspaceChat({ member, apiKeys, onMenu, onWorkPanel, onSessionUpdate, 
           }));
           try {
             attemptedWorkerModels.push(fallback.toModel);
-            workerResponseMeta = await callModelWithMeta(fallback.toModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+            const fallbackInput = fallback.toModel === "codex" ? taskText : memberTask;
+            workerResponseMeta = await callModelWithMeta(fallback.toModel, worker.systemPrompt, [{ role:"user", text:fallbackInput, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
             reply = workerResponseMeta.text || "";
             actualWorkerModel = workerResponseMeta.actualModel || fallback.toModel;
           } catch (fallbackError) {
@@ -1563,7 +1565,9 @@ ${workerFailures.length ? workerFailures.map(item => `- ${item.name || item.id} 
         };
         for (const worker of workers) {
           if (controller.signal.aborted) break;
+          const workerModel = workflowWorkerModel(worker);
           const memberTask = memberWorkflowTask(worker, modelText, results, requestLanguage);
+          const workerInput = workerModel === "codex" ? text : memberTask;
           onWorkflowState?.(state => ({
             ...state,
             mode:"running",
@@ -1571,13 +1575,12 @@ ${workerFailures.length ? workerFailures.map(item => `- ${item.name || item.id} 
             updatedAt:new Date().toISOString(),
             members:state.members.map(item => item.id === worker.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
           }));
-          const workerModel = workflowWorkerModel(worker);
           attemptedWorkerModels.push(workerModel);
           let actualWorkerModel = workerModel;
           let reply = "";
           let workerResponseMeta = null;
           try {
-            workerResponseMeta = await callModelWithMeta(workerModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+            workerResponseMeta = await callModelWithMeta(workerModel, worker.systemPrompt, [{ role:"user", text:workerInput, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
             reply = workerResponseMeta.text || "";
             actualWorkerModel = workerResponseMeta.actualModel || workerModel;
           } catch (workerError) {
@@ -1608,7 +1611,8 @@ ${workerFailures.length ? workerFailures.map(item => `- ${item.name || item.id} 
               }]);
               try {
                 attemptedWorkerModels.push(fallback.toModel);
-                workerResponseMeta = await callModelWithMeta(fallback.toModel, worker.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+                const fallbackInput = fallback.toModel === "codex" ? text : memberTask;
+                workerResponseMeta = await callModelWithMeta(fallback.toModel, worker.systemPrompt, [{ role:"user", text:fallbackInput, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
                 reply = workerResponseMeta.text || "";
                 actualWorkerModel = workerResponseMeta.actualModel || fallback.toModel;
               } catch (fallbackError) {
@@ -2049,7 +2053,9 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
       for (const member of workers) {
         currentMember = member;
         if (controller.signal.aborted) break;
+        const effectiveModel = workflowWorkerModel(member);
         const memberTask = memberWorkflowTask(member, modelText, results, requestLanguage);
+        const memberInput = effectiveModel === "codex" ? text : memberTask;
         onWorkflowState?.(state => ({
           ...state,
           mode:"running",
@@ -2057,8 +2063,7 @@ function GroupChat({ group, apiKeys, onMenu, onWorkPanel, onSessionUpdate, activ
           updatedAt:new Date().toISOString(),
           members:state.members.map(item => item.id === member.id ? { ...item, status:"working", task:memberTask.slice(0, 180) } : item),
         }));
-        const effectiveModel = workflowWorkerModel(member);
-        const response = await callModelWithMeta(effectiveModel, member.systemPrompt, [{ role:"user", text:memberTask, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
+        const response = await callModelWithMeta(effectiveModel, member.systemPrompt, [{ role:"user", text:memberInput, images }], apiKeys, { ...controls, language:requestLanguage }, controller.signal);
         const actualModel = response.actualModel || effectiveModel;
         const reply = response.text || "";
         const safeReply = reply || (lang === "en" ? "No response." : lang === "ja" ? "応答がありません。" : "无响应");

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, selectLowValueMemories } from "../lib/projectBrain.mjs";
+import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -11,6 +11,16 @@ test("project brain chunks long text with overlap", () => {
 
 test("project brain ignores empty chunk content", () => {
   assert.deepEqual(chunkText("   "), []);
+});
+
+test("workflow artifact memory title is local to project brain", async () => {
+  await assert.doesNotReject(() => rememberWorkflowArtifact({
+    task:"让 Codex 创建一个测试 Issue，不要改代码，只验证任务投递",
+    results:[{ member:"陈志远", title:"前端工程师", text:"Codex 开发任务已真实投递到执行队列。" }],
+    finalText:"Codex 开发任务已真实投递到执行队列。",
+    lang:"zh",
+    source:"aria-workflow",
+  }));
 });
 
 test("project brain filters memories by workflow source type", () => {

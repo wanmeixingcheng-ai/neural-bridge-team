@@ -112,6 +112,8 @@ describe("modelGateway", () => {
       assert.match(text, /Codex 开发任务已真实投递到执行队列/);
       assert.match(text, /nb-test-123/);
       assert.match(text, /issues\/1/);
+      assert.equal(text.includes("任务内容"), false);
+      assert.equal(text.includes("system prompt"), false);
     } finally {
       globalThis.fetch = previousFetch;
     }
