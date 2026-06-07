@@ -33,21 +33,26 @@ export function codexTaskIssueLabels({ autoRunEnabled = false } = {}) {
   ];
 }
 
+export function isAuthenticatedCodexDispatchEnabled(env = process.env) {
+  return env.ALLOW_AUTHENTICATED_CODEX_DISPATCH === "true";
+}
+
 function secureCompare(a, b) {
   const left = createHash("sha256").update(`${a || ""}`).digest();
   const right = createHash("sha256").update(`${b || ""}`).digest();
   return timingSafeEqual(left, right);
 }
 
-function canDispatchCodexTask(body) {
+export function canDispatchCodexTask(body, env = process.env) {
   if (body?.confirmCodexDispatch !== true) return false;
-  const expectedAdminToken = process.env.CODEX_TASK_ADMIN_TOKEN;
-  if (!expectedAdminToken) return process.env.NODE_ENV !== "production";
+  if (isAuthenticatedCodexDispatchEnabled(env)) return true;
+  const expectedAdminToken = env.CODEX_TASK_ADMIN_TOKEN;
+  if (!expectedAdminToken) return env.NODE_ENV !== "production";
   return secureCompare(body?.adminToken, expectedAdminToken);
 }
 
 function codexDispatchConfigError() {
-  if (process.env.NODE_ENV === "production" && !process.env.CODEX_TASK_ADMIN_TOKEN) {
+  if (process.env.NODE_ENV === "production" && !process.env.CODEX_TASK_ADMIN_TOKEN && !isAuthenticatedCodexDispatchEnabled()) {
     return "CODEX_TASK_ADMIN_TOKEN is required for production Codex task dispatch.";
   }
   return "";
