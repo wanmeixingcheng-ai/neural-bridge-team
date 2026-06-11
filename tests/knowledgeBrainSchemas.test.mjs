@@ -14,6 +14,7 @@ import {
   normalizeReviewStatus,
   normalizeRiskLevel,
   normalizeVersion,
+  validateSourceBackedConclusion,
 } from "../lib/knowledgeBrainSchemas.mjs";
 
 test("knowledge brain stores define phase 0 and phase 1 database tables", () => {
@@ -113,4 +114,42 @@ test("schema enum normalization rejects invalid states", () => {
   assert.throws(() => normalizeReviewStatus("published"), /review_status/);
   assert.throws(() => normalizeRiskLevel("critical"), /risk_level/);
   assert.throws(() => normalizeVersion(0), /version/);
+});
+
+test("source-backed conclusion validation gates high-risk claims", () => {
+  const approvedHighRisk = validateSourceBackedConclusion({
+    source_id:"src-1",
+    review_status:"approved",
+    risk_level:"high",
+    version:1,
+    evidence_ref_ids:["ev-1"],
+  });
+  const missingEvidence = validateSourceBackedConclusion({
+    source_id:"src-1",
+    review_status:"approved",
+    risk_level:"high",
+    version:1,
+    evidence_ref_ids:[],
+  });
+  const notApproved = validateSourceBackedConclusion({
+    source_id:"src-1",
+    review_status:"candidate",
+    risk_level:"restricted",
+    version:1,
+    evidence_ref_ids:["ev-1"],
+  });
+  const lowRisk = validateSourceBackedConclusion({
+    source_id:"src-1",
+    review_status:"candidate",
+    risk_level:"low",
+    version:1,
+    evidence_ref_ids:[],
+  });
+
+  assert.equal(approvedHighRisk.ok, true);
+  assert.equal(approvedHighRisk.requiresExpertConfirmation, true);
+  assert.deepEqual(missingEvidence.issues, ["high_risk_missing_evidence"]);
+  assert.deepEqual(notApproved.issues, ["high_risk_not_approved"]);
+  assert.equal(lowRisk.ok, true);
+  assert.equal(lowRisk.requiresExpertConfirmation, false);
 });
