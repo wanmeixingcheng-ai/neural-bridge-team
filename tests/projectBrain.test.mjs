@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedMemoryMetadata, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories } from "../lib/projectBrain.mjs";
+import { approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -11,6 +11,40 @@ test("project brain chunks long text with overlap", () => {
 
 test("project brain ignores empty chunk content", () => {
   assert.deepEqual(chunkText("   "), []);
+});
+
+test("knowledge document ingest builds source, units, and evidence refs", () => {
+  const records = buildKnowledgeDocumentIngestRecords({
+    title:"Area hazard note",
+    source:"attachment",
+    text:"Flood risk source paragraph. ".repeat(120),
+    chunks:["Flood risk source paragraph.", "Station access source paragraph."],
+    documentId:"doc-1",
+  });
+
+  assert.equal(records.source.source_type, "attachment");
+  assert.equal(records.source.review_status, "candidate");
+  assert.equal(records.source.training_allowed, false);
+  assert.equal(records.knowledgeUnits.length, 2);
+  assert.equal(records.evidenceRefs.length, 2);
+  assert.equal(records.knowledgeUnits[0].source_id, records.source.id);
+  assert.equal(records.evidenceRefs[0].target_id, records.knowledgeUnits[0].id);
+  assert.deepEqual(records.knowledgeUnits[0].evidence_ref_ids, [records.evidenceRefs[0].id]);
+});
+
+test("knowledge document ingest keeps REINS uploads high-risk and out of training", () => {
+  const records = buildKnowledgeDocumentIngestRecords({
+    title:"REINS uploaded listing",
+    source:"reins_user_upload",
+    text:"User uploaded REINS evidence.",
+    trainingAllowed:true,
+  });
+
+  assert.equal(records.source.source_type, "reins_user_upload");
+  assert.equal(records.source.risk_level, "high");
+  assert.equal(records.source.training_allowed, false);
+  assert.equal(records.knowledgeUnits[0].risk_level, "high");
+  assert.equal(records.evidenceRefs[0].risk_level, "high");
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
