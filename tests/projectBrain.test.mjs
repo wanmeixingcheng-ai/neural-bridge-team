@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -68,6 +68,19 @@ test("knowledge unit search only returns approved, retained source-backed units"
   assert.equal(hits[0].score, 2);
   assert.equal(hits[0].docId, "doc-1");
   assert.deepEqual(hits[0].evidenceRefIds, ["ev-1"]);
+});
+
+test("training eligible sources require opt-in, approval, low risk, and no deletion request", () => {
+  const eligible = trainingEligibleSources([
+    { id:"ok", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low" },
+    { id:"not-approved", review_status:"candidate", training_allowed:true, deletion_requested:false, risk_level:"low" },
+    { id:"not-consented", review_status:"approved", training_allowed:false, deletion_requested:false, risk_level:"low" },
+    { id:"deleted", review_status:"approved", training_allowed:true, deletion_requested:true, risk_level:"low" },
+    { id:"high-risk", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"high" },
+    { id:"restricted", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"restricted" },
+  ]);
+
+  assert.deepEqual(eligible.map(source => source.id), ["ok"]);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
