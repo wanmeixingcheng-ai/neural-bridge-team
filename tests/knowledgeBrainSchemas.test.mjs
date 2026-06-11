@@ -14,6 +14,7 @@ import {
   normalizeReviewStatus,
   normalizeRiskLevel,
   normalizeVersion,
+  validateKnowledgeUnitQuality,
   validateSourceBackedConclusion,
 } from "../lib/knowledgeBrainSchemas.mjs";
 
@@ -152,4 +153,43 @@ test("source-backed conclusion validation gates high-risk claims", () => {
   assert.deepEqual(notApproved.issues, ["high_risk_not_approved"]);
   assert.equal(lowRisk.ok, true);
   assert.equal(lowRisk.requiresExpertConfirmation, false);
+});
+
+test("knowledge unit quality validation catches missing fields and weak content", () => {
+  const valid = validateKnowledgeUnitQuality({
+    source_id:"src-1",
+    domain:"D01",
+    title:"Flood hazard note",
+    content:"This unit summarizes a source-backed flood hazard finding.",
+    review_status:"approved",
+    risk_level:"medium",
+    version:1,
+    evidence_ref_ids:[],
+  });
+  const weak = validateKnowledgeUnitQuality({
+    source_id:"src-1",
+    domain:"",
+    title:"",
+    content:"short",
+    review_status:"candidate",
+    risk_level:"low",
+    version:1,
+    evidence_ref_ids:[],
+  });
+  const highRiskMissingEvidence = validateKnowledgeUnitQuality({
+    source_id:"src-1",
+    domain:"D02",
+    title:"Contract risk",
+    content:"This unit contains a high-risk contract conclusion.",
+    review_status:"approved",
+    risk_level:"high",
+    version:1,
+    evidence_ref_ids:[],
+  });
+
+  assert.equal(valid.ok, true);
+  assert.deepEqual(weak.issues, ["missing_domain", "missing_title", "content_too_short"]);
+  assert.equal(highRiskMissingEvidence.ok, false);
+  assert.deepEqual(highRiskMissingEvidence.issues, ["high_risk_missing_evidence"]);
+  assert.equal(highRiskMissingEvidence.requiresExpertConfirmation, true);
 });
