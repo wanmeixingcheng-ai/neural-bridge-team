@@ -86,9 +86,10 @@ test("training eligible sources require opt-in, approval, low risk, and no delet
 test("knowledge brain inventory stats expose review, risk, evidence, and training counts", () => {
   const stats = knowledgeBrainInventoryStats({
     sources:[
-      { id:"src-1", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low" },
-      { id:"src-2", review_status:"candidate", training_allowed:false, deletion_requested:false, risk_level:"medium" },
-      { id:"src-3", review_status:"archived", training_allowed:false, deletion_requested:true, risk_level:"high" },
+      { id:"src-1", source_type:"public_manual", title:"Public source", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low", version:1, consent_scope:"explicit_opt_in" },
+      { id:"src-2", source_type:"attachment", title:"Candidate source", review_status:"candidate", training_allowed:false, deletion_requested:false, risk_level:"medium", version:1 },
+      { id:"src-3", source_type:"contract", title:"Deleted contract", review_status:"archived", training_allowed:false, deletion_requested:true, risk_level:"high", version:1 },
+      { id:"src-4", source_type:"contract", title:"Bad source", review_status:"approved", training_allowed:true, deletion_requested:true, risk_level:"high", version:1, consent_scope:"none" },
     ],
     knowledgeUnits:[
       { id:"ku-1", source_id:"src-1", domain:"D01", title:"Approved unit", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1, evidence_ref_ids:[] },
@@ -108,11 +109,15 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   });
 
   assert.equal(stats.sourceRegistry, 2);
-  assert.equal(stats.deletedSources, 1);
+  assert.equal(stats.deletedSources, 2);
   assert.equal(stats.trainingEligibleSources, 1);
-  assert.equal(stats.sourceReviewStatus.approved, 1);
+  assert.equal(stats.sourceReviewStatus.approved, 2);
   assert.equal(stats.sourceReviewStatus.archived, 1);
-  assert.equal(stats.sourceRiskLevels.high, 1);
+  assert.equal(stats.sourceRiskLevels.high, 2);
+  assert.equal(stats.invalidSources, 1);
+  assert.equal(stats.sourceRegistryQualityIssues.deleted_source_training_enabled, 1);
+  assert.equal(stats.sourceRegistryQualityIssues.high_risk_training_enabled, 1);
+  assert.equal(stats.sourceRegistryQualityIssues.training_without_explicit_consent, 1);
   assert.equal(stats.knowledgeUnits, 6);
   assert.equal(stats.approvedKnowledgeUnits, 4);
   assert.equal(stats.highRiskKnowledgeUnits, 2);
