@@ -14,6 +14,7 @@ import {
   normalizeReviewStatus,
   normalizeRiskLevel,
   normalizeVersion,
+  validateEvidenceRefQuality,
   validateKnowledgeUnitQuality,
   validateKnowledgeUnitVersionChain,
   validateSourceRegistryRecord,
@@ -139,6 +140,39 @@ test("scenario, eval case, and evidence refs preserve source linkage", () => {
   assert.equal(evalCase.scenario_id, scenario.id);
   assert.equal(evidence.target_id, "ku-1");
   assert.equal(evidence.source_id, "src-1");
+});
+
+test("evidence ref quality validation catches missing locator and unapproved high risk evidence", () => {
+  const valid = validateEvidenceRefQuality({
+    source_id:"src-1",
+    target_type:"knowledge_unit",
+    target_id:"ku-1",
+    locator:"page 2",
+    quote:"short quote",
+    review_status:"approved",
+    risk_level:"medium",
+    version:1,
+  });
+  const invalid = validateEvidenceRefQuality({
+    source_id:"",
+    target_type:"knowledge_unit",
+    target_id:"",
+    locator:"",
+    quote:"",
+    hash:"",
+    review_status:"candidate",
+    risk_level:"high",
+    version:1,
+  });
+
+  assert.equal(valid.ok, true);
+  assert.deepEqual(invalid.issues, [
+    "missing_source_id",
+    "missing_target_id",
+    "missing_locator",
+    "high_risk_evidence_not_approved",
+    "missing_quote_or_hash",
+  ]);
 });
 
 test("schema enum normalization rejects invalid states", () => {

@@ -100,8 +100,8 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"ku-6", source_id:"src-1", domain:"D01", title:"Broken version", content:"Broken version lineage content.", review_status:"approved", risk_level:"low", version:1, supersedes_id:"ku-1", evidence_ref_ids:[] },
     ],
     evidenceRefs:[
-      { id:"ev-1", review_status:"approved", risk_level:"low" },
-      { id:"ev-2", review_status:"candidate", risk_level:"high" },
+      { id:"ev-1", source_id:"src-1", target_type:"knowledge_unit", target_id:"ku-3", locator:"page 2", quote:"short quote", review_status:"approved", risk_level:"low", version:1 },
+      { id:"ev-2", source_id:"src-2", target_type:"knowledge_unit", target_id:"ku-2", locator:"", quote:"", hash:"", review_status:"candidate", risk_level:"high", version:1 },
     ],
     policyRules:[{ id:"rule-1", review_status:"in_review", risk_level:"high", requires_expert_confirmation:true }],
     scenarios:[{ id:"scenario-1" }, { id:"scenario-2" }],
@@ -132,6 +132,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.knowledgeUnitReviewStatus.candidate, 2);
   assert.equal(stats.evidenceRefs, 2);
   assert.equal(stats.approvedEvidenceRefs, 1);
+  assert.equal(stats.invalidEvidenceRefs, 1);
+  assert.equal(stats.evidenceRefQualityIssues.missing_locator, 1);
+  assert.equal(stats.evidenceRefQualityIssues.high_risk_evidence_not_approved, 1);
+  assert.equal(stats.evidenceRefQualityIssues.missing_quote_or_hash, 1);
   assert.equal(stats.policyRules, 1);
   assert.equal(stats.scenarios, 2);
   assert.equal(stats.evalCases, 1);
