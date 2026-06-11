@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -91,6 +91,38 @@ test("property dossier groups records and exposes review and quality queues", ()
   assert.deepEqual(dossier.evidenceRefIds, ["ev-1", "ev-2"]);
   assert.deepEqual(dossier.needsReview, ["lease-1", "risk-1"]);
   assert.deepEqual(dossier.qualityIssues.map(item => item.id), ["risk-1"]);
+});
+
+test("property dossier investment metrics use deterministic code and transaction price", () => {
+  const metrics = buildPropertyDossierInvestmentMetrics({
+    propertyId:"prop-1",
+    vacancyRatePercent:5,
+    records:[
+      { id:"prop-1", entity_type:"property", source_id:"src-1", property_id:"prop-1", title:"Property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-property"] },
+      { id:"lease-1", entity_type:"lease", source_id:"src-lease", property_id:"prop-1", title:"Lease 1", review_status:"approved", risk_level:"medium", version:1, rent_amount:150000, period:"monthly", evidence_ref_ids:["ev-lease"] },
+      { id:"expense-1", entity_type:"expense", source_id:"src-expense", property_id:"prop-1", title:"Management fee", review_status:"approved", risk_level:"medium", version:1, amount:20000, period:"monthly", calculation_method:"source_reported", evidence_ref_ids:["ev-expense"] },
+      { id:"tax-1", entity_type:"tax", source_id:"src-tax", property_id:"prop-1", title:"Fixed asset tax", review_status:"approved", risk_level:"medium", version:1, amount:180000, period:"annual", calculation_method:"source_reported", evidence_ref_ids:["ev-tax"] },
+      { id:"loan-1", entity_type:"loan", source_id:"src-loan", property_id:"prop-1", title:"Loan", review_status:"approved", risk_level:"medium", version:1, principal_amount:30000000, interest_rate:1.2, term_months:360, calculation_method:"deterministic_code", evidence_ref_ids:["ev-loan"] },
+      { id:"tx-1", entity_type:"transaction", source_id:"src-tx", property_id:"prop-1", title:"Purchase", review_status:"approved", risk_level:"medium", version:1, price_amount:60000000, contract_date:"2026-01-10", calculation_method:"source_reported", evidence_ref_ids:["ev-tx"] },
+    ],
+  });
+
+  assert.equal(metrics.calculation_method, "deterministic_code");
+  assert.equal(metrics.inputs.acquisitionPrice, 60000000);
+  assert.equal(metrics.outputs.annualPotentialRent, 1800000);
+  assert.equal(metrics.outputs.noi, 1290000);
+  assert.equal(metrics.outputs.netYieldPercent, 2.15);
+  assert.deepEqual(metrics.audit.sourceIds, ["src-lease", "src-expense", "src-tax", "src-loan"]);
+  assert.deepEqual(metrics.dossier.needsReview, []);
+});
+
+test("property dossier investment metrics refuse to guess acquisition price", () => {
+  assert.throws(() => buildPropertyDossierInvestmentMetrics({
+    propertyId:"prop-1",
+    records:[
+      { id:"lease-1", entity_type:"lease", source_id:"src-lease", property_id:"prop-1", title:"Lease 1", review_status:"approved", risk_level:"medium", version:1, rent_amount:150000, period:"monthly", evidence_ref_ids:["ev-lease"] },
+    ],
+  }), /acquisitionPrice/);
 });
 
 test("knowledge unit search only returns approved, retained source-backed units", () => {
