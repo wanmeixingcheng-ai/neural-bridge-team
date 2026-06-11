@@ -255,12 +255,16 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.invalidJapaneseRealEstateRecords, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.high_risk_missing_evidence, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.risk_record_missing_expert_confirmation, 1);
-  assert.equal(stats.reviewQueue.total, 4);
+  assert.equal(stats.reviewQueue.total, 6);
   assert.equal(stats.reviewQueue.sources, 1);
   assert.equal(stats.reviewQueue.knowledgeUnits, 2);
   assert.equal(stats.reviewQueue.policyRules, 1);
-  assert.equal(stats.reviewQueue.highRiskExpertReview, 3);
+  assert.equal(stats.reviewQueue.japaneseRealEstateRecords, 1);
+  assert.equal(stats.reviewQueue.calculationRuns, 1);
+  assert.equal(stats.reviewQueue.highRiskExpertReview, 4);
   assert.deepEqual(stats.reviewQueue.invalidKnowledgeUnitIds, ["ku-2", "ku-4"]);
+  assert.deepEqual(stats.reviewQueue.invalidJapaneseRealEstateRecordIds, ["risk-1"]);
+  assert.deepEqual(stats.reviewQueue.invalidCalculationRunIds, ["calc-bad"]);
 });
 
 test("knowledge brain review queue summarizes pending and expert review work", () => {
@@ -278,15 +282,26 @@ test("knowledge brain review queue summarizes pending and expert review work", (
       { id:"rule-approved", review_status:"approved", risk_level:"high", requires_expert_confirmation:true },
       { id:"rule-review", review_status:"in_review", risk_level:"medium", requires_expert_confirmation:true },
     ],
+    japaneseRealEstateRecords:[
+      { id:"risk-review", entity_type:"risk", source_id:"src-high", property_id:"prop-1", title:"Risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:[], requires_expert_confirmation:true },
+    ],
+    calculationRuns:[
+      { id:"calc-review", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{ acquisitionPrice:1 }, formulas:{ grossYieldPercent:"x" }, outputs:{ grossYieldPercent:1 }, source_ids:["src-high"], evidence_ref_ids:["ev-1"], review_status:"candidate", risk_level:"medium", version:1 },
+    ],
   });
 
-  assert.equal(summary.total, 4);
+  assert.equal(summary.total, 6);
   assert.equal(summary.sources, 2);
   assert.equal(summary.knowledgeUnits, 1);
   assert.equal(summary.policyRules, 1);
-  assert.equal(summary.highRiskExpertReview, 3);
+  assert.equal(summary.japaneseRealEstateRecords, 1);
+  assert.equal(summary.calculationRuns, 1);
+  assert.equal(summary.highRiskExpertReview, 4);
   assert.equal(summary.invalidKnowledgeUnits, 1);
   assert.deepEqual(summary.invalidKnowledgeUnitIds, ["ku-bad"]);
+  assert.equal(summary.invalidJapaneseRealEstateRecords, 1);
+  assert.deepEqual(summary.invalidJapaneseRealEstateRecordIds, ["risk-review"]);
+  assert.equal(summary.invalidCalculationRuns, 0);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
