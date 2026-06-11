@@ -51,6 +51,16 @@ Primary users: project manager, internal team, future customers
 - Deployment target: Vercel
 ```
 
+## 3.1 Japan Real Estate Knowledge Brain Baseline
+
+```text
+- The first core asset of this project is the Japan real estate industry database and Knowledge Brain.
+- UI, persona agents, reports, workflow automation, and marketing are application layers that call the knowledge asset.
+- Phase 0 / Phase 1 development must prioritize database schemas, source registry, evidence chain, review state, risk state, and versioned knowledge units.
+- Without source-backed, reviewable, versioned industry data, this project must not be described as a full industry brain.
+- High-risk knowledge must include source_id, review_status, risk_level, and version before it can be reused.
+```
+
 ## 4. Dependency Policy
 
 ### Approved existing dependencies
@@ -81,6 +91,7 @@ Primary users: project manager, internal team, future customers
 - Temporary uploaded files before user-confirmed processing
 - Local workflow drafts and transient UI state
 - Debug outputs that may contain user-provided task text
+- REINS uploads, contracts, important matter explanations, customer records, and other high-risk business materials unless the user explicitly chooses a supported export or sync path
 ```
 
 ### Server-side data allowed only when intended by product behavior
@@ -103,6 +114,35 @@ Primary users: project manager, internal team, future customers
 - Passwords
 - Session secrets
 - Unredacted .env values
+```
+
+### Training data boundary
+
+```text
+- REINS, contracts, important matter explanations, customer records, personally identifiable information, and high-risk business materials are excluded from training pools by default.
+- Free-tier data contribution requires explicit opt-in consent, a visible withdrawal path, and a deletion path.
+- Opt-out, withdrawal, or deletion requests must be represented in source registry metadata before downstream reuse.
+- No uploaded business material may be silently sent to cloud storage, third-party model providers, or training datasets.
+```
+
+### REINS boundary
+
+```text
+- The product may provide only the official REINS login entrance: https://system.reins.jp/login/main/KG/GKG001200
+- Users must log in on the official REINS page themselves, search themselves, and upload downloaded files or screenshots themselves.
+- The system must not store REINS usernames or passwords.
+- The system must not proxy REINS login, automate REINS browsing, scrape REINS pages, or bulk-download REINS content.
+- REINS-derived uploads are high-risk user evidence by default, project-scoped by default, and excluded from training by default.
+```
+
+### LLM and calculation boundary
+
+```text
+- LLMs may extract, classify, summarize, explain, translate, and draft source-grounded text.
+- LLMs must not be the authority for financial mathematics, investment returns, tax arithmetic, loan amortization, cap rates, or deterministic scoring.
+- Financial and numeric calculations must be performed by deterministic code with inputs, formulas, outputs, and audit traces.
+- High-risk conclusions involving contracts, important matter explanations, legal risk, financing, tax, rights relationships, or customer-sensitive facts require expert confirmation before being treated as approved knowledge.
+- The model must not generate source-less industry conclusions; high-risk output must reference approved evidence or state that evidence is missing.
 ```
 
 ## 6. External API / Service Boundary
