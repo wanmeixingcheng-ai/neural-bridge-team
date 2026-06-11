@@ -16,6 +16,7 @@ import {
   normalizeVersion,
   validateKnowledgeUnitQuality,
   validateKnowledgeUnitVersionChain,
+  validateSourceRegistryRecord,
   validateSourceBackedConclusion,
 } from "../lib/knowledgeBrainSchemas.mjs";
 
@@ -50,6 +51,37 @@ test("source registry treats REINS and high-risk uploads as non-training sources
   assert.equal(source.training_allowed, false);
   assert.equal(source.review_status, "candidate");
   assert.equal(source.version, 1);
+});
+
+test("source registry validation enforces consent and deletion boundaries", () => {
+  const valid = validateSourceRegistryRecord({
+    source_type:"public_manual",
+    title:"Public source",
+    review_status:"approved",
+    risk_level:"low",
+    version:1,
+    training_allowed:true,
+    deletion_requested:false,
+    consent_scope:"explicit_opt_in",
+  });
+  const invalid = validateSourceRegistryRecord({
+    source_type:"contract",
+    title:"",
+    review_status:"approved",
+    risk_level:"high",
+    version:1,
+    training_allowed:true,
+    deletion_requested:true,
+    consent_scope:"none",
+  });
+
+  assert.equal(valid.ok, true);
+  assert.deepEqual(invalid.issues, [
+    "missing_title",
+    "deleted_source_training_enabled",
+    "high_risk_training_enabled",
+    "training_without_explicit_consent",
+  ]);
 });
 
 test("knowledge unit requires source, review status, risk level, and version", () => {
