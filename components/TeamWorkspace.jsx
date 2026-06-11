@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import mammoth from "mammoth/mammoth.browser";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import {
@@ -128,9 +128,9 @@ import {
 // ─── THEME ───────────────────────────────────────────────────────────────────
 const T = {
   bg: "#eef1f7", surface: "#ffffff", card: "#f5f7fb", border: "#e4e8ef",
-  blue: "#2d6fbe", blueGlow: "#2d6fbe20", orange: "#e8941a", orangeGlow: "#e8941a20",
-  green: "#1e6b3a", yellow: "#b7770d", red: "#c0392b", purple: "#6c3483",
-  text: "#1a1a2e", muted: "#8a93a8", faint: "#c0c8d8",
+  blue: "#3b82c4", blueGlow: "#3b82c420", orange: "#f5a623", orangeGlow: "#f5a62320",
+  green: "#16a34a", yellow: "#d97706", red: "#dc2626", purple: "#6c3483",
+  text: "#1b2a4a", muted: "#8a8a8a", faint: "#c0c8d8",
   gemini: "#4285f4", gemma31: "#0f9d58", gemma26: "#34a853", codex: "#10b981",
 };
 
@@ -197,7 +197,7 @@ const I18N = {
 
 function effectiveLanguage(value) {
   if (!value || value === "auto") return defaultLanguage();
-  return I18N[value] ? value : "zh";
+  return I18N[value] ? value : "ja";
 }
 
 function t(lang, key) {
@@ -345,11 +345,12 @@ const AUTOMATION_TASKS = [
 ];
 
 function defaultLanguage() {
-  if (typeof navigator === "undefined") return "zh";
+  if (typeof navigator === "undefined") return "ja";
   const lang = (navigator.language || "").toLowerCase();
+  if (lang.startsWith("zh")) return "zh";
   if (lang.startsWith("ja")) return "ja";
   if (lang.startsWith("en")) return "en";
-  return "zh";
+  return "ja";
 }
 
 // ─── LOCAL FILE OUTPUT ──────────────────────────────────────────────────────────
@@ -643,10 +644,53 @@ function SidebarMember({ member, active, onClick }) {
   );
 }
 
+function PropertySummaryBar({ lang, mode = "member" }) {
+  const label = (zh, ja, en) => lang === "ja" ? ja : lang === "en" ? en : zh;
+  const items = [
+    [label("地址", "住所", "Address"), label("未绑定房源", "物件未選択", "No property")],
+    [label("査定価格", "査定価格", "Appraisal"), label("待来源数据", "根拠データ待ち", "Needs source")],
+    [label("築年", "築年", "Built"), label("未录入", "未入力", "Not set")],
+    [label("利回り", "利回り", "Yield"), label("不由 LLM 计算", "LLM計算なし", "No LLM math")],
+    [label("资料", "資料", "Docs"), mode === "knowledge" ? label("知识库", "知識庫", "Knowledge") : label("待上传", "アップロード待ち", "Pending")],
+  ];
+  return (
+    <div className="nb-property-summary" aria-label={label("房源摘要", "物件サマリー", "Property summary")}>
+      {items.map(([name, value]) => (
+        <div key={name} className="nb-property-summary-item">
+          <span>{name}</span>
+          <strong>{value}</strong>
+        </div>
+      ))}
+      <div className="nb-risk-badge">{label("高风险需专家确认", "高リスクは専門確認", "Expert review")}</div>
+    </div>
+  );
+}
+
+function AgentAtBar({ members = [], lang }) {
+  const label = lang === "ja" ? "担当" : lang === "en" ? "Agents" : "成员";
+  const visible = members.filter(Boolean).slice(0, 8);
+  return (
+    <div className="nb-agent-bar" aria-label={label}>
+      <span className="nb-agent-label">@</span>
+      {visible.map(member => {
+        const model = MODELS[member.model] || MODELS.gemma26;
+        return (
+          <span key={member.id} className="nb-agent-chip" style={{ borderColor:`${model.color}55`, color:model.color, background:`${model.color}10` }}>
+            {member.name}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+const REINS_LOGIN_URL = "https://system.reins.jp/login/main/KG/GKG001200";
+
 function TeamSidebar({ selectedId, onSelect, onGroup, onSettings, open, onCustomGroup, onKnowledge, members, projects, automations, conversations, onConversation, onClose, lang }) {
   const [section, setSection] = useState(null);
   const [deptId, setDeptId] = useState(null);
   const [query, setQuery] = useState("");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const today = new Date().toLocaleDateString(DATE_LOCALES[lang] || DATE_LOCALES.zh, { year:"numeric", month:"long", day:"numeric", weekday:"long" });
   const memberById = Object.fromEntries(members.map(m => [m.id, m]));
   const filteredMembers = query.trim()
@@ -678,18 +722,20 @@ function TeamSidebar({ selectedId, onSelect, onGroup, onSettings, open, onCustom
     conversations:t(lang, "conversations"),
   }[section];
   const mainSections = [
+    { id:"search", name:t(lang, "search"), color:T.purple },
     { id:"departments", name:t(lang, "departments"), color:T.blue },
     { id:"groups", name:t(lang, "groups"), color:T.orange },
     { id:"projects", name:t(lang, "projects"), color:T.green },
     { id:"knowledge", name:t(lang, "knowledge"), color:T.purple },
     { id:"automations", name:t(lang, "automations"), color:T.codex },
-    { id:"search", name:t(lang, "search"), color:T.purple },
   ];
+  const reinsLabel = lang === "ja" ? "物件検索 REINS" : lang === "en" ? "Property Search REINS" : "房源检索 REINS";
+  const reinsSub = lang === "ja" ? "クリックして移動 · ユーザー自身でログイン" : lang === "en" ? "Open official site · user logs in" : "点击跳转 · 用户自行登录";
   return (
     <aside className={`nb-sidebar ${open ? "open" : ""}`}>
       <div style={{ padding:"18px 14px 14px", borderBottom:`1px solid ${T.border}` }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px" }}>
-          <div style={{ fontSize:"15px", fontWeight:900, lineHeight:1.15 }}>
+          <div className="nb-logo-mark" style={{ fontSize:"17px", fontWeight:800, lineHeight:1.15 }}>
             <span style={{ color:T.blue }}>Neural</span><span style={{ color:T.orange }}> Bridge</span>
           </div>
           <button onClick={()=>{ onSettings(); onClose?.(); }} title={t(lang, "settings")} style={{ border:`1px solid ${T.border}`, background:T.card, color:T.muted, borderRadius:"8px", padding:"6px 9px", fontSize:"11px", fontWeight:800, cursor:"pointer" }}>{t(lang, "settings")}</button>
@@ -702,9 +748,26 @@ function TeamSidebar({ selectedId, onSelect, onGroup, onSettings, open, onCustom
           <div>
             <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
               {mainSections.map(item => (
-                <button key={item.id} className="nb-main-row" onClick={()=>item.id==="knowledge" ? finishNavigation(()=>onKnowledge()) : openSection(item.id)}>
-                  <span style={{ color:item.color }}>{item.name}</span>
-                </button>
+                item.id === "search"
+                  ? (
+                    <Fragment key={item.id}>
+                      <button className="nb-main-row" onClick={()=>openSection(item.id)}>
+                        <span style={{ color:item.color }}>{item.name}</span>
+                      </button>
+                      <a className="nb-reins-entry" href={REINS_LOGIN_URL} target="_blank" rel="noopener noreferrer">
+                        <span className="nb-reins-icon">R</span>
+                        <span>
+                          <strong>{reinsLabel}</strong>
+                          <small>{reinsSub}</small>
+                        </span>
+                      </a>
+                    </Fragment>
+                  )
+                  : (
+                    <button key={item.id} className="nb-main-row" onClick={()=>item.id==="knowledge" ? finishNavigation(()=>onKnowledge()) : openSection(item.id)}>
+                      <span style={{ color:item.color }}>{item.name}</span>
+                    </button>
+                  )
               ))}
             </div>
             <div style={{ color:T.muted, fontSize:"12px", fontWeight:800, padding:"18px 8px 8px" }}>{t(lang, "conversations")}</div>
@@ -791,8 +854,22 @@ function TeamSidebar({ selectedId, onSelect, onGroup, onSettings, open, onCustom
         )}
       </div>
 
-      <div style={{ padding:"10px", borderTop:`1px solid ${T.border}`, background:T.surface }}>
-        <button onClick={()=>{ onSettings(); onClose?.(); }} style={{ width:"100%", border:`1px solid ${T.border}`, background:T.card, color:T.text, borderRadius:"10px", padding:"10px", fontSize:"12px", fontWeight:900, cursor:"pointer", textAlign:"left" }}>{t(lang, "settings")}</button>
+      <div className="nb-user-zone" style={{ padding:"10px", borderTop:`1px solid ${T.border}`, background:T.surface }}>
+        {userMenuOpen && (
+          <div className="nb-user-popup">
+            <div className="nb-user-popup-user">Neural Bridge Owner</div>
+            <button onClick={()=>{ setUserMenuOpen(false); onSettings(); onClose?.(); }}>{lang==="ja" ? "会社設定" : lang==="en" ? "Company settings" : "公司设置"}</button>
+            <button onClick={()=>{ setUserMenuOpen(false); onSettings(); onClose?.(); }}>{lang==="ja" ? "権限管理" : lang==="en" ? "Role management" : "角色管理"}</button>
+            <button onClick={()=>{ setUserMenuOpen(false); onSettings(); onClose?.(); }}>{t(lang, "automations")}</button>
+            <button onClick={()=>{ setUserMenuOpen(false); onSettings(); onClose?.(); }}>{t(lang, "settings")}</button>
+            <div className="nb-user-popup-divider" />
+            <label>{lang==="ja" ? "表示言語" : lang==="en" ? "Interface language" : "界面语言"}<select value={lang} onChange={()=>{}}><option value="zh">中文</option><option value="ja">日本語</option><option value="en">English</option></select></label>
+            <label>{lang==="ja" ? "出力言語" : lang==="en" ? "Output language" : "输出语言"}<select value={lang} onChange={()=>{}}><option value="zh">中文</option><option value="ja">日本語</option><option value="en">English</option></select></label>
+            <div className="nb-user-popup-divider" />
+            <button className="danger" onClick={()=>setUserMenuOpen(false)}>{lang==="ja" ? "ログアウト" : lang==="en" ? "Logout" : "退出登录"}</button>
+          </div>
+        )}
+        <button onClick={()=>setUserMenuOpen(value => !value)} style={{ width:"100%", border:`1px solid ${T.border}`, background:T.card, color:T.text, borderRadius:"10px", padding:"10px", fontSize:"12px", fontWeight:900, cursor:"pointer", textAlign:"left" }}>Neural Bridge Owner</button>
       </div>
     </aside>
   );
@@ -1829,6 +1906,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           <span style={{ color:T.green, fontSize:"10.5px", fontWeight:800, border:`1px solid ${T.border}`, borderRadius:"8px", padding:"5px 9px", background:T.card }}>{t(lang, "loggedIn")}</span>
         </div>
       </header>
+      <PropertySummaryBar lang={lang} />
 
       <section className="nb-message-list">
         {messages.map((msg, i) => (
@@ -1862,6 +1940,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
         </div>
       )}
 
+      <AgentAtBar members={[member]} lang={lang} />
       <footer className="nb-composer">
         <AttachmentPicker attachments={attachments} setAttachments={setAttachments} disabled={loading} lang={lang} />
         <VoiceInputButton disabled={loading} lang={lang} onText={(text)=>setInput(value => `${value}${value ? " " : ""}${text}`)} />
@@ -2234,6 +2313,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
           <span style={{ color:T.green, fontSize:"10.5px", fontWeight:800, border:`1px solid ${T.border}`, borderRadius:"8px", padding:"5px 9px", background:T.card }}>{t(lang, "groupChat")}</span>
         </div>
       </header>
+      <PropertySummaryBar lang={lang} mode="group" />
       <section className="nb-message-list">
         {messages.map((msg, i) => {
           const model = MODELS[msg.model] || { color:T.blue, tag:"" };
@@ -2257,6 +2337,7 @@ ${results.map(item => `【${item.member}｜${item.title}】\n${item.text}`).join
         {error && <div style={{ color:T.red, background:"#ef444415", border:"1px solid #ef444430", borderRadius:"10px", padding:"10px 12px", fontSize:"12px" }}>⚠ {error}</div>}
         <div ref={bottomRef} />
       </section>
+      <AgentAtBar members={group.members} lang={lang} />
       <footer className="nb-composer">
         <AttachmentPicker attachments={attachments} setAttachments={setAttachments} disabled={loading} lang={lang} />
         <VoiceInputButton disabled={loading} lang={lang} onText={(text)=>setInput(value => `${value}${value ? " " : ""}${text}`)} />
@@ -2493,6 +2574,7 @@ function InfoPanel({ item, onMenu, onWorkPanel, lang }) {
         </div>
         <button className="nb-mobile-work-button" onClick={onWorkPanel}>{lang==="ja" ? "状態" : lang==="en" ? "Status" : "状态"}</button>
       </header>
+      <PropertySummaryBar lang={lang} mode="knowledge" />
       <section className="nb-message-list">
         <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:"14px", padding:"16px", color:T.text, fontSize:"13.5px", lineHeight:1.8, whiteSpace:"pre-wrap" }}>{item.text}</div>
       </section>
@@ -3743,9 +3825,17 @@ function KnowledgePanel({ onMenu, onWorkPanel, lang }) {
 
 function RightWorkPanel({ open, onToggle, title, subtitle, lang, workflow, onWorkflowUpdate, onContinueWorkflow, onRetryWorkflow, onReassignWorkflow, onSkipWorkflow }) {
   if (!open) return null;
+  const tabs = lang === "ja"
+    ? ["プレビュー", "根拠", "物件", "ルール", "監査"]
+    : lang === "en"
+      ? ["Preview", "Evidence", "Property", "Rules", "Audit"]
+      : ["预览", "证据", "房源", "规则", "审计"];
   return (
     <aside className={`nb-work-panel ${open ? "open" : "collapsed"}`}>
       <button className="nb-work-toggle" onClick={onToggle}>{open ? "›" : "‹"}</button>
+      <div className="nb-panel-tabs">
+        {tabs.map((tab, index) => <button key={tab} className={index === 0 ? "active" : ""}>{tab}</button>)}
+      </div>
       {open && <WorkPanelContent title={title} subtitle={subtitle} lang={lang} workflow={workflow} onWorkflowUpdate={onWorkflowUpdate} onContinueWorkflow={onContinueWorkflow} onRetryWorkflow={onRetryWorkflow} onReassignWorkflow={onReassignWorkflow} onSkipWorkflow={onSkipWorkflow} />}
     </aside>
   );
@@ -4021,30 +4111,43 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800;900&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        ::-webkit-scrollbar{width:4px;}
-        ::-webkit-scrollbar-thumb{background:#ccc;border-radius:4px;}
+        ::-webkit-scrollbar{width:3px;height:3px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:rgba(138,138,138,.34);border-radius:999px;}
         @keyframes nb-pulse{0%,100%{opacity:0.3;transform:scale(0.8);}50%{opacity:1;transform:scale(1);}}
         .nb-app-root{height:100dvh;overflow:hidden;}
-        .nb-shell{height:100%;display:grid;grid-template-columns:310px minmax(0,1fr) 280px;background:${T.bg};overflow:hidden;}
-        .nb-shell.panel-collapsed{grid-template-columns:310px minmax(0,1fr);}
+        .nb-shell{height:100%;display:grid;grid-template-columns:220px minmax(0,1fr) 256px;background:${T.bg};overflow:hidden;}
+        .nb-shell.panel-collapsed{grid-template-columns:220px minmax(0,1fr);}
         .nb-sidebar{display:flex;flex-direction:column;background:${T.surface};border-right:1px solid ${T.border};min-height:0;}
-        .nb-chat{display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;min-width:0;min-height:0;}
+        .nb-logo-mark span{letter-spacing:0;}
+        .nb-chat{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto;min-width:0;min-height:0;}
         .nb-work-panel{background:${T.surface};border-left:1px solid ${T.border};min-width:0;min-height:0;height:100%;position:relative;display:flex;flex-direction:column;overflow:hidden;}
         .nb-work-panel-body{padding:16px 14px;overflow-y:auto;min-height:0;flex:1;overscroll-behavior:contain;}
+        .nb-panel-tabs{height:38px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;border-bottom:1px solid ${T.border};background:${T.surface};padding:0 8px;flex-shrink:0;}
+        .nb-panel-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;color:${T.muted};font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .nb-panel-tabs button.active{border-bottom-color:${T.blue};color:${T.blue};}
         .nb-work-toggle{position:absolute;left:8px;top:12px;width:28px;height:28px;border:1px solid ${T.border};background:${T.card};color:${T.muted};border-radius:8px;font-size:20px;line-height:1;cursor:pointer;z-index:2;}
         .nb-work-panel.open .nb-work-toggle{left:auto;right:10px;}
         .nb-work-panel.collapsed{align-items:center;background:${T.card};}
         .nb-mobile-work-button{display:block;border:1px solid ${T.border};background:${T.card};color:${T.text};border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:900;cursor:pointer;}
         .nb-mobile-work-backdrop{display:none;}
-        .nb-chat-header{height:68px;background:${T.surface};border-bottom:1px solid ${T.border};display:flex;align-items:center;justify-content:space-between;padding:0 22px;gap:12px;}
+        .nb-chat-header{height:64px;background:${T.surface};border-bottom:1px solid ${T.border};display:flex;align-items:center;justify-content:space-between;padding:0 22px;gap:12px;flex-shrink:0;}
         .nb-menu-button{display:none;border:1px solid ${T.border};background:${T.card};color:${T.text};border-radius:9px;width:36px;height:36px;font-size:17px;cursor:pointer;flex-shrink:0;}
         .nb-message-list{overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px;}
+        .nb-property-summary{height:38px;background:${T.surface};border-bottom:1px solid ${T.border};display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;align-items:center;gap:10px;padding:0 22px;flex-shrink:0;overflow:hidden;}
+        .nb-property-summary-item{min-width:0;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;}
+        .nb-property-summary-item span{color:${T.muted};font-size:10px;font-weight:800;flex-shrink:0;}
+        .nb-property-summary-item strong{color:${T.text};font-size:11px;font-weight:900;overflow:hidden;text-overflow:ellipsis;}
+        .nb-risk-badge{justify-self:end;color:${T.red};background:#fee2e2;border:1px solid #dc262633;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;white-space:nowrap;}
         .nb-quick{display:flex;gap:8px;flex-wrap:wrap;padding:0 22px 12px;}
         .nb-quick button{border:1px solid ${T.border};background:${T.surface};color:${T.muted};border-radius:9px;padding:8px 12px;font-size:12px;cursor:pointer;}
         .nb-composer{display:flex;gap:10px;padding:14px 22px 18px;background:${T.surface};border-top:1px solid ${T.border};align-items:center;flex-wrap:wrap;}
         .nb-composer input{flex:1;border:1px solid ${T.border};background:${T.card};color:${T.text};border-radius:12px;padding:12px 15px;font-size:13.5px;outline:none;}
         .nb-composer button{width:44px;border:none;border-radius:12px;background:${T.blue};color:#fff;font-size:18px;cursor:pointer;}
         .nb-composer button:disabled{background:${T.faint};cursor:default;}
+        .nb-agent-bar{display:flex;align-items:center;gap:6px;padding:8px 22px;background:${T.surface};border-top:1px solid ${T.border};min-height:38px;overflow-x:auto;flex-shrink:0;}
+        .nb-agent-label{color:${T.blue};font-size:13px;font-weight:900;flex-shrink:0;}
+        .nb-agent-chip{border:1px solid;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:900;white-space:nowrap;flex-shrink:0;}
         .nb-stop-button{background:${T.red}!important;color:#fff!important;font-size:13px!important;font-weight:900!important;}
         .nb-stop-button:hover{filter:brightness(.96);}
         .nb-attach-button{width:42px!important;height:42px!important;border:1px solid ${T.border}!important;background:${T.card}!important;color:${T.muted}!important;border-radius:12px!important;font-size:22px!important;line-height:1!important;font-weight:500!important;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -4061,6 +4164,26 @@ export default function App() {
         .nb-chat-controls select{min-width:0;width:100%;border:1px solid ${T.border};background:${T.card};color:${T.text};border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none;}
         .nb-sidebar-backdrop{display:none;}
         .nb-side-action{border:1px solid ${T.border};background:${T.card};border-radius:8px;padding:7px;font-size:11px;font-weight:800;cursor:pointer;}
+        .nb-reins-entry{display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;align-items:center;margin:2px 0 8px;padding:9px 10px;border:1px solid ${T.blue}35;background:${T.blue}10;border-radius:10px;text-decoration:none;}
+        .nb-reins-icon{width:30px;height:30px;border-radius:8px;background:${T.blue};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;}
+        .nb-reins-entry strong{display:block;color:${T.text};font-size:12px;font-weight:900;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .nb-reins-entry small{display:block;color:${T.muted};font-size:9.5px;font-weight:800;line-height:1.25;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .nb-user-zone{position:relative;flex-shrink:0;}
+        .nb-user-popup{position:absolute;left:8px;bottom:52px;width:208px;background:#ffffff;color:${T.text};border:1px solid ${T.border};border-radius:10px;box-shadow:0 18px 45px rgba(27,42,74,.18);padding:8px;z-index:12;}
+        .nb-user-popup-user{color:${T.text};font-size:12px;font-weight:900;padding:7px 8px 9px;}
+        .nb-user-popup button{width:100%;border:0;background:transparent;color:${T.text};border-radius:7px;padding:7px 8px;text-align:left;font-size:12px;font-weight:800;cursor:pointer;}
+        .nb-user-popup button:hover{background:${T.card};}
+        .nb-user-popup button.danger{color:${T.red};font-size:13px;font-weight:400;}
+        .nb-user-popup-divider{height:1px;background:${T.border};margin:6px 0;}
+        .nb-user-popup label{display:grid;gap:4px;color:${T.muted};font-size:10px;font-weight:800;padding:6px 8px;}
+        .nb-user-popup select{border:1px solid ${T.border};background:${T.card};color:${T.text};border-radius:7px;padding:5px 6px;font-size:11px;outline:none;}
+        @media(prefers-color-scheme:dark){
+          .nb-user-popup{background:#1c1c1e;color:#f5f5f7;border-color:#38383a;}
+          .nb-user-popup-user,.nb-user-popup button{color:#f5f5f7;}
+          .nb-user-popup button:hover{background:#2c2c2e;}
+          .nb-user-popup select{background:#2c2c2e;color:#f5f5f7;border-color:#38383a;}
+          .nb-user-popup-divider{background:#38383a;}
+        }
         .nb-main-row{width:100%;display:flex;align-items:center;border:1px solid transparent;background:transparent;border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;}
         .nb-main-row span{font-size:13px;font-weight:900;}
         .nb-main-row:hover,.nb-back-row:hover{background:${T.surface};border-color:${T.blue}55;}
@@ -4083,18 +4206,22 @@ export default function App() {
           .nb-mobile-work-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.34);z-index:900;}
           .nb-mobile-work-drawer{position:absolute;left:0;right:0;bottom:0;max-height:72dvh;background:${T.surface};border-radius:16px 16px 0 0;border-top:1px solid ${T.border};box-shadow:0 -18px 45px rgba(0,0,0,.18);overflow:hidden;}
           .nb-mobile-work-drawer .nb-work-panel-body{max-height:calc(72dvh - 57px);overflow-y:auto;padding:12px;}
-          .nb-chat{grid-template-rows:auto minmax(0,1fr) auto auto auto;height:100%;max-height:100%;}
+          .nb-chat{grid-template-rows:auto auto minmax(0,1fr) auto auto auto;height:100%;max-height:100%;}
           .nb-menu-button{display:flex;align-items:center;justify-content:center;}
-          .nb-sidebar{position:fixed;left:-316px;top:0;bottom:0;width:306px;z-index:800;border-right:1px solid ${T.border};box-shadow:0 18px 50px rgba(0,0,0,0.24);transition:left .2s ease;}
+          .nb-sidebar{position:fixed;left:-100vw;top:0;bottom:0;width:100vw;z-index:800;border-right:1px solid ${T.border};box-shadow:0 18px 50px rgba(0,0,0,0.24);transition:left .2s ease;}
           .nb-sidebar.open{left:0;}
           .nb-sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:750;}
           .nb-chat-header{height:auto;min-height:52px;padding:8px 12px;}
+          .nb-property-summary{height:auto;min-height:38px;grid-template-columns:repeat(2,minmax(0,1fr));padding:7px 12px;gap:6px 10px;}
+          .nb-risk-badge{justify-self:start;}
           .nb-chat-header [style*="width:42px"]{width:34px!important;height:34px!important;font-size:15px!important;}
           .nb-message-list{padding:12px;gap:10px;}
           .nb-message-list [style*="max-width"]{max-width:min(720px,86%)!important;padding:10px 12px!important;font-size:13px!important;line-height:1.65!important;}
           .nb-quick{padding:0 12px 8px;gap:6px;}
           .nb-quick button{padding:7px 10px;font-size:11.5px;border-radius:8px;}
           .nb-composer{padding:10px 12px 12px;gap:8px;}
+          .nb-agent-bar{padding:7px 12px;}
+          .nb-agent-chip:nth-of-type(n+5){display:none;}
           .nb-composer input{padding:10px 12px;border-radius:11px;font-size:13px;}
           .nb-composer button{width:42px;height:42px;border-radius:11px;}
           .nb-attach-button{width:40px!important;height:40px!important;font-size:20px!important;}
