@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -45,6 +45,52 @@ test("knowledge document ingest keeps REINS uploads high-risk and out of trainin
   assert.equal(records.source.training_allowed, false);
   assert.equal(records.knowledgeUnits[0].risk_level, "high");
   assert.equal(records.evidenceRefs[0].risk_level, "high");
+});
+
+test("japanese real estate record payload routes entities to their stores and blocks LLM math", () => {
+  const payload = buildJapaneseRealEstateRecordPayload("loan", {
+    source_id:"src-1",
+    property_id:"prop-1",
+    title:"Loan terms",
+    review_status:"approved",
+    risk_level:"medium",
+    calculation_method:"deterministic_code",
+    evidence_ref_ids:["ev-1"],
+  });
+
+  assert.equal(payload.storeName, "loan_records");
+  assert.equal(payload.record.entity_type, "loan");
+  assert.equal(payload.record.calculation_method, "deterministic_code");
+  assert.equal(payload.quality.ok, true);
+  assert.throws(() => buildJapaneseRealEstateRecordPayload("expense", {
+    source_id:"src-1",
+    property_id:"prop-1",
+    title:"LLM expense",
+    review_status:"approved",
+    risk_level:"medium",
+    calculation_method:"llm",
+    evidence_ref_ids:["ev-1"],
+  }), /must not use LLM calculation/);
+});
+
+test("property dossier groups records and exposes review and quality queues", () => {
+  const dossier = buildPropertyDossier({
+    propertyId:"prop-1",
+    records:[
+      { id:"prop-1", entity_type:"property", source_id:"src-1", property_id:"prop-1", title:"Property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-1"] },
+      { id:"lease-1", entity_type:"lease", source_id:"src-1", property_id:"prop-1", title:"Lease", review_status:"candidate", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-2"] },
+      { id:"risk-1", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:[], requires_expert_confirmation:false },
+      { id:"prop-2", entity_type:"property", source_id:"src-1", property_id:"prop-2", title:"Other", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-3"] },
+    ],
+  });
+
+  assert.equal(dossier.records, 3);
+  assert.equal(dossier.byType.property.length, 1);
+  assert.equal(dossier.byType.lease.length, 1);
+  assert.equal(dossier.byType.risk.length, 1);
+  assert.deepEqual(dossier.evidenceRefIds, ["ev-1", "ev-2"]);
+  assert.deepEqual(dossier.needsReview, ["lease-1", "risk-1"]);
+  assert.deepEqual(dossier.qualityIssues.map(item => item.id), ["risk-1"]);
 });
 
 test("knowledge unit search only returns approved, retained source-backed units", () => {
