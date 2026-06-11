@@ -147,6 +147,29 @@ create table if not exists nb_evidence_refs (
   constraint nb_evidence_refs_version_chk check (version >= 1)
 );
 
+create table if not exists nb_jre_records (
+  id text primary key,
+  entity_type text not null,
+  source_id text not null references nb_source_registry(id),
+  property_id text not null default '',
+  title text not null,
+  locale text not null default 'ja-JP',
+  calculation_method text not null default 'source_reported',
+  attributes jsonb not null default '{}'::jsonb,
+  evidence_ref_ids jsonb not null default '[]'::jsonb,
+  review_status text not null default 'candidate',
+  risk_level text not null default 'medium',
+  version integer not null default 1,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint nb_jre_records_entity_type_chk check (entity_type in ('property', 'land', 'building', 'lease', 'expense', 'loan', 'tax', 'risk', 'area', 'transaction')),
+  constraint nb_jre_records_calculation_method_chk check (calculation_method in ('source_reported', 'deterministic_code', 'manual_entry', 'unknown')),
+  constraint nb_jre_records_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
+  constraint nb_jre_records_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
+  constraint nb_jre_records_version_chk check (version >= 1)
+);
+
 create index if not exists nb_source_registry_type_idx on nb_source_registry (source_type);
 create index if not exists nb_source_registry_review_idx on nb_source_registry (review_status);
 create index if not exists nb_source_registry_risk_idx on nb_source_registry (risk_level);
@@ -163,3 +186,8 @@ create index if not exists nb_eval_cases_source_idx on nb_eval_cases (source_id)
 create index if not exists nb_eval_cases_scenario_idx on nb_eval_cases (scenario_id);
 create index if not exists nb_evidence_refs_source_idx on nb_evidence_refs (source_id);
 create index if not exists nb_evidence_refs_target_idx on nb_evidence_refs (target_type, target_id);
+create index if not exists nb_jre_records_entity_type_idx on nb_jre_records (entity_type);
+create index if not exists nb_jre_records_source_idx on nb_jre_records (source_id);
+create index if not exists nb_jre_records_property_idx on nb_jre_records (property_id);
+create index if not exists nb_jre_records_review_idx on nb_jre_records (review_status);
+create index if not exists nb_jre_records_risk_idx on nb_jre_records (risk_level);

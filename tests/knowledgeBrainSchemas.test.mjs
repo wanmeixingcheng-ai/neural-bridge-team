@@ -3,18 +3,30 @@ import assert from "node:assert/strict";
 
 import {
   HIGH_RISK_SOURCE_TYPES,
+  JRE_ENTITY_TYPES,
   KNOWLEDGE_BRAIN_STORES,
   assertHighRiskReviewable,
+  buildBuildingRecord,
   buildEvalCaseRecord,
   buildEvidenceRefRecord,
+  buildExpenseRecord,
   buildKnowledgeUnitRecord,
+  buildLandRecord,
+  buildLeaseRecord,
+  buildLoanRecord,
   buildPolicyRuleRecord,
+  buildPropertyRecord,
+  buildRiskRecord,
   buildScenarioRecord,
   buildSourceRegistryRecord,
+  buildTaxRecord,
+  buildTransactionRecord,
+  buildAreaRecord,
   normalizeReviewStatus,
   normalizeRiskLevel,
   normalizeVersion,
   validateEvidenceRefQuality,
+  validateJapaneseRealEstateRecord,
   validateKnowledgeUnitQuality,
   validateKnowledgeUnitVersionChain,
   validateSourceRegistryRecord,
@@ -29,6 +41,16 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     "scenarios",
     "eval_cases",
     "evidence_refs",
+    "property_records",
+    "land_records",
+    "building_records",
+    "lease_records",
+    "expense_records",
+    "loan_records",
+    "tax_records",
+    "risk_records",
+    "area_records",
+    "transaction_records",
   ]);
 
   for (const store of Object.values(KNOWLEDGE_BRAIN_STORES)) {
@@ -36,6 +58,26 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "review_status"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "risk_level"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "version") || store.name === "source_registry");
+  }
+});
+
+test("japanese real estate entity schemas cover property workspace data domains", () => {
+  assert.deepEqual(JRE_ENTITY_TYPES, [
+    "property",
+    "land",
+    "building",
+    "lease",
+    "expense",
+    "loan",
+    "tax",
+    "risk",
+    "area",
+    "transaction",
+  ]);
+
+  const storeNames = Object.values(KNOWLEDGE_BRAIN_STORES).map(store => store.name);
+  for (const type of JRE_ENTITY_TYPES) {
+    assert.ok(storeNames.includes(`${type}_records`));
   }
 });
 
@@ -281,5 +323,71 @@ test("knowledge unit version chain validation preserves lineage", () => {
     { id:"missing", issue:"missing_superseded_unit" },
     { id:"same-version", issue:"non_incrementing_version" },
     { id:"cross-source", issue:"supersedes_cross_source" },
+  ]);
+});
+
+test("japanese real estate records preserve source linkage and deterministic calculation boundary", () => {
+  const base = {
+    source_id:"src-1",
+    property_id:"prop-1",
+    title:"渋谷区サンプル物件",
+    review_status:"approved",
+    risk_level:"medium",
+    evidence_ref_ids:["ev-1"],
+  };
+  const property = buildPropertyRecord({ ...base, id:"prop-1", address:"東京都渋谷区", property_type:"mansion" });
+  const land = buildLandRecord({ ...base, land_area_sqm:120.5, zoning:"商業地域" });
+  const building = buildBuildingRecord({ ...base, built_year:1998, structure:"RC" });
+  const lease = buildLeaseRecord({ ...base, unit_label:"201", rent_amount:140000 });
+  const expense = buildExpenseRecord({ ...base, expense_type:"management_fee", amount:12000, calculation_method:"source_reported" });
+  const loan = buildLoanRecord({ ...base, principal_amount:32000000, interest_rate:1.2, calculation_method:"deterministic_code" });
+  const tax = buildTaxRecord({ ...base, tax_type:"fixed_asset_tax", amount:90000, calculation_method:"manual_entry" });
+  const risk = buildRiskRecord({ ...base, risk_type:"contract", finding:"重要事項説明の専門確認が必要", risk_level:"high", requires_expert_confirmation:true });
+  const area = buildAreaRecord({ ...base, municipality:"渋谷区", station:"渋谷" });
+  const transaction = buildTransactionRecord({ ...base, transaction_type:"sale", price_amount:52000000, calculation_method:"source_reported" });
+
+  for (const record of [property, land, building, lease, expense, loan, tax, risk, area, transaction]) {
+    assert.equal(record.source_id, "src-1");
+    assert.equal(record.version, 1);
+    assert.equal(validateJapaneseRealEstateRecord(record).ok, true);
+  }
+
+  assert.equal(loan.calculation_method, "deterministic_code");
+  assert.equal(risk.requires_expert_confirmation, true);
+});
+
+test("japanese real estate validation blocks weak high-impact and LLM-computed financial records", () => {
+  const llmFinancial = validateJapaneseRealEstateRecord({
+    id:"expense-1",
+    entity_type:"expense",
+    source_id:"src-1",
+    property_id:"prop-1",
+    title:"LLM calculated expense",
+    review_status:"approved",
+    risk_level:"medium",
+    version:1,
+    calculation_method:"llm",
+    evidence_ref_ids:["ev-1"],
+  });
+  const weakRisk = validateJapaneseRealEstateRecord({
+    id:"risk-1",
+    entity_type:"risk",
+    source_id:"src-1",
+    property_id:"prop-1",
+    title:"Unreviewed contract risk",
+    review_status:"candidate",
+    risk_level:"high",
+    version:1,
+    calculation_method:"source_reported",
+    evidence_ref_ids:[],
+    requires_expert_confirmation:false,
+  });
+
+  assert.deepEqual(llmFinancial.issues, ["llm_financial_calculation"]);
+  assert.deepEqual(weakRisk.issues, [
+    "high_risk_missing_evidence",
+    "high_risk_not_approved",
+    "high_impact_record_not_approved",
+    "risk_record_missing_expert_confirmation",
   ]);
 });

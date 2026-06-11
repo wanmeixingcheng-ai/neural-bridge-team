@@ -106,6 +106,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
     policyRules:[{ id:"rule-1", review_status:"in_review", risk_level:"high", requires_expert_confirmation:true }],
     scenarios:[{ id:"scenario-1" }, { id:"scenario-2" }],
     evalCases:[{ id:"eval-1" }],
+    japaneseRealEstateRecords:[
+      { id:"prop-1", entity_type:"property", source_id:"src-1", property_id:"prop-1", title:"Approved property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-1"] },
+      { id:"risk-1", entity_type:"risk", source_id:"src-2", property_id:"prop-1", title:"Candidate risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:[], requires_expert_confirmation:false },
+    ],
   });
 
   assert.equal(stats.sourceRegistry, 2);
@@ -139,6 +143,12 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.policyRules, 1);
   assert.equal(stats.scenarios, 2);
   assert.equal(stats.evalCases, 1);
+  assert.equal(stats.japaneseRealEstateRecords, 2);
+  assert.equal(stats.japaneseRealEstateRecordsByType.property, 1);
+  assert.equal(stats.japaneseRealEstateRecordsByType.risk, 1);
+  assert.equal(stats.invalidJapaneseRealEstateRecords, 1);
+  assert.equal(stats.japaneseRealEstateRecordQualityIssues.high_risk_missing_evidence, 1);
+  assert.equal(stats.japaneseRealEstateRecordQualityIssues.risk_record_missing_expert_confirmation, 1);
   assert.equal(stats.reviewQueue.total, 4);
   assert.equal(stats.reviewQueue.sources, 1);
   assert.equal(stats.reviewQueue.knowledgeUnits, 2);
