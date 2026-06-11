@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -81,6 +81,44 @@ test("training eligible sources require opt-in, approval, low risk, and no delet
   ]);
 
   assert.deepEqual(eligible.map(source => source.id), ["ok"]);
+});
+
+test("knowledge brain inventory stats expose review, risk, evidence, and training counts", () => {
+  const stats = knowledgeBrainInventoryStats({
+    sources:[
+      { id:"src-1", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low" },
+      { id:"src-2", review_status:"candidate", training_allowed:false, deletion_requested:false, risk_level:"medium" },
+      { id:"src-3", review_status:"archived", training_allowed:false, deletion_requested:true, risk_level:"high" },
+    ],
+    knowledgeUnits:[
+      { id:"ku-1", review_status:"approved", risk_level:"low" },
+      { id:"ku-2", review_status:"candidate", risk_level:"high" },
+      { id:"ku-3", review_status:"approved", risk_level:"restricted" },
+    ],
+    evidenceRefs:[
+      { id:"ev-1", review_status:"approved", risk_level:"low" },
+      { id:"ev-2", review_status:"candidate", risk_level:"high" },
+    ],
+    policyRules:[{ id:"rule-1" }],
+    scenarios:[{ id:"scenario-1" }, { id:"scenario-2" }],
+    evalCases:[{ id:"eval-1" }],
+  });
+
+  assert.equal(stats.sourceRegistry, 2);
+  assert.equal(stats.deletedSources, 1);
+  assert.equal(stats.trainingEligibleSources, 1);
+  assert.equal(stats.sourceReviewStatus.approved, 1);
+  assert.equal(stats.sourceReviewStatus.archived, 1);
+  assert.equal(stats.sourceRiskLevels.high, 1);
+  assert.equal(stats.knowledgeUnits, 3);
+  assert.equal(stats.approvedKnowledgeUnits, 2);
+  assert.equal(stats.highRiskKnowledgeUnits, 2);
+  assert.equal(stats.knowledgeUnitReviewStatus.candidate, 1);
+  assert.equal(stats.evidenceRefs, 2);
+  assert.equal(stats.approvedEvidenceRefs, 1);
+  assert.equal(stats.policyRules, 1);
+  assert.equal(stats.scenarios, 2);
+  assert.equal(stats.evalCases, 1);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
