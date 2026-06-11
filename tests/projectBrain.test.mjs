@@ -91,9 +91,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"src-3", review_status:"archived", training_allowed:false, deletion_requested:true, risk_level:"high" },
     ],
     knowledgeUnits:[
-      { id:"ku-1", review_status:"approved", risk_level:"low" },
-      { id:"ku-2", review_status:"candidate", risk_level:"high" },
-      { id:"ku-3", review_status:"approved", risk_level:"restricted" },
+      { id:"ku-1", source_id:"src-1", domain:"D01", title:"Approved unit", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1, evidence_ref_ids:[] },
+      { id:"ku-2", source_id:"src-2", domain:"D02", title:"High risk candidate", content:"High-risk candidate content.", review_status:"candidate", risk_level:"high", version:1, evidence_ref_ids:[] },
+      { id:"ku-3", source_id:"src-1", domain:"D03", title:"Restricted unit", content:"Restricted source-backed content.", review_status:"approved", risk_level:"restricted", version:1, evidence_ref_ids:["ev-1"] },
+      { id:"ku-4", source_id:"src-1", domain:"", title:"", content:"short", review_status:"candidate", risk_level:"low", version:1, evidence_ref_ids:[] },
     ],
     evidenceRefs:[
       { id:"ev-1", review_status:"approved", risk_level:"low" },
@@ -110,10 +111,16 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.sourceReviewStatus.approved, 1);
   assert.equal(stats.sourceReviewStatus.archived, 1);
   assert.equal(stats.sourceRiskLevels.high, 1);
-  assert.equal(stats.knowledgeUnits, 3);
+  assert.equal(stats.knowledgeUnits, 4);
   assert.equal(stats.approvedKnowledgeUnits, 2);
   assert.equal(stats.highRiskKnowledgeUnits, 2);
-  assert.equal(stats.knowledgeUnitReviewStatus.candidate, 1);
+  assert.equal(stats.invalidKnowledgeUnits, 2);
+  assert.equal(stats.knowledgeUnitQualityIssues.high_risk_missing_evidence, 1);
+  assert.equal(stats.knowledgeUnitQualityIssues.high_risk_not_approved, 1);
+  assert.equal(stats.knowledgeUnitQualityIssues.missing_domain, 1);
+  assert.equal(stats.knowledgeUnitQualityIssues.missing_title, 1);
+  assert.equal(stats.knowledgeUnitQualityIssues.content_too_short, 1);
+  assert.equal(stats.knowledgeUnitReviewStatus.candidate, 2);
   assert.equal(stats.evidenceRefs, 2);
   assert.equal(stats.approvedEvidenceRefs, 1);
   assert.equal(stats.policyRules, 1);
