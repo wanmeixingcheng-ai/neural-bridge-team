@@ -7,6 +7,7 @@ import {
   KNOWLEDGE_BRAIN_STORES,
   assertHighRiskReviewable,
   buildBuildingRecord,
+  buildCalculationRunRecord,
   buildEvalCaseRecord,
   buildEvidenceRefRecord,
   buildExpenseRecord,
@@ -26,6 +27,7 @@ import {
   normalizeRiskLevel,
   normalizeVersion,
   validateEvidenceRefQuality,
+  validateCalculationRunRecord,
   validateJapaneseRealEstateRecord,
   validateKnowledgeUnitQuality,
   validateKnowledgeUnitVersionChain,
@@ -41,6 +43,7 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     "scenarios",
     "eval_cases",
     "evidence_refs",
+    "calculation_runs",
     "property_records",
     "land_records",
     "building_records",
@@ -54,7 +57,11 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
   ]);
 
   for (const store of Object.values(KNOWLEDGE_BRAIN_STORES)) {
-    assert.ok(store.indexes.some(([, keyPath]) => keyPath === "source_id") || store.name === "source_registry");
+    assert.ok(
+      store.indexes.some(([, keyPath]) => keyPath === "source_id") ||
+      store.name === "source_registry" ||
+      store.name === "calculation_runs"
+    );
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "review_status"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "risk_level"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "version") || store.name === "source_registry");
@@ -79,6 +86,48 @@ test("japanese real estate entity schemas cover property workspace data domains"
   for (const type of JRE_ENTITY_TYPES) {
     assert.ok(storeNames.includes(`${type}_records`));
   }
+});
+
+test("calculation run schema preserves deterministic formulas and audit references", () => {
+  const run = buildCalculationRunRecord({
+    property_id:"prop-1",
+    calculation_type:"investment_metrics",
+    inputs:{ acquisitionPrice:60000000 },
+    formulas:{ netYieldPercent:"noi / acquisitionPrice * 100" },
+    outputs:{ netYieldPercent:4.05 },
+    source_ids:["src-lease"],
+    evidence_ref_ids:["ev-lease"],
+    review_status:"candidate",
+    risk_level:"medium",
+  });
+  const invalid = validateCalculationRunRecord({
+    id:"calc-1",
+    property_id:"",
+    calculation_type:"investment_metrics",
+    calculation_method:"llm",
+    inputs:{},
+    formulas:{},
+    outputs:{},
+    source_ids:[],
+    evidence_ref_ids:[],
+    review_status:"candidate",
+    risk_level:"high",
+    version:1,
+  });
+
+  assert.equal(run.calculation_method, "deterministic_code");
+  assert.equal(run.version, 1);
+  assert.equal(validateCalculationRunRecord(run).ok, true);
+  assert.deepEqual(invalid.issues, [
+    "missing_property_id",
+    "non_deterministic_calculation",
+    "missing_inputs",
+    "missing_formulas",
+    "missing_outputs",
+    "missing_source_ids",
+    "missing_evidence_ref_ids",
+    "high_risk_calculation_not_approved",
+  ]);
 });
 
 test("source registry treats REINS and high-risk uploads as non-training sources", () => {

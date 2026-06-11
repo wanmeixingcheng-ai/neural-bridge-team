@@ -170,6 +170,29 @@ create table if not exists nb_jre_records (
   constraint nb_jre_records_version_chk check (version >= 1)
 );
 
+create table if not exists nb_calculation_runs (
+  id text primary key,
+  property_id text not null,
+  calculation_type text not null,
+  calculation_method text not null default 'deterministic_code',
+  inputs jsonb not null default '{}'::jsonb,
+  formulas jsonb not null default '{}'::jsonb,
+  outputs jsonb not null default '{}'::jsonb,
+  source_ids jsonb not null default '[]'::jsonb,
+  evidence_ref_ids jsonb not null default '[]'::jsonb,
+  dossier_snapshot jsonb not null default '{}'::jsonb,
+  review_status text not null default 'candidate',
+  risk_level text not null default 'medium',
+  version integer not null default 1,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint nb_calculation_runs_method_chk check (calculation_method = 'deterministic_code'),
+  constraint nb_calculation_runs_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
+  constraint nb_calculation_runs_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
+  constraint nb_calculation_runs_version_chk check (version >= 1)
+);
+
 create index if not exists nb_source_registry_type_idx on nb_source_registry (source_type);
 create index if not exists nb_source_registry_review_idx on nb_source_registry (review_status);
 create index if not exists nb_source_registry_risk_idx on nb_source_registry (risk_level);
@@ -191,3 +214,7 @@ create index if not exists nb_jre_records_source_idx on nb_jre_records (source_i
 create index if not exists nb_jre_records_property_idx on nb_jre_records (property_id);
 create index if not exists nb_jre_records_review_idx on nb_jre_records (review_status);
 create index if not exists nb_jre_records_risk_idx on nb_jre_records (risk_level);
+create index if not exists nb_calculation_runs_property_idx on nb_calculation_runs (property_id);
+create index if not exists nb_calculation_runs_type_idx on nb_calculation_runs (calculation_type);
+create index if not exists nb_calculation_runs_review_idx on nb_calculation_runs (review_status);
+create index if not exists nb_calculation_runs_risk_idx on nb_calculation_runs (risk_level);

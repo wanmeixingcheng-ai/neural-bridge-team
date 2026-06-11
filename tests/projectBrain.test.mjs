@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -116,6 +116,26 @@ test("property dossier investment metrics use deterministic code and transaction
   assert.deepEqual(metrics.dossier.needsReview, []);
 });
 
+test("investment metrics become auditable calculation run records", () => {
+  const metrics = buildPropertyDossierInvestmentMetrics({
+    propertyId:"prop-1",
+    acquisitionPrice:60000000,
+    records:[
+      { id:"lease-1", entity_type:"lease", source_id:"src-lease", property_id:"prop-1", title:"Lease 1", review_status:"approved", risk_level:"medium", version:1, rent_amount:150000, period:"monthly", evidence_ref_ids:["ev-lease"] },
+      { id:"expense-1", entity_type:"expense", source_id:"src-expense", property_id:"prop-1", title:"Management fee", review_status:"approved", risk_level:"medium", version:1, amount:20000, period:"monthly", calculation_method:"source_reported", evidence_ref_ids:["ev-expense"] },
+    ],
+  });
+  const run = buildCalculationRunFromInvestmentMetrics(metrics, { reviewStatus:"candidate", riskLevel:"medium" });
+
+  assert.equal(run.property_id, "prop-1");
+  assert.equal(run.calculation_type, "investment_metrics");
+  assert.equal(run.calculation_method, "deterministic_code");
+  assert.equal(run.outputs.grossYieldPercent, 3);
+  assert.deepEqual(run.source_ids, ["src-lease", "src-expense"]);
+  assert.deepEqual(run.evidence_ref_ids, ["ev-lease", "ev-expense"]);
+  assert.equal(run.dossier_snapshot.records, 2);
+});
+
 test("property dossier investment metrics refuse to guess acquisition price", () => {
   assert.throws(() => buildPropertyDossierInvestmentMetrics({
     propertyId:"prop-1",
@@ -184,6 +204,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
     policyRules:[{ id:"rule-1", review_status:"in_review", risk_level:"high", requires_expert_confirmation:true }],
     scenarios:[{ id:"scenario-1" }, { id:"scenario-2" }],
     evalCases:[{ id:"eval-1" }],
+    calculationRuns:[
+      { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{ acquisitionPrice:60000000 }, formulas:{ grossYieldPercent:"annualPotentialRent / acquisitionPrice * 100" }, outputs:{ grossYieldPercent:3 }, source_ids:["src-1"], evidence_ref_ids:["ev-1"], review_status:"candidate", risk_level:"medium", version:1 },
+      { id:"calc-bad", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"llm", inputs:{}, formulas:{}, outputs:{}, source_ids:[], evidence_ref_ids:[], review_status:"approved", risk_level:"medium", version:1 },
+    ],
     japaneseRealEstateRecords:[
       { id:"prop-1", entity_type:"property", source_id:"src-1", property_id:"prop-1", title:"Approved property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-1"] },
       { id:"risk-1", entity_type:"risk", source_id:"src-2", property_id:"prop-1", title:"Candidate risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:[], requires_expert_confirmation:false },
@@ -221,6 +245,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.policyRules, 1);
   assert.equal(stats.scenarios, 2);
   assert.equal(stats.evalCases, 1);
+  assert.equal(stats.calculationRuns, 2);
+  assert.equal(stats.invalidCalculationRuns, 1);
+  assert.equal(stats.calculationRunQualityIssues.non_deterministic_calculation, 1);
+  assert.equal(stats.calculationRunQualityIssues.missing_inputs, 1);
   assert.equal(stats.japaneseRealEstateRecords, 2);
   assert.equal(stats.japaneseRealEstateRecordsByType.property, 1);
   assert.equal(stats.japaneseRealEstateRecordsByType.risk, 1);
