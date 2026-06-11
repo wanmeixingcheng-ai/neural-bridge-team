@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -45,6 +45,29 @@ test("knowledge document ingest keeps REINS uploads high-risk and out of trainin
   assert.equal(records.source.training_allowed, false);
   assert.equal(records.knowledgeUnits[0].risk_level, "high");
   assert.equal(records.evidenceRefs[0].risk_level, "high");
+});
+
+test("knowledge unit search only returns approved, retained source-backed units", () => {
+  const hits = approvedKnowledgeUnitSearchResults({
+    query:"hazard",
+    sources:[
+      { id:"src-approved", review_status:"approved", deletion_requested:false },
+      { id:"src-candidate", review_status:"candidate", deletion_requested:false },
+      { id:"src-deleted", review_status:"approved", deletion_requested:true },
+    ],
+    units:[
+      { id:"ku-approved", source_id:"src-approved", review_status:"approved", title:"Approved", content:"hazard hazard note", evidence_ref_ids:["ev-1"], metadata:{ legacyDocumentId:"doc-1", legacyChunkIndex:0 } },
+      { id:"ku-candidate-source", source_id:"src-candidate", review_status:"approved", title:"Candidate source", content:"hazard note" },
+      { id:"ku-deleted-source", source_id:"src-deleted", review_status:"approved", title:"Deleted source", content:"hazard note" },
+      { id:"ku-candidate-unit", source_id:"src-approved", review_status:"candidate", title:"Candidate unit", content:"hazard note" },
+    ],
+  });
+
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].id, "ku-approved");
+  assert.equal(hits[0].score, 2);
+  assert.equal(hits[0].docId, "doc-1");
+  assert.deepEqual(hits[0].evidenceRefIds, ["ev-1"]);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
