@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildKnowledgeDocumentIngestRecords, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -100,7 +100,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"ev-1", review_status:"approved", risk_level:"low" },
       { id:"ev-2", review_status:"candidate", risk_level:"high" },
     ],
-    policyRules:[{ id:"rule-1" }],
+    policyRules:[{ id:"rule-1", review_status:"in_review", risk_level:"high", requires_expert_confirmation:true }],
     scenarios:[{ id:"scenario-1" }, { id:"scenario-2" }],
     evalCases:[{ id:"eval-1" }],
   });
@@ -126,6 +126,38 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.policyRules, 1);
   assert.equal(stats.scenarios, 2);
   assert.equal(stats.evalCases, 1);
+  assert.equal(stats.reviewQueue.total, 4);
+  assert.equal(stats.reviewQueue.sources, 1);
+  assert.equal(stats.reviewQueue.knowledgeUnits, 2);
+  assert.equal(stats.reviewQueue.policyRules, 1);
+  assert.equal(stats.reviewQueue.highRiskExpertReview, 3);
+  assert.deepEqual(stats.reviewQueue.invalidKnowledgeUnitIds, ["ku-2", "ku-4"]);
+});
+
+test("knowledge brain review queue summarizes pending and expert review work", () => {
+  const summary = knowledgeBrainReviewQueueSummary({
+    sources:[
+      { id:"src-candidate", review_status:"candidate", risk_level:"medium" },
+      { id:"src-high", review_status:"in_review", risk_level:"high" },
+      { id:"src-approved", review_status:"approved", risk_level:"high" },
+    ],
+    knowledgeUnits:[
+      { id:"ku-ok", source_id:"src-approved", domain:"D01", title:"OK", content:"Approved source-backed content.", review_status:"approved", risk_level:"medium", version:1 },
+      { id:"ku-bad", source_id:"src-high", domain:"", title:"", content:"short", review_status:"candidate", risk_level:"restricted", version:1 },
+    ],
+    policyRules:[
+      { id:"rule-approved", review_status:"approved", risk_level:"high", requires_expert_confirmation:true },
+      { id:"rule-review", review_status:"in_review", risk_level:"medium", requires_expert_confirmation:true },
+    ],
+  });
+
+  assert.equal(summary.total, 4);
+  assert.equal(summary.sources, 2);
+  assert.equal(summary.knowledgeUnits, 1);
+  assert.equal(summary.policyRules, 1);
+  assert.equal(summary.highRiskExpertReview, 3);
+  assert.equal(summary.invalidKnowledgeUnits, 1);
+  assert.deepEqual(summary.invalidKnowledgeUnitIds, ["ku-bad"]);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
