@@ -15,6 +15,7 @@ import {
   normalizeRiskLevel,
   normalizeVersion,
   validateKnowledgeUnitQuality,
+  validateKnowledgeUnitVersionChain,
   validateSourceBackedConclusion,
 } from "../lib/knowledgeBrainSchemas.mjs";
 
@@ -192,4 +193,27 @@ test("knowledge unit quality validation catches missing fields and weak content"
   assert.equal(highRiskMissingEvidence.ok, false);
   assert.deepEqual(highRiskMissingEvidence.issues, ["high_risk_missing_evidence"]);
   assert.equal(highRiskMissingEvidence.requiresExpertConfirmation, true);
+});
+
+test("knowledge unit version chain validation preserves lineage", () => {
+  const valid = validateKnowledgeUnitVersionChain([
+    { id:"ku-v1", source_id:"src-1", version:1 },
+    { id:"ku-v2", source_id:"src-1", version:2, supersedes_id:"ku-v1" },
+  ]);
+  const invalid = validateKnowledgeUnitVersionChain([
+    { id:"self", source_id:"src-1", version:2, supersedes_id:"self" },
+    { id:"missing", source_id:"src-1", version:2, supersedes_id:"none" },
+    { id:"same-version", source_id:"src-1", version:1, supersedes_id:"base" },
+    { id:"cross-source", source_id:"src-2", version:3, supersedes_id:"base" },
+    { id:"base", source_id:"src-1", version:1 },
+  ]);
+
+  assert.equal(valid.ok, true);
+  assert.equal(invalid.ok, false);
+  assert.deepEqual(invalid.issues, [
+    { id:"self", issue:"self_supersedes" },
+    { id:"missing", issue:"missing_superseded_unit" },
+    { id:"same-version", issue:"non_incrementing_version" },
+    { id:"cross-source", issue:"supersedes_cross_source" },
+  ]);
 });
