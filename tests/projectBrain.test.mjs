@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -163,6 +163,41 @@ test("knowledge governance record payload routes policy, scenario, and eval reco
   assert.equal(evalCase.record.scenario_id, scenario.record.id);
   assert.deepEqual(evalCase.record.evidence_ref_ids, ["ev-eval"]);
   assert.throws(() => buildKnowledgeGovernanceRecordPayload("unknown", {}), /recordType must be one of/);
+});
+
+test("knowledge governance update payload versions reviewed records", () => {
+  const update = buildKnowledgeGovernanceUpdatePayload("policy_rule", {
+    id:"rule-1",
+    source_id:"src-1",
+    rule_type:"reins_boundary",
+    title:"REINS boundary",
+    rule_text:"Do not automate REINS login.",
+    review_status:"approved",
+    risk_level:"high",
+    version:2,
+    evidence_ref_ids:["ev-rule"],
+    requires_expert_confirmation:true,
+    metadata:{ owner:"compliance" },
+  }, {
+    rule_text:"Do not automate REINS login, browsing, scraping, or bulk download.",
+    metadata:{ note:"expanded boundary" },
+  }, {
+    changedBy:"reviewer",
+    reason:"policy_refinement",
+    now:"2026-06-12T02:00:00.000Z",
+  });
+
+  assert.equal(update.storeName, "policy_rules");
+  assert.equal(update.record.version, 3);
+  assert.equal(update.record.review_status, "candidate");
+  assert.equal(update.record.source_id, "src-1");
+  assert.equal(update.record.metadata.owner, "compliance");
+  assert.equal(update.record.metadata.note, "expanded boundary");
+  assert.equal(update.record.metadata.previous_version, 2);
+  assert.equal(update.record.metadata.changed_by, "reviewer");
+  assert.equal(update.record.metadata.change_reason, "policy_refinement");
+  assert.equal(update.quality.ok, false);
+  assert.deepEqual(update.quality.issues, ["high_risk_not_approved"]);
 });
 
 test("property dossier groups records and exposes review and quality queues", () => {
