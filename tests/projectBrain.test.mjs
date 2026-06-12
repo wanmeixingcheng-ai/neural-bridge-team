@@ -627,6 +627,7 @@ test("source registry update payload versions records and disables high-risk tra
   assert.equal(update.record.review_status, "candidate");
   assert.equal(update.record.training_allowed, false);
   assert.equal(update.record.source_type, "reins_user_upload");
+  assert.equal(update.record.collection_method, "manual");
   assert.equal(update.record.risk_level, "high");
   assert.equal(update.record.metadata.previous_version, 1);
   assert.equal(update.record.metadata.changed_by, "reviewer");

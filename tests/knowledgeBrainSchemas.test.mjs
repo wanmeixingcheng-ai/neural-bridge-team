@@ -180,6 +180,15 @@ test("source registry validation enforces consent and deletion boundaries", () =
     "high_risk_training_enabled",
     "training_without_explicit_consent",
   ]);
+
+  assert.deepEqual(validateSourceRegistryRecord({
+    source_type:"reins_user_upload",
+    title:"REINS import",
+    review_status:"candidate",
+    risk_level:"high",
+    version:1,
+    collection_method:"automated_scrape",
+  }).issues, ["reins_collection_method_not_manual"]);
 });
 
 test("database schema enforces source registry training boundaries", () => {
