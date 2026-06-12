@@ -990,6 +990,7 @@ test("knowledge brain review queue items expose actionable reasons across stores
     ],
     policyRules:[
       { id:"rule-risk", source_id:"src-review", rule_type:"expert", title:"Expert", rule_text:"Expert review required.", review_status:"in_review", risk_level:"high", version:1, evidence_ref_ids:[], requires_expert_confirmation:true },
+      { id:"rule-approved-missing-reviewer", source_id:"src-review", rule_type:"expert", title:"Approved expert", rule_text:"Approved high-risk rule needs reviewer metadata.", review_status:"approved", risk_level:"high", version:1, evidence_ref_ids:["ev-risk"], requires_expert_confirmation:true },
     ],
     scenarios:[
       { id:"scenario-review", source_id:"src-review", scenario_type:"due_diligence", title:"Review", description:"Review evidence.", review_status:"candidate", risk_level:"medium", version:1, evidence_ref_ids:[] },
@@ -1009,6 +1010,8 @@ test("knowledge brain review queue items expose actionable reasons across stores
   assert.equal(items.some(item => item.target_type === "evidence_ref" && item.reasons.includes("missing_locator")), true);
   assert.equal(items.some(item => item.target_id === "ku-risk" && item.reasons.includes("high_risk_missing_evidence")), true);
   assert.equal(items.some(item => item.target_id === "rule-risk" && item.reasons.includes("expert_confirmation_required")), true);
+  assert.equal(items.some(item => item.target_id === "rule-approved-missing-reviewer" && item.reasons.includes("missing_reviewed_by")), true);
+  assert.equal(items.some(item => item.target_id === "rule-approved-missing-reviewer" && item.reasons.includes("missing_reviewed_at")), true);
   assert.equal(items.some(item => item.target_id === "risk-review" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
   assert.equal(items.some(item => item.target_id === "calc-review" && item.reasons.includes("missing_source_ids")), true);
 });
