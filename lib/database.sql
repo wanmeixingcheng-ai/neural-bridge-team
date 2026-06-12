@@ -45,7 +45,15 @@ create table if not exists nb_source_registry (
   updated_at timestamptz not null default now(),
   constraint nb_source_registry_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_source_registry_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_source_registry_version_chk check (version >= 1)
+  constraint nb_source_registry_version_chk check (version >= 1),
+  constraint nb_source_registry_training_boundary_chk check (
+    training_allowed = false or (
+      consent_scope in ('opt_in', 'explicit_opt_in') and
+      deletion_requested = false and
+      risk_level not in ('high', 'restricted') and
+      source_type not in ('reins_user_upload', 'contract', 'important_matter_explanation', 'customer_record')
+    )
+  )
 );
 
 create table if not exists nb_knowledge_units (

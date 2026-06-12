@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   HIGH_RISK_SOURCE_TYPES,
@@ -174,6 +175,16 @@ test("source registry validation enforces consent and deletion boundaries", () =
     "high_risk_training_enabled",
     "training_without_explicit_consent",
   ]);
+});
+
+test("database schema enforces source registry training boundaries", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /nb_source_registry_training_boundary_chk/);
+  assert.match(sql, /consent_scope in \('opt_in', 'explicit_opt_in'\)/);
+  assert.match(sql, /deletion_requested = false/);
+  assert.match(sql, /risk_level not in \('high', 'restricted'\)/);
+  assert.match(sql, /source_type not in \('reins_user_upload', 'contract', 'important_matter_explanation', 'customer_record'\)/);
 });
 
 test("knowledge unit requires source, review status, risk level, and version", () => {
