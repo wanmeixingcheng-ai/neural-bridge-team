@@ -539,12 +539,13 @@ test("knowledge brain search only returns approved source-backed phase 1 records
 
 test("training eligible sources require opt-in, approval, low risk, and no deletion request", () => {
   const eligible = trainingEligibleSources([
-    { id:"ok", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low" },
-    { id:"not-approved", review_status:"candidate", training_allowed:true, deletion_requested:false, risk_level:"low" },
-    { id:"not-consented", review_status:"approved", training_allowed:false, deletion_requested:false, risk_level:"low" },
-    { id:"deleted", review_status:"approved", training_allowed:true, deletion_requested:true, risk_level:"low" },
-    { id:"high-risk", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"high" },
-    { id:"restricted", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"restricted" },
+    { id:"ok", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
+    { id:"not-approved", review_status:"candidate", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
+    { id:"not-consented", review_status:"approved", training_allowed:true, consent_scope:"none", deletion_requested:false, risk_level:"low" },
+    { id:"not-training-enabled", review_status:"approved", training_allowed:false, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
+    { id:"deleted", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:true, risk_level:"low" },
+    { id:"high-risk", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"high" },
+    { id:"restricted", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"restricted" },
   ]);
 
   assert.deepEqual(eligible.map(source => source.id), ["ok"]);
