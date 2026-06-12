@@ -212,6 +212,27 @@ test("database schema enforces knowledge unit content quality boundary", () => {
   assert.match(sql, /length\(trim\(content\)\) >= 12/);
 });
 
+test("database schema enforces evidence id fields as json arrays", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  for (const constraintName of [
+    "nb_knowledge_units_tags_array_chk",
+    "nb_knowledge_units_evidence_ref_ids_array_chk",
+    "nb_policy_rules_applies_to_array_chk",
+    "nb_policy_rules_evidence_ref_ids_array_chk",
+    "nb_scenarios_expected_outputs_array_chk",
+    "nb_scenarios_evidence_ref_ids_array_chk",
+    "nb_eval_cases_evidence_ref_ids_array_chk",
+    "nb_jre_records_evidence_ref_ids_array_chk",
+  ]) {
+    assert.match(sql, new RegExp(constraintName));
+  }
+
+  assert.match(sql, /jsonb_typeof\(tags\) = 'array'/);
+  assert.match(sql, /jsonb_typeof\(source_ids\) = 'array'/);
+  assert.match(sql, /jsonb_typeof\(evidence_ref_ids\) = 'array'/);
+});
+
 test("database schema enforces governance record core text boundaries", () => {
   const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
 
@@ -240,6 +261,8 @@ test("database schema enforces calculation run deterministic payload boundary", 
   assert.match(sql, /inputs <> '\{\}'::jsonb/);
   assert.match(sql, /formulas <> '\{\}'::jsonb/);
   assert.match(sql, /outputs <> '\{\}'::jsonb/);
+  assert.match(sql, /jsonb_typeof\(source_ids\) = 'array'/);
+  assert.match(sql, /jsonb_typeof\(evidence_ref_ids\) = 'array'/);
   assert.match(sql, /jsonb_array_length\(source_ids\) > 0/);
   assert.match(sql, /jsonb_array_length\(evidence_ref_ids\) > 0/);
 });
