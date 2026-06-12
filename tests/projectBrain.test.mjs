@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -45,6 +45,22 @@ test("knowledge document ingest keeps REINS uploads high-risk and out of trainin
   assert.equal(records.source.training_allowed, false);
   assert.equal(records.knowledgeUnits[0].risk_level, "high");
   assert.equal(records.evidenceRefs[0].risk_level, "high");
+});
+
+test("knowledge document filters status source query archived and recency", () => {
+  const filtered = filterKnowledgeDocumentRecords([
+    { id:"old", title:"Hazard notes", source:"attachment", status:"candidate", archived:false, updatedAt:"2026-06-12T01:00:00.000Z" },
+    { id:"new", title:"Updated hazard notes", source:"attachment", status:"candidate", archived:false, updatedAt:"2026-06-12T02:00:00.000Z" },
+    { id:"approved", title:"Approved hazard notes", source:"attachment", status:"approved", archived:false, updatedAt:"2026-06-12T03:00:00.000Z" },
+    { id:"other-source", title:"Hazard notes", source:"public_web", status:"candidate", archived:false, updatedAt:"2026-06-12T04:00:00.000Z" },
+    { id:"archived", title:"Archived hazard notes", source:"attachment", status:"candidate", archived:true, updatedAt:"2026-06-12T05:00:00.000Z" },
+  ], {
+    statuses:["candidate"],
+    sources:["attachment"],
+    query:"hazard",
+  });
+
+  assert.deepEqual(filtered.map(doc => doc.id), ["new", "old"]);
 });
 
 test("japanese real estate record payload routes entities to their stores and blocks LLM math", () => {
