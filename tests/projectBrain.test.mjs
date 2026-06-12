@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterEvidenceRefRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -122,6 +122,25 @@ test("japanese real estate source ingest builds auditable source, evidence, and 
   assert.equal(ingest.reviewQueue.highRiskExpertReview, 3);
   assert.equal(ingest.referenceIntegrity.ok, false);
   assert.equal(ingest.referenceIntegrity.issues.filter(issue => issue.issue === "high_risk_unapproved_evidence").length, 2);
+});
+
+test("japanese real estate filters property source review risk query and archived records", () => {
+  const filtered = filterJapaneseRealEstateRecords([
+    { id:"old", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Updated flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"approved", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Approved flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"approved", risk_level:"high", updated_at:"2026-06-12T03:00:00.000Z" },
+    { id:"other-source", entity_type:"risk", source_id:"src-2", property_id:"prop-1", title:"Other flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T04:00:00.000Z" },
+    { id:"other-property", entity_type:"risk", source_id:"src-1", property_id:"prop-2", title:"Other flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T05:00:00.000Z" },
+    { id:"archived", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Archived flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"archived", risk_level:"high", updated_at:"2026-06-12T06:00:00.000Z" },
+  ], {
+    propertyId:"prop-1",
+    sourceIds:["src-1"],
+    reviewStatuses:["candidate"],
+    riskLevels:["high"],
+    query:"flood",
+  });
+
+  assert.deepEqual(filtered.map(record => record.id), ["new", "old"]);
 });
 
 test("knowledge governance record payload routes policy, scenario, and eval records", () => {
