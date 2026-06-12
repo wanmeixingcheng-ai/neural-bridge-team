@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -230,6 +230,29 @@ test("training eligible sources require opt-in, approval, low risk, and no delet
   ]);
 
   assert.deepEqual(eligible.map(source => source.id), ["ok"]);
+});
+
+test("source withdrawal patch disables training and preserves deletion audit metadata", () => {
+  const withdrawn = buildSourceWithdrawalPatch({
+    id:"src-free-tier",
+    review_status:"approved",
+    training_allowed:true,
+    deletion_requested:false,
+    risk_level:"low",
+    metadata:{ consent_scope:"explicit_opt_in" },
+  }, {
+    reason:"free_tier_opt_out",
+    requestedBy:"owner",
+    now:"2026-06-12T00:00:00.000Z",
+  });
+
+  assert.equal(withdrawn.review_status, "archived");
+  assert.equal(withdrawn.training_allowed, false);
+  assert.equal(withdrawn.deletion_requested, true);
+  assert.equal(withdrawn.metadata.deletion_reason, "free_tier_opt_out");
+  assert.equal(withdrawn.metadata.deletion_requested_by, "owner");
+  assert.equal(withdrawn.metadata.training_withdrawn_at, "2026-06-12T00:00:00.000Z");
+  assert.deepEqual(trainingEligibleSources([withdrawn]), []);
 });
 
 test("knowledge brain inventory stats expose review, risk, evidence, and training counts", () => {
