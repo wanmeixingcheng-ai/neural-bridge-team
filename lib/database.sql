@@ -208,7 +208,14 @@ create table if not exists nb_calculation_runs (
   constraint nb_calculation_runs_method_chk check (calculation_method = 'deterministic_code'),
   constraint nb_calculation_runs_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_calculation_runs_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_calculation_runs_version_chk check (version >= 1)
+  constraint nb_calculation_runs_version_chk check (version >= 1),
+  constraint nb_calculation_runs_payload_chk check (
+    inputs <> '{}'::jsonb and
+    formulas <> '{}'::jsonb and
+    outputs <> '{}'::jsonb and
+    jsonb_array_length(source_ids) > 0 and
+    jsonb_array_length(evidence_ref_ids) > 0
+  )
 );
 
 create index if not exists nb_source_registry_type_idx on nb_source_registry (source_type);

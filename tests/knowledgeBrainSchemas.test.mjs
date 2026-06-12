@@ -227,6 +227,18 @@ test("database schema enforces Japanese real estate core identity boundaries", (
   assert.match(sql, /entity_type = 'property' or length\(trim\(property_id\)\) > 0/);
 });
 
+test("database schema enforces calculation run deterministic payload boundary", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /nb_calculation_runs_method_chk check \(calculation_method = 'deterministic_code'\)/);
+  assert.match(sql, /nb_calculation_runs_payload_chk/);
+  assert.match(sql, /inputs <> '\{\}'::jsonb/);
+  assert.match(sql, /formulas <> '\{\}'::jsonb/);
+  assert.match(sql, /outputs <> '\{\}'::jsonb/);
+  assert.match(sql, /jsonb_array_length\(source_ids\) > 0/);
+  assert.match(sql, /jsonb_array_length\(evidence_ref_ids\) > 0/);
+});
+
 test("knowledge unit requires source, review status, risk level, and version", () => {
   const unit = buildKnowledgeUnitRecord({
     source_id:"src-1",
