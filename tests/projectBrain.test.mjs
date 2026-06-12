@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -261,6 +261,39 @@ test("investment metrics become auditable calculation run records", () => {
   assert.deepEqual(run.source_ids, ["src-lease", "src-expense"]);
   assert.deepEqual(run.evidence_ref_ids, ["ev-lease", "ev-expense"]);
   assert.equal(run.dossier_snapshot.records, 2);
+});
+
+test("calculation run update payload versions deterministic outputs", () => {
+  const update = buildCalculationRunUpdatePayload({
+    id:"calc-1",
+    property_id:"prop-1",
+    calculation_type:"investment_metrics",
+    calculation_method:"deterministic_code",
+    inputs:{ acquisitionPrice:60000000 },
+    formulas:{ grossYieldPercent:"annualPotentialRent / acquisitionPrice * 100" },
+    outputs:{ grossYieldPercent:3 },
+    source_ids:["src-1"],
+    evidence_ref_ids:["ev-1"],
+    review_status:"approved",
+    risk_level:"medium",
+    version:2,
+    metadata:{ owner:"analyst" },
+  }, {
+    outputs:{ grossYieldPercent:3.1 },
+    metadata:{ note:"rerun after rent correction" },
+  }, {
+    changedBy:"calculation-service",
+    reason:"deterministic_rerun",
+    now:"2026-06-12T03:00:00.000Z",
+  });
+
+  assert.equal(update.record.version, 3);
+  assert.equal(update.record.review_status, "candidate");
+  assert.equal(update.record.calculation_method, "deterministic_code");
+  assert.equal(update.record.outputs.grossYieldPercent, 3.1);
+  assert.equal(update.record.metadata.previous_version, 2);
+  assert.equal(update.record.metadata.changed_by, "calculation-service");
+  assert.equal(update.quality.ok, true);
 });
 
 test("property dossier investment metrics refuse to guess acquisition price", () => {
