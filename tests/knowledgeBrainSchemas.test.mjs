@@ -187,6 +187,15 @@ test("database schema enforces source registry training boundaries", () => {
   assert.match(sql, /source_type not in \('reins_user_upload', 'contract', 'important_matter_explanation', 'customer_record'\)/);
 });
 
+test("database schema enforces evidence locator and quote or hash boundary", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /nb_evidence_refs_locator_chk/);
+  assert.match(sql, /length\(trim\(locator\)\) > 0/);
+  assert.match(sql, /nb_evidence_refs_quote_or_hash_chk/);
+  assert.match(sql, /length\(trim\(quote\)\) > 0 or length\(trim\(hash\)\) > 0/);
+});
+
 test("knowledge unit requires source, review status, risk level, and version", () => {
   const unit = buildKnowledgeUnitRecord({
     source_id:"src-1",

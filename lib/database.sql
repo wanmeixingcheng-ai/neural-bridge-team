@@ -152,7 +152,9 @@ create table if not exists nb_evidence_refs (
   updated_at timestamptz not null default now(),
   constraint nb_evidence_refs_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_evidence_refs_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_evidence_refs_version_chk check (version >= 1)
+  constraint nb_evidence_refs_version_chk check (version >= 1),
+  constraint nb_evidence_refs_locator_chk check (length(trim(locator)) > 0),
+  constraint nb_evidence_refs_quote_or_hash_chk check (length(trim(quote)) > 0 or length(trim(hash)) > 0)
 );
 
 create table if not exists nb_jre_records (
