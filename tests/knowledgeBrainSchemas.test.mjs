@@ -218,6 +218,15 @@ test("database schema enforces governance record core text boundaries", () => {
   assert.match(sql, /length\(trim\(prompt\)\) > 0 and length\(trim\(expected_behavior\)\) > 0/);
 });
 
+test("database schema enforces Japanese real estate core identity boundaries", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /nb_jre_records_title_chk/);
+  assert.match(sql, /length\(trim\(title\)\) > 0/);
+  assert.match(sql, /nb_jre_records_property_id_chk/);
+  assert.match(sql, /entity_type = 'property' or length\(trim\(property_id\)\) > 0/);
+});
+
 test("knowledge unit requires source, review status, risk level, and version", () => {
   const unit = buildKnowledgeUnitRecord({
     source_id:"src-1",

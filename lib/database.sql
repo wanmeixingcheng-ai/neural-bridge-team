@@ -183,7 +183,9 @@ create table if not exists nb_jre_records (
   constraint nb_jre_records_calculation_method_chk check (calculation_method in ('source_reported', 'deterministic_code', 'manual_entry', 'unknown')),
   constraint nb_jre_records_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_jre_records_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_jre_records_version_chk check (version >= 1)
+  constraint nb_jre_records_version_chk check (version >= 1),
+  constraint nb_jre_records_title_chk check (length(trim(title)) > 0),
+  constraint nb_jre_records_property_id_chk check (entity_type = 'property' or length(trim(property_id)) > 0)
 );
 
 create table if not exists nb_calculation_runs (
