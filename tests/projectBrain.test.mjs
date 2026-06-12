@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -258,6 +258,41 @@ test("knowledge unit search only returns approved, retained source-backed units"
   assert.equal(hits[0].score, 2);
   assert.equal(hits[0].docId, "doc-1");
   assert.deepEqual(hits[0].evidenceRefIds, ["ev-1"]);
+});
+
+test("knowledge brain search only returns approved source-backed phase 1 records", () => {
+  const hits = approvedKnowledgeBrainSearchResults({
+    query:"hazard",
+    sources:[
+      { id:"src-approved", review_status:"approved", deletion_requested:false },
+      { id:"src-candidate", review_status:"candidate", deletion_requested:false },
+      { id:"src-deleted", review_status:"approved", deletion_requested:true },
+    ],
+    policyRules:[
+      { id:"rule-1", source_id:"src-approved", review_status:"approved", title:"Hazard policy", rule_type:"risk", rule_text:"hazard findings require expert review", evidence_ref_ids:["ev-rule"] },
+      { id:"rule-candidate-source", source_id:"src-candidate", review_status:"approved", title:"Hazard candidate source", rule_text:"hazard", evidence_ref_ids:["ev-x"] },
+    ],
+    scenarios:[
+      { id:"scenario-1", source_id:"src-approved", review_status:"approved", title:"Hazard review", scenario_type:"due_diligence", description:"review hazard evidence", evidence_ref_ids:["ev-scn"] },
+      { id:"scenario-candidate", source_id:"src-approved", review_status:"candidate", title:"Hazard draft", description:"hazard", evidence_ref_ids:["ev-draft"] },
+    ],
+    evalCases:[
+      { id:"eval-1", source_id:"src-approved", review_status:"approved", prompt:"Explain hazard evidence", expected_behavior:"cite hazard evidence", evidence_ref_ids:["ev-eval"] },
+    ],
+    japaneseRealEstateRecords:[
+      { id:"risk-1", entity_type:"risk", source_id:"src-approved", review_status:"approved", title:"Hazard finding", risk_type:"hazard", finding:"hazard zone", evidence_ref_ids:["ev-risk"] },
+      { id:"risk-deleted", entity_type:"risk", source_id:"src-deleted", review_status:"approved", title:"Deleted hazard", finding:"hazard", evidence_ref_ids:["ev-del"] },
+    ],
+    calculationRuns:[
+      { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"approved", source_ids:["src-approved"], evidence_ref_ids:["ev-calc"], inputs:{}, formulas:{}, outputs:{ hazardAdjustedYield:"hazard adjustment" } },
+      { id:"calc-source-missing", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"approved", source_ids:[], evidence_ref_ids:["ev-calc"], outputs:{ hazard:"hazard" } },
+    ],
+  });
+
+  assert.deepEqual(hits.map(hit => hit.id).sort(), ["calc-1", "eval-1", "risk-1", "rule-1", "scenario-1"].sort());
+  assert.equal(hits.find(hit => hit.id === "risk-1").type, "jre_risk");
+  assert.deepEqual(hits.find(hit => hit.id === "calc-1").sourceIds, ["src-approved"]);
+  assert.deepEqual(hits.find(hit => hit.id === "rule-1").evidenceRefIds, ["ev-rule"]);
 });
 
 test("training eligible sources require opt-in, approval, low risk, and no deletion request", () => {
