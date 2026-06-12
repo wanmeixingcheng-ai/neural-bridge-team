@@ -713,6 +713,31 @@ test("versioned knowledge patch increments version and resets review metadata", 
   assert.throws(() => buildVersionedKnowledgePatch({ version:2 }, { version:2 }), /increment version/);
 });
 
+test("versioned approved knowledge patch records reviewer metadata", () => {
+  const patch = buildVersionedKnowledgePatch({
+    id:"ku-approval",
+    version:1,
+    review_status:"in_review",
+    metadata:{ owner:"analyst" },
+  }, {
+    review_status:"approved",
+    metadata:{ approval_note:"source and evidence checked" },
+  }, {
+    changedBy:"expert-reviewer",
+    reason:"expert_approval",
+    now:"2026-06-12T06:00:00.000Z",
+  });
+
+  assert.equal(patch.version, 2);
+  assert.equal(patch.review_status, "approved");
+  assert.equal(patch.metadata.previous_version, 1);
+  assert.equal(patch.metadata.changed_by, "expert-reviewer");
+  assert.equal(patch.metadata.change_reason, "expert_approval");
+  assert.equal(patch.metadata.reviewed_by, "expert-reviewer");
+  assert.equal(patch.metadata.reviewed_at, "2026-06-12T06:00:00.000Z");
+  assert.equal(patch.metadata.approval_note, "source and evidence checked");
+});
+
 test("knowledge brain inventory stats expose review, risk, evidence, and training counts", () => {
   const stats = knowledgeBrainInventoryStats({
     sources:[
