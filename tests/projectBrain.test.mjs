@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -356,6 +356,39 @@ test("knowledge unit update payload versions source-backed content", () => {
   assert.equal(update.record.metadata.previous_version, 4);
   assert.equal(update.record.metadata.changed_by, "reviewer");
   assert.equal(update.record.metadata.change_reason, "wording_correction");
+  assert.equal(update.quality.ok, true);
+});
+
+test("evidence ref update payload versions source and target linked evidence", () => {
+  const update = buildEvidenceRefUpdatePayload({
+    id:"ev-1",
+    source_id:"src-1",
+    target_type:"knowledge_unit",
+    target_id:"ku-1",
+    locator:"page 1",
+    quote:"Old quote",
+    review_status:"approved",
+    risk_level:"medium",
+    version:2,
+    metadata:{ reviewer:"analyst" },
+  }, {
+    locator:"page 2",
+    quote:"Updated quote",
+    metadata:{ note:"corrected locator" },
+  }, {
+    changedBy:"reviewer",
+    reason:"evidence_locator_correction",
+    now:"2026-06-12T04:30:00.000Z",
+  });
+
+  assert.equal(update.record.version, 3);
+  assert.equal(update.record.review_status, "candidate");
+  assert.equal(update.record.source_id, "src-1");
+  assert.equal(update.record.target_type, "knowledge_unit");
+  assert.equal(update.record.target_id, "ku-1");
+  assert.equal(update.record.metadata.previous_version, 2);
+  assert.equal(update.record.metadata.changed_by, "reviewer");
+  assert.equal(update.record.metadata.change_reason, "evidence_locator_correction");
   assert.equal(update.quality.ok, true);
 });
 
