@@ -722,6 +722,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.sourceRegistry, 2);
   assert.equal(stats.deletedSources, 2);
   assert.equal(stats.trainingEligibleSources, 1);
+  assert.equal(stats.trainingBlockedByConsentSources, 1);
   assert.equal(stats.sourceReviewStatus.approved, 2);
   assert.equal(stats.sourceReviewStatus.archived, 1);
   assert.equal(stats.sourceRiskLevels.high, 2);
