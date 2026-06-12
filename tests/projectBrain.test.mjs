@@ -275,9 +275,12 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"ev-1", source_id:"src-1", target_type:"knowledge_unit", target_id:"ku-3", locator:"page 2", quote:"short quote", review_status:"approved", risk_level:"low", version:1 },
       { id:"ev-2", source_id:"src-2", target_type:"knowledge_unit", target_id:"ku-2", locator:"", quote:"", hash:"", review_status:"candidate", risk_level:"high", version:1 },
     ],
-    policyRules:[{ id:"rule-1", review_status:"in_review", risk_level:"high", requires_expert_confirmation:true }],
-    scenarios:[{ id:"scenario-1" }, { id:"scenario-2" }],
-    evalCases:[{ id:"eval-1" }],
+    policyRules:[{ id:"rule-1", source_id:"src-1", review_status:"in_review", risk_level:"high", evidence_ref_ids:[], requires_expert_confirmation:true }],
+    scenarios:[
+      { id:"scenario-1", source_id:"src-1", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[] },
+      { id:"scenario-2", source_id:"src-1", review_status:"approved", risk_level:"medium", evidence_ref_ids:[] },
+    ],
+    evalCases:[{ id:"eval-1", source_id:"src-1", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[] }],
     calculationRuns:[
       { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{ acquisitionPrice:60000000 }, formulas:{ grossYieldPercent:"annualPotentialRent / acquisitionPrice * 100" }, outputs:{ grossYieldPercent:3 }, source_ids:["src-1"], evidence_ref_ids:["ev-1"], review_status:"candidate", risk_level:"medium", version:1 },
       { id:"calc-bad", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"llm", inputs:{}, formulas:{}, outputs:{}, source_ids:[], evidence_ref_ids:[], review_status:"approved", risk_level:"medium", version:1 },
@@ -360,6 +363,15 @@ test("knowledge brain reference integrity detects broken source and evidence gra
       { id:"ku-missing-evidence", source_id:"src-approved", review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-missing"] },
       { id:"ku-target-mismatch", source_id:"src-approved", review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-wrong-target"] },
     ],
+    policyRules:[
+      { id:"rule-unapproved-source", source_id:"src-candidate", review_status:"approved", risk_level:"medium", evidence_ref_ids:[] },
+    ],
+    scenarios:[
+      { id:"scenario-missing-source", source_id:"src-missing", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[] },
+    ],
+    evalCases:[
+      { id:"eval-missing-evidence", source_id:"src-approved", review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-missing-eval"] },
+    ],
     japaneseRealEstateRecords:[
       { id:"risk-1", entity_type:"risk", source_id:"src-approved", review_status:"approved", risk_level:"high", evidence_ref_ids:["ev-candidate"] },
     ],
@@ -372,15 +384,21 @@ test("knowledge brain reference integrity detects broken source and evidence gra
   assert.deepEqual(integrity.issues.map(issue => issue.issue).sort(), [
     "approved_record_unapproved_evidence",
     "approved_record_unapproved_source",
+    "approved_record_unapproved_source",
     "deleted_source_ref",
     "evidence_missing_source_ref",
     "evidence_target_mismatch",
     "high_risk_unapproved_evidence",
     "missing_evidence_ref",
+    "missing_evidence_ref",
+    "missing_source_ref",
     "missing_source_ref",
   ].sort());
   assert.equal(integrity.issues.find(issue => issue.issue === "evidence_target_mismatch").target_id, "ku-target-mismatch");
   assert.equal(integrity.issues.find(issue => issue.issue === "deleted_source_ref").target_id, "calc-1");
+  assert.equal(integrity.issues.find(issue => issue.target_id === "rule-unapproved-source").issue, "approved_record_unapproved_source");
+  assert.equal(integrity.issues.find(issue => issue.target_id === "scenario-missing-source").issue, "missing_source_ref");
+  assert.equal(integrity.issues.find(issue => issue.target_id === "eval-missing-evidence").issue, "missing_evidence_ref");
 });
 
 test("knowledge brain review queue summarizes pending and expert review work", () => {
