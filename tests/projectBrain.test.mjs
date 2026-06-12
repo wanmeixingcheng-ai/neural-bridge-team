@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -834,6 +834,24 @@ test("knowledge brain reference integrity actions map issues to repair guidance"
   ]);
   assert.equal(actions[0].blocks_approval, true);
   assert.equal(actions[3].blocks_approval, false);
+});
+
+test("knowledge brain reference integrity actions filter blockers target source issue action and query", () => {
+  const actions = filterKnowledgeBrainReferenceIntegrityActions([
+    { target_type:"knowledge_unit", target_id:"ku-1", issue:"missing_source_ref", source_id:"src-missing", action:"restore_source_or_archive_record", blocks_approval:true },
+    { target_type:"knowledge_unit", target_id:"ku-2", issue:"evidence_target_mismatch", evidence_ref_id:"ev-1", action:"relink_evidence_to_target", blocks_approval:true },
+    { target_type:"jre_risk", target_id:"risk-1", issue:"high_risk_unapproved_evidence", source_id:"src-risk", evidence_ref_id:"ev-2", action:"expert_review_evidence_before_approval", blocks_approval:true },
+    { target_type:"calculation_run", target_id:"calc-1", issue:"unknown_issue", action:"manual_review_required", blocks_approval:false },
+  ], {
+    targetTypes:["jre_risk"],
+    sourceIds:["src-risk"],
+    issues:["high_risk_unapproved_evidence"],
+    actions:["expert_review_evidence_before_approval"],
+    blocksApproval:true,
+    query:"risk-1",
+  });
+
+  assert.deepEqual(actions.map(item => item.target_id), ["risk-1"]);
 });
 
 test("knowledge brain review queue summarizes pending and expert review work", () => {
