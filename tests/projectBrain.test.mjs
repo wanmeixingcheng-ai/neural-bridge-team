@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -21,6 +21,26 @@ test("knowledge database upgrades create missing indexes on existing stores", ()
   assert.match(source, /function ensureKnowledgeBrainIndexes/);
   assert.match(source, /store\.indexNames\.contains\(indexName\)/);
   assert.match(source, /createKnowledgeBrainStores\(db, transaction\)/);
+});
+
+test("knowledge import disables unsafe source training flags", () => {
+  assert.equal(normalizeImportedSourceRegistryRecord({
+    source_type:"public_manual",
+    consent_scope:"explicit_opt_in",
+    risk_level:"low",
+    deletion_requested:false,
+    training_allowed:true,
+  }).training_allowed, true);
+
+  for (const source of [
+    { source_type:"public_manual", consent_scope:"none", risk_level:"low", deletion_requested:false, training_allowed:true },
+    { source_type:"public_manual", consent_scope:"explicit_opt_in", risk_level:"low", deletion_requested:true, training_allowed:true },
+    { source_type:"public_manual", consent_scope:"explicit_opt_in", risk_level:"high", deletion_requested:false, training_allowed:true },
+    { source_type:"reins_user_upload", consent_scope:"explicit_opt_in", risk_level:"low", deletion_requested:false, training_allowed:true },
+    { source_type:"contract", consent_scope:"explicit_opt_in", risk_level:"low", deletion_requested:false, training_allowed:true },
+  ]) {
+    assert.equal(normalizeImportedSourceRegistryRecord(source).training_allowed, false);
+  }
 });
 
 test("knowledge document ingest builds source, units, and evidence refs", () => {
