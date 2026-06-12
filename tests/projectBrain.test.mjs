@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -122,6 +122,47 @@ test("japanese real estate source ingest builds auditable source, evidence, and 
   assert.equal(ingest.reviewQueue.highRiskExpertReview, 3);
   assert.equal(ingest.referenceIntegrity.ok, false);
   assert.equal(ingest.referenceIntegrity.issues.filter(issue => issue.issue === "high_risk_unapproved_evidence").length, 2);
+});
+
+test("knowledge governance record payload routes policy, scenario, and eval records", () => {
+  const policy = buildKnowledgeGovernanceRecordPayload("policy_rule", {
+    source_id:"src-1",
+    rule_type:"reins_boundary",
+    title:"REINS boundary",
+    rule_text:"Do not automate REINS login or scraping.",
+    review_status:"in_review",
+    risk_level:"high",
+    evidence_ref_ids:["ev-rule"],
+  });
+  const scenario = buildKnowledgeGovernanceRecordPayload("scenario", {
+    source_id:"src-1",
+    scenario_type:"due_diligence",
+    title:"Evidence review",
+    description:"Review uploaded evidence without source-less conclusions.",
+    review_status:"candidate",
+    risk_level:"medium",
+    evidence_ref_ids:["ev-scenario"],
+  });
+  const evalCase = buildKnowledgeGovernanceRecordPayload("eval_case", {
+    source_id:"src-1",
+    scenario_id:scenario.record.id,
+    prompt:"Summarize a high-risk contract finding.",
+    expected_behavior:"Cite evidence and require expert confirmation.",
+    review_status:"candidate",
+    risk_level:"high",
+    evidence_ref_ids:["ev-eval"],
+  });
+
+  assert.equal(policy.storeName, "policy_rules");
+  assert.equal(policy.record.requires_expert_confirmation, true);
+  assert.equal(policy.record.version, 1);
+  assert.equal(scenario.storeName, "scenarios");
+  assert.equal(scenario.record.source_id, "src-1");
+  assert.deepEqual(scenario.record.evidence_ref_ids, ["ev-scenario"]);
+  assert.equal(evalCase.storeName, "eval_cases");
+  assert.equal(evalCase.record.scenario_id, scenario.record.id);
+  assert.deepEqual(evalCase.record.evidence_ref_ids, ["ev-eval"]);
+  assert.throws(() => buildKnowledgeGovernanceRecordPayload("unknown", {}), /recordType must be one of/);
 });
 
 test("property dossier groups records and exposes review and quality queues", () => {
