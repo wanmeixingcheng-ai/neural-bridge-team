@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -438,6 +438,42 @@ test("training eligible sources require opt-in, approval, low risk, and no delet
   ]);
 
   assert.deepEqual(eligible.map(source => source.id), ["ok"]);
+});
+
+test("source registry update payload versions records and disables high-risk training", () => {
+  const update = buildSourceRegistryUpdatePayload({
+    id:"src-1",
+    source_type:"attachment",
+    title:"User supplied public note",
+    review_status:"approved",
+    risk_level:"low",
+    version:1,
+    consent_scope:"explicit_opt_in",
+    training_allowed:true,
+    deletion_requested:false,
+    metadata:{ owner:"free-tier-user" },
+  }, {
+    source_type:"reins_user_upload",
+    title:"User supplied REINS upload",
+    risk_level:"high",
+    training_allowed:true,
+    metadata:{ classification:"reins" },
+  }, {
+    changedBy:"reviewer",
+    reason:"source_reclassified",
+    now:"2026-06-12T05:00:00.000Z",
+  });
+
+  assert.equal(update.record.version, 2);
+  assert.equal(update.record.review_status, "candidate");
+  assert.equal(update.record.training_allowed, false);
+  assert.equal(update.record.source_type, "reins_user_upload");
+  assert.equal(update.record.risk_level, "high");
+  assert.equal(update.record.metadata.previous_version, 1);
+  assert.equal(update.record.metadata.changed_by, "reviewer");
+  assert.equal(update.record.metadata.change_reason, "source_reclassified");
+  assert.equal(update.quality.ok, true);
+  assert.deepEqual(trainingEligibleSources([update.record]), []);
 });
 
 test("source withdrawal patch disables training and preserves deletion audit metadata", () => {
