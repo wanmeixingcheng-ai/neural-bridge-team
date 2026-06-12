@@ -605,6 +605,33 @@ test("source registry update payload versions records and disables high-risk tra
   assert.deepEqual(trainingEligibleSources([update.record]), []);
 });
 
+test("source registry update payload disables training when consent is withdrawn", () => {
+  const update = buildSourceRegistryUpdatePayload({
+    id:"src-2",
+    source_type:"public_web",
+    title:"Opted in public source",
+    review_status:"approved",
+    risk_level:"low",
+    version:1,
+    consent_scope:"explicit_opt_in",
+    training_allowed:true,
+    deletion_requested:false,
+  }, {
+    consent_scope:"none",
+    training_allowed:true,
+  }, {
+    changedBy:"owner",
+    reason:"training_consent_withdrawn",
+    now:"2026-06-12T05:30:00.000Z",
+  });
+
+  assert.equal(update.record.version, 2);
+  assert.equal(update.record.training_allowed, false);
+  assert.equal(update.record.consent_scope, "none");
+  assert.equal(update.quality.ok, true);
+  assert.deepEqual(trainingEligibleSources([update.record]), []);
+});
+
 test("source withdrawal patch disables training and preserves deletion audit metadata", () => {
   const withdrawn = buildSourceWithdrawalPatch({
     id:"src-free-tier",
