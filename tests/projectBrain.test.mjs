@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -329,6 +329,32 @@ test("source withdrawal patch disables training and preserves deletion audit met
   assert.equal(withdrawn.metadata.deletion_requested_by, "owner");
   assert.equal(withdrawn.metadata.training_withdrawn_at, "2026-06-12T00:00:00.000Z");
   assert.deepEqual(trainingEligibleSources([withdrawn]), []);
+});
+
+test("versioned knowledge patch increments version and resets review metadata", () => {
+  const patch = buildVersionedKnowledgePatch({
+    id:"risk-1",
+    version:2,
+    review_status:"approved",
+    metadata:{ owner:"analyst" },
+  }, {
+    title:"Updated risk",
+    metadata:{ note:"source correction" },
+  }, {
+    changedBy:"reviewer",
+    reason:"evidence_update",
+    now:"2026-06-12T01:00:00.000Z",
+  });
+
+  assert.equal(patch.version, 3);
+  assert.equal(patch.review_status, "candidate");
+  assert.equal(patch.updated_at, "2026-06-12T01:00:00.000Z");
+  assert.equal(patch.metadata.owner, "analyst");
+  assert.equal(patch.metadata.note, "source correction");
+  assert.equal(patch.metadata.previous_version, 2);
+  assert.equal(patch.metadata.changed_by, "reviewer");
+  assert.equal(patch.metadata.change_reason, "evidence_update");
+  assert.throws(() => buildVersionedKnowledgePatch({ version:2 }, { version:2 }), /increment version/);
 });
 
 test("knowledge brain inventory stats expose review, risk, evidence, and training counts", () => {
