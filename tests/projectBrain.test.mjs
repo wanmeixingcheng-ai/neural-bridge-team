@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -331,6 +331,26 @@ test("calculation run update payload versions deterministic outputs", () => {
   assert.equal(update.record.metadata.previous_version, 2);
   assert.equal(update.record.metadata.changed_by, "calculation-service");
   assert.equal(update.quality.ok, true);
+});
+
+test("calculation run filters property type source review risk query and archived records", () => {
+  const filtered = filterCalculationRunRecords([
+    { id:"old", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.2 }, updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.4 }, updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"approved", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"approved", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.5 }, updated_at:"2026-06-12T03:00:00.000Z" },
+    { id:"other-source", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-2"], outputs:{ noiYield:5.6 }, updated_at:"2026-06-12T04:00:00.000Z" },
+    { id:"other-property", property_id:"prop-2", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.7 }, updated_at:"2026-06-12T05:00:00.000Z" },
+    { id:"archived", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"archived", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.8 }, updated_at:"2026-06-12T06:00:00.000Z" },
+  ], {
+    propertyId:"prop-1",
+    calculationType:"investment_metrics",
+    sourceIds:["src-1"],
+    reviewStatuses:["candidate"],
+    riskLevels:["medium"],
+    query:"noiYield",
+  });
+
+  assert.deepEqual(filtered.map(record => record.id), ["new", "old"]);
 });
 
 test("property dossier investment metrics refuse to guess acquisition price", () => {
