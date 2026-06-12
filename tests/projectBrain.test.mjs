@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterEvidenceRefRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -408,6 +408,25 @@ test("evidence ref update payload versions source and target linked evidence", (
   assert.equal(update.record.metadata.changed_by, "reviewer");
   assert.equal(update.record.metadata.change_reason, "evidence_locator_correction");
   assert.equal(update.quality.ok, true);
+});
+
+test("evidence ref filters source target review risk query and recency", () => {
+  const filtered = filterEvidenceRefRecords([
+    { id:"old", source_id:"src-1", target_type:"knowledge_unit", target_id:"ku-1", locator:"page 1", quote:"Flood quote", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", source_id:"src-1", target_type:"knowledge_unit", target_id:"ku-1", locator:"page 2", quote:"Flood quote", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"approved", source_id:"src-1", target_type:"knowledge_unit", target_id:"ku-1", locator:"page 3", quote:"Flood quote", review_status:"approved", risk_level:"high", updated_at:"2026-06-12T03:00:00.000Z" },
+    { id:"other-target", source_id:"src-1", target_type:"jre_risk", target_id:"risk-1", locator:"page 4", quote:"Flood quote", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T04:00:00.000Z" },
+    { id:"other-source", source_id:"src-2", target_type:"knowledge_unit", target_id:"ku-1", locator:"page 5", quote:"Flood quote", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T05:00:00.000Z" },
+  ], {
+    sourceIds:["src-1"],
+    targetTypes:["knowledge_unit"],
+    targetIds:["ku-1"],
+    reviewStatuses:["candidate"],
+    riskLevels:["high"],
+    query:"flood",
+  });
+
+  assert.deepEqual(filtered.map(ref => ref.id), ["new", "old"]);
 });
 
 test("knowledge brain search only returns approved source-backed phase 1 records", () => {
