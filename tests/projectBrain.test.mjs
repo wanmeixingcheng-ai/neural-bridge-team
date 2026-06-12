@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterEvidenceRefRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterEvidenceRefRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -198,6 +198,24 @@ test("knowledge governance update payload versions reviewed records", () => {
   assert.equal(update.record.metadata.change_reason, "policy_refinement");
   assert.equal(update.quality.ok, false);
   assert.deepEqual(update.quality.issues, ["high_risk_not_approved"]);
+});
+
+test("knowledge governance filters source review risk query archived and recency", () => {
+  const filtered = filterKnowledgeGovernanceRecords([
+    { id:"old", source_id:"src-1", review_status:"candidate", risk_level:"high", title:"REINS rule", rule_text:"Do not automate REINS login.", updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", source_id:"src-1", review_status:"candidate", risk_level:"high", title:"REINS boundary", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"approved", source_id:"src-1", review_status:"approved", risk_level:"high", title:"REINS approved", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T03:00:00.000Z" },
+    { id:"medium", source_id:"src-1", review_status:"candidate", risk_level:"medium", title:"REINS medium", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T04:00:00.000Z" },
+    { id:"other-source", source_id:"src-2", review_status:"candidate", risk_level:"high", title:"REINS other", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T05:00:00.000Z" },
+    { id:"archived", source_id:"src-1", review_status:"archived", risk_level:"high", title:"REINS archived", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T06:00:00.000Z" },
+  ], {
+    sourceId:"src-1",
+    reviewStatuses:["candidate"],
+    riskLevels:["high"],
+    query:"reins",
+  });
+
+  assert.deepEqual(filtered.map(record => record.id), ["new", "old"]);
 });
 
 test("property dossier groups records and exposes review and quality queues", () => {
