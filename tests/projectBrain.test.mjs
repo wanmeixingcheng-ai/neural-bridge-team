@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -242,6 +242,8 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.evidenceRefQualityIssues.missing_locator, 1);
   assert.equal(stats.evidenceRefQualityIssues.high_risk_evidence_not_approved, 1);
   assert.equal(stats.evidenceRefQualityIssues.missing_quote_or_hash, 1);
+  assert.equal(stats.referenceIntegrityIssues, 0);
+  assert.deepEqual(stats.knowledgeBrainReferenceIntegrityIssues, []);
   assert.equal(stats.policyRules, 1);
   assert.equal(stats.scenarios, 2);
   assert.equal(stats.evalCases, 1);
@@ -265,6 +267,46 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.deepEqual(stats.reviewQueue.invalidKnowledgeUnitIds, ["ku-2", "ku-4"]);
   assert.deepEqual(stats.reviewQueue.invalidJapaneseRealEstateRecordIds, ["risk-1"]);
   assert.deepEqual(stats.reviewQueue.invalidCalculationRunIds, ["calc-bad"]);
+});
+
+test("knowledge brain reference integrity detects broken source and evidence graph", () => {
+  const integrity = validateKnowledgeBrainReferenceIntegrity({
+    sources:[
+      { id:"src-approved", review_status:"approved", deletion_requested:false },
+      { id:"src-candidate", review_status:"candidate", deletion_requested:false },
+      { id:"src-deleted", review_status:"approved", deletion_requested:true },
+    ],
+    evidenceRefs:[
+      { id:"ev-wrong-target", source_id:"src-approved", target_type:"knowledge_unit", target_id:"other-ku", review_status:"approved" },
+      { id:"ev-candidate", source_id:"src-approved", target_type:"jre_risk", target_id:"risk-1", review_status:"candidate" },
+      { id:"ev-missing-source", source_id:"src-missing", target_type:"calculation_run", target_id:"calc-1", review_status:"approved" },
+    ],
+    knowledgeUnits:[
+      { id:"ku-unapproved-source", source_id:"src-candidate", review_status:"approved", risk_level:"medium", evidence_ref_ids:[] },
+      { id:"ku-missing-evidence", source_id:"src-approved", review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-missing"] },
+      { id:"ku-target-mismatch", source_id:"src-approved", review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-wrong-target"] },
+    ],
+    japaneseRealEstateRecords:[
+      { id:"risk-1", entity_type:"risk", source_id:"src-approved", review_status:"approved", risk_level:"high", evidence_ref_ids:["ev-candidate"] },
+    ],
+    calculationRuns:[
+      { id:"calc-1", source_ids:["src-deleted", "src-missing"], review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-missing-source"] },
+    ],
+  });
+
+  assert.equal(integrity.ok, false);
+  assert.deepEqual(integrity.issues.map(issue => issue.issue).sort(), [
+    "approved_record_unapproved_evidence",
+    "approved_record_unapproved_source",
+    "deleted_source_ref",
+    "evidence_missing_source_ref",
+    "evidence_target_mismatch",
+    "high_risk_unapproved_evidence",
+    "missing_evidence_ref",
+    "missing_source_ref",
+  ].sort());
+  assert.equal(integrity.issues.find(issue => issue.issue === "evidence_target_mismatch").target_id, "ku-target-mismatch");
+  assert.equal(integrity.issues.find(issue => issue.issue === "deleted_source_ref").target_id, "calc-1");
 });
 
 test("knowledge brain review queue summarizes pending and expert review work", () => {
