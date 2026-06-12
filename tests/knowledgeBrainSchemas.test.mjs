@@ -239,6 +239,27 @@ test("database schema enforces calculation run deterministic payload boundary", 
   assert.match(sql, /jsonb_array_length\(evidence_ref_ids\) > 0/);
 });
 
+test("database schema indexes review and source filtering paths", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  for (const indexName of [
+    "nb_source_registry_consent_idx",
+    "nb_source_registry_deletion_idx",
+    "nb_policy_rules_review_idx",
+    "nb_policy_rules_risk_idx",
+    "nb_scenarios_review_idx",
+    "nb_scenarios_risk_idx",
+    "nb_eval_cases_review_idx",
+    "nb_eval_cases_risk_idx",
+    "nb_evidence_refs_review_idx",
+    "nb_evidence_refs_risk_idx",
+    "nb_calculation_runs_source_ids_idx",
+    "nb_calculation_runs_evidence_ref_ids_idx",
+  ]) {
+    assert.match(sql, new RegExp(indexName));
+  }
+});
+
 test("knowledge unit requires source, review status, risk level, and version", () => {
   const unit = buildKnowledgeUnitRecord({
     source_id:"src-1",
