@@ -67,6 +67,11 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "risk_level"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "version") || store.name === "source_registry");
   }
+
+  assert.deepEqual(KNOWLEDGE_BRAIN_STORES.sourceRegistry.indexes.find(([name]) => name === "sourceTypeReview")?.[1], ["source_type", "review_status"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_STORES.knowledgeUnits.indexes.find(([name]) => name === "sourceReview")?.[1], ["source_id", "review_status"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_STORES.evidenceRefs.indexes.find(([name]) => name === "targetReview")?.[1], ["target_type", "target_id", "review_status"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_STORES.calculationRuns.indexes.find(([name]) => name === "propertyType")?.[1], ["property_id", "calculation_type"]);
 });
 
 test("japanese real estate entity schemas cover property workspace data domains", () => {

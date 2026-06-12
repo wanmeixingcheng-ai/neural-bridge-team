@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
@@ -11,6 +12,15 @@ test("project brain chunks long text with overlap", () => {
 
 test("project brain ignores empty chunk content", () => {
   assert.deepEqual(chunkText("   "), []);
+});
+
+test("knowledge database upgrades create missing indexes on existing stores", () => {
+  const source = readFileSync(new URL("../lib/projectBrain.mjs", import.meta.url), "utf8");
+
+  assert.match(source, /const KB_DB_VERSION = 5;/);
+  assert.match(source, /function ensureKnowledgeBrainIndexes/);
+  assert.match(source, /store\.indexNames\.contains\(indexName\)/);
+  assert.match(source, /createKnowledgeBrainStores\(db, transaction\)/);
 });
 
 test("knowledge document ingest builds source, units, and evidence refs", () => {
