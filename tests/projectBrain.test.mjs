@@ -55,12 +55,16 @@ test("japanese real estate record payload routes entities to their stores and bl
     review_status:"approved",
     risk_level:"medium",
     calculation_method:"deterministic_code",
+    principal_amount:32000000,
+    interest_rate:1.2,
     evidence_ref_ids:["ev-1"],
   });
 
   assert.equal(payload.storeName, "loan_records");
   assert.equal(payload.record.entity_type, "loan");
   assert.equal(payload.record.calculation_method, "deterministic_code");
+  assert.equal(payload.record.principal_amount, 32000000);
+  assert.equal(payload.record.interest_rate, 1.2);
   assert.equal(payload.quality.ok, true);
   assert.throws(() => buildJapaneseRealEstateRecordPayload("expense", {
     source_id:"src-1",
@@ -92,6 +96,8 @@ test("japanese real estate source ingest builds auditable source, evidence, and 
         entity_type:"risk",
         property_id:"prop-1",
         title:"Flood risk",
+        risk_type:"hazard",
+        finding:"Flood risk needs expert review",
         risk_level:"high",
         requires_expert_confirmation:true,
         evidence:{ locator:"page 3", quote:"Flood risk quote" },
@@ -106,7 +112,10 @@ test("japanese real estate source ingest builds auditable source, evidence, and 
   assert.equal(ingest.records.length, 2);
   assert.equal(ingest.records[0].storeName, "property_records");
   assert.equal(ingest.records[0].record.source_id, ingest.source.id);
+  assert.equal(ingest.records[0].record.address, "Tokyo");
   assert.deepEqual(ingest.records[0].record.evidence_ref_ids, ["ev-prop-1"]);
+  assert.equal(ingest.records[1].record.risk_type, "hazard");
+  assert.equal(ingest.records[1].record.finding, "Flood risk needs expert review");
   assert.equal(ingest.evidenceRefs[0].target_type, "jre_property");
   assert.equal(ingest.evidenceRefs[0].target_id, "prop-1");
   assert.equal(ingest.reviewQueue.japaneseRealEstateRecords, 2);
