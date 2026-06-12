@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -326,6 +326,37 @@ test("knowledge unit search only returns approved, retained source-backed units"
   assert.equal(hits[0].score, 2);
   assert.equal(hits[0].docId, "doc-1");
   assert.deepEqual(hits[0].evidenceRefIds, ["ev-1"]);
+});
+
+test("knowledge unit update payload versions source-backed content", () => {
+  const update = buildKnowledgeUnitUpdatePayload({
+    id:"ku-1",
+    source_id:"src-1",
+    domain:"D01",
+    title:"Old hazard finding",
+    content:"This source-backed hazard finding needs correction.",
+    review_status:"approved",
+    risk_level:"medium",
+    version:4,
+    evidence_ref_ids:["ev-1"],
+    metadata:{ owner:"analyst" },
+  }, {
+    title:"Updated hazard finding",
+    content:"This source-backed hazard finding was corrected with updated evidence.",
+    metadata:{ note:"corrected wording" },
+  }, {
+    changedBy:"reviewer",
+    reason:"wording_correction",
+    now:"2026-06-12T04:00:00.000Z",
+  });
+
+  assert.equal(update.record.version, 5);
+  assert.equal(update.record.review_status, "candidate");
+  assert.equal(update.record.source_id, "src-1");
+  assert.equal(update.record.metadata.previous_version, 4);
+  assert.equal(update.record.metadata.changed_by, "reviewer");
+  assert.equal(update.record.metadata.change_reason, "wording_correction");
+  assert.equal(update.quality.ok, true);
 });
 
 test("knowledge brain search only returns approved source-backed phase 1 records", () => {
