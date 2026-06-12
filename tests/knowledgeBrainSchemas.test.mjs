@@ -233,6 +233,31 @@ test("database schema enforces evidence id fields as json arrays", () => {
   assert.match(sql, /jsonb_typeof\(evidence_ref_ids\) = 'array'/);
 });
 
+test("database schema enforces metadata and payload fields as json objects", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  for (const constraintName of [
+    "nb_source_registry_metadata_object_chk",
+    "nb_knowledge_units_metadata_object_chk",
+    "nb_policy_rules_metadata_object_chk",
+    "nb_scenarios_metadata_object_chk",
+    "nb_eval_cases_scoring_rubric_object_chk",
+    "nb_eval_cases_metadata_object_chk",
+    "nb_evidence_refs_metadata_object_chk",
+    "nb_jre_records_attributes_object_chk",
+    "nb_jre_records_metadata_object_chk",
+  ]) {
+    assert.match(sql, new RegExp(constraintName));
+  }
+
+  assert.match(sql, /jsonb_typeof\(metadata\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(attributes\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(inputs\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(formulas\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(outputs\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(dossier_snapshot\) = 'object'/);
+});
+
 test("database schema enforces governance record core text boundaries", () => {
   const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
 
@@ -261,6 +286,9 @@ test("database schema enforces calculation run deterministic payload boundary", 
   assert.match(sql, /inputs <> '\{\}'::jsonb/);
   assert.match(sql, /formulas <> '\{\}'::jsonb/);
   assert.match(sql, /outputs <> '\{\}'::jsonb/);
+  assert.match(sql, /jsonb_typeof\(inputs\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(formulas\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(outputs\) = 'object'/);
   assert.match(sql, /jsonb_typeof\(source_ids\) = 'array'/);
   assert.match(sql, /jsonb_typeof\(evidence_ref_ids\) = 'array'/);
   assert.match(sql, /jsonb_array_length\(source_ids\) > 0/);

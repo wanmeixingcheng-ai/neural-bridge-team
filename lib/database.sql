@@ -46,6 +46,7 @@ create table if not exists nb_source_registry (
   constraint nb_source_registry_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_source_registry_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
   constraint nb_source_registry_version_chk check (version >= 1),
+  constraint nb_source_registry_metadata_object_chk check (jsonb_typeof(metadata) = 'object'),
   constraint nb_source_registry_training_boundary_chk check (
     training_allowed = false or (
       consent_scope in ('opt_in', 'explicit_opt_in') and
@@ -79,7 +80,8 @@ create table if not exists nb_knowledge_units (
   constraint nb_knowledge_units_title_chk check (length(trim(title)) > 0),
   constraint nb_knowledge_units_content_chk check (length(trim(content)) >= 12),
   constraint nb_knowledge_units_tags_array_chk check (jsonb_typeof(tags) = 'array'),
-  constraint nb_knowledge_units_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array')
+  constraint nb_knowledge_units_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array'),
+  constraint nb_knowledge_units_metadata_object_chk check (jsonb_typeof(metadata) = 'object')
 );
 
 create table if not exists nb_policy_rules (
@@ -102,7 +104,8 @@ create table if not exists nb_policy_rules (
   constraint nb_policy_rules_version_chk check (version >= 1),
   constraint nb_policy_rules_core_text_chk check (length(trim(rule_type)) > 0 and length(trim(title)) > 0 and length(trim(rule_text)) > 0),
   constraint nb_policy_rules_applies_to_array_chk check (jsonb_typeof(applies_to) = 'array'),
-  constraint nb_policy_rules_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array')
+  constraint nb_policy_rules_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array'),
+  constraint nb_policy_rules_metadata_object_chk check (jsonb_typeof(metadata) = 'object')
 );
 
 create table if not exists nb_scenarios (
@@ -124,7 +127,8 @@ create table if not exists nb_scenarios (
   constraint nb_scenarios_version_chk check (version >= 1),
   constraint nb_scenarios_core_text_chk check (length(trim(scenario_type)) > 0 and length(trim(title)) > 0 and length(trim(description)) > 0),
   constraint nb_scenarios_expected_outputs_array_chk check (jsonb_typeof(expected_outputs) = 'array'),
-  constraint nb_scenarios_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array')
+  constraint nb_scenarios_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array'),
+  constraint nb_scenarios_metadata_object_chk check (jsonb_typeof(metadata) = 'object')
 );
 
 create table if not exists nb_eval_cases (
@@ -146,7 +150,9 @@ create table if not exists nb_eval_cases (
   constraint nb_eval_cases_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
   constraint nb_eval_cases_version_chk check (version >= 1),
   constraint nb_eval_cases_core_text_chk check (length(trim(prompt)) > 0 and length(trim(expected_behavior)) > 0),
-  constraint nb_eval_cases_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array')
+  constraint nb_eval_cases_scoring_rubric_object_chk check (jsonb_typeof(scoring_rubric) = 'object'),
+  constraint nb_eval_cases_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array'),
+  constraint nb_eval_cases_metadata_object_chk check (jsonb_typeof(metadata) = 'object')
 );
 
 create table if not exists nb_evidence_refs (
@@ -167,7 +173,8 @@ create table if not exists nb_evidence_refs (
   constraint nb_evidence_refs_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
   constraint nb_evidence_refs_version_chk check (version >= 1),
   constraint nb_evidence_refs_locator_chk check (length(trim(locator)) > 0),
-  constraint nb_evidence_refs_quote_or_hash_chk check (length(trim(quote)) > 0 or length(trim(hash)) > 0)
+  constraint nb_evidence_refs_quote_or_hash_chk check (length(trim(quote)) > 0 or length(trim(hash)) > 0),
+  constraint nb_evidence_refs_metadata_object_chk check (jsonb_typeof(metadata) = 'object')
 );
 
 create table if not exists nb_jre_records (
@@ -193,7 +200,9 @@ create table if not exists nb_jre_records (
   constraint nb_jre_records_version_chk check (version >= 1),
   constraint nb_jre_records_title_chk check (length(trim(title)) > 0),
   constraint nb_jre_records_property_id_chk check (entity_type = 'property' or length(trim(property_id)) > 0),
-  constraint nb_jre_records_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array')
+  constraint nb_jre_records_attributes_object_chk check (jsonb_typeof(attributes) = 'object'),
+  constraint nb_jre_records_evidence_ref_ids_array_chk check (jsonb_typeof(evidence_ref_ids) = 'array'),
+  constraint nb_jre_records_metadata_object_chk check (jsonb_typeof(metadata) = 'object')
 );
 
 create table if not exists nb_calculation_runs (
@@ -221,6 +230,11 @@ create table if not exists nb_calculation_runs (
     inputs <> '{}'::jsonb and
     formulas <> '{}'::jsonb and
     outputs <> '{}'::jsonb and
+    jsonb_typeof(inputs) = 'object' and
+    jsonb_typeof(formulas) = 'object' and
+    jsonb_typeof(outputs) = 'object' and
+    jsonb_typeof(dossier_snapshot) = 'object' and
+    jsonb_typeof(metadata) = 'object' and
     jsonb_typeof(source_ids) = 'array' and
     jsonb_typeof(evidence_ref_ids) = 'array' and
     jsonb_array_length(source_ids) > 0 and
