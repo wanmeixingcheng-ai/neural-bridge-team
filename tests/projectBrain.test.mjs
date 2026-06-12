@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -907,6 +907,25 @@ test("knowledge brain review queue items expose actionable reasons across stores
   assert.equal(items.some(item => item.target_id === "rule-risk" && item.reasons.includes("expert_confirmation_required")), true);
   assert.equal(items.some(item => item.target_id === "risk-review" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
   assert.equal(items.some(item => item.target_id === "calc-review" && item.reasons.includes("missing_source_ids")), true);
+});
+
+test("knowledge brain review queue items filter target source review risk reason and query", () => {
+  const items = filterKnowledgeBrainReviewQueueItems([
+    { target_type:"knowledge_unit", target_id:"ku-1", source_id:"src-1", review_status:"candidate", risk_level:"high", reasons:["needs_review", "high_risk_missing_evidence"] },
+    { target_type:"knowledge_unit", target_id:"ku-2", source_id:"src-1", review_status:"candidate", risk_level:"high", reasons:["needs_review"] },
+    { target_type:"evidence_ref", target_id:"ev-1", source_id:"src-1", review_status:"candidate", risk_level:"high", reasons:["missing_locator"] },
+    { target_type:"knowledge_unit", target_id:"ku-3", source_id:"src-2", review_status:"candidate", risk_level:"high", reasons:["high_risk_missing_evidence"] },
+    { target_type:"knowledge_unit", target_id:"ku-4", source_id:"src-1", review_status:"approved", risk_level:"high", reasons:["high_risk_missing_evidence"] },
+  ], {
+    targetTypes:["knowledge_unit"],
+    sourceIds:["src-1"],
+    reviewStatuses:["candidate"],
+    riskLevels:["high"],
+    reasons:["high_risk_missing_evidence"],
+    query:"ku-1",
+  });
+
+  assert.deepEqual(items.map(item => item.target_id), ["ku-1"]);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
