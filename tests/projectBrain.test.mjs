@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -397,6 +397,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.evidenceRefQualityIssues.missing_quote_or_hash, 1);
   assert.equal(stats.referenceIntegrityIssues, 0);
   assert.deepEqual(stats.knowledgeBrainReferenceIntegrityIssues, []);
+  assert.deepEqual(stats.knowledgeBrainReferenceIntegrityActions, []);
   assert.equal(stats.policyRules, 1);
   assert.equal(stats.policyRuleReviewStatus.in_review, 1);
   assert.equal(stats.policyRuleRiskLevels.high, 1);
@@ -491,6 +492,26 @@ test("knowledge brain reference integrity detects broken source and evidence gra
   assert.equal(integrity.issues.find(issue => issue.target_id === "rule-unapproved-source").issue, "approved_record_unapproved_source");
   assert.equal(integrity.issues.find(issue => issue.target_id === "scenario-missing-source").issue, "missing_source_ref");
   assert.equal(integrity.issues.find(issue => issue.target_id === "eval-missing-evidence").issue, "missing_evidence_ref");
+});
+
+test("knowledge brain reference integrity actions map issues to repair guidance", () => {
+  const actions = knowledgeBrainReferenceIntegrityActions({
+    issues:[
+      { target_type:"knowledge_unit", target_id:"ku-1", issue:"missing_source_ref", source_id:"src-missing" },
+      { target_type:"knowledge_unit", target_id:"ku-2", issue:"evidence_target_mismatch", evidence_ref_id:"ev-1" },
+      { target_type:"jre_risk", target_id:"risk-1", issue:"high_risk_unapproved_evidence", evidence_ref_id:"ev-2" },
+      { target_type:"calculation_run", target_id:"calc-1", issue:"unknown_issue" },
+    ],
+  });
+
+  assert.deepEqual(actions.map(item => item.action), [
+    "restore_source_or_archive_record",
+    "relink_evidence_to_target",
+    "expert_review_evidence_before_approval",
+    "manual_review_required",
+  ]);
+  assert.equal(actions[0].blocks_approval, true);
+  assert.equal(actions[3].blocks_approval, false);
 });
 
 test("knowledge brain review queue summarizes pending and expert review work", () => {
