@@ -74,7 +74,10 @@ create table if not exists nb_knowledge_units (
   updated_at timestamptz not null default now(),
   constraint nb_knowledge_units_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_knowledge_units_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_knowledge_units_version_chk check (version >= 1)
+  constraint nb_knowledge_units_version_chk check (version >= 1),
+  constraint nb_knowledge_units_domain_chk check (length(trim(domain)) > 0),
+  constraint nb_knowledge_units_title_chk check (length(trim(title)) > 0),
+  constraint nb_knowledge_units_content_chk check (length(trim(content)) >= 12)
 );
 
 create table if not exists nb_policy_rules (

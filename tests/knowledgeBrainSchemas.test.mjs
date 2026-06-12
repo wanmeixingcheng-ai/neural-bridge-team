@@ -196,6 +196,17 @@ test("database schema enforces evidence locator and quote or hash boundary", () 
   assert.match(sql, /length\(trim\(quote\)\) > 0 or length\(trim\(hash\)\) > 0/);
 });
 
+test("database schema enforces knowledge unit content quality boundary", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /nb_knowledge_units_domain_chk/);
+  assert.match(sql, /length\(trim\(domain\)\) > 0/);
+  assert.match(sql, /nb_knowledge_units_title_chk/);
+  assert.match(sql, /length\(trim\(title\)\) > 0/);
+  assert.match(sql, /nb_knowledge_units_content_chk/);
+  assert.match(sql, /length\(trim\(content\)\) >= 12/);
+});
+
 test("knowledge unit requires source, review status, risk level, and version", () => {
   const unit = buildKnowledgeUnitRecord({
     source_id:"src-1",
