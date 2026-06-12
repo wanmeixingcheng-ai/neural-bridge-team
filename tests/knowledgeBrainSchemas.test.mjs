@@ -192,6 +192,13 @@ test("database schema enforces source registry training boundaries", () => {
   assert.match(sql, /source_type not in \('reins_user_upload', 'contract', 'important_matter_explanation', 'customer_record'\)/);
 });
 
+test("database schema enforces REINS manual upload boundary", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /nb_source_registry_reins_collection_boundary_chk/);
+  assert.match(sql, /source_type <> 'reins_user_upload' or collection_method in \('manual', 'user_upload', 'user_manual_upload'\)/);
+});
+
 test("database schema enforces evidence locator and quote or hash boundary", () => {
   const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
 

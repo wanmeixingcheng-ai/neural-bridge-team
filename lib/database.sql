@@ -47,6 +47,9 @@ create table if not exists nb_source_registry (
   constraint nb_source_registry_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
   constraint nb_source_registry_version_chk check (version >= 1),
   constraint nb_source_registry_metadata_object_chk check (jsonb_typeof(metadata) = 'object'),
+  constraint nb_source_registry_reins_collection_boundary_chk check (
+    source_type <> 'reins_user_upload' or collection_method in ('manual', 'user_upload', 'user_manual_upload')
+  ),
   constraint nb_source_registry_high_risk_review_metadata_chk check (
     review_status <> 'approved' or risk_level not in ('high', 'restricted') or (
       length(trim(metadata->>'reviewed_by')) > 0 and length(trim(metadata->>'reviewed_at')) > 0
