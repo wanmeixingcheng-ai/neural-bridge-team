@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceWithdrawalPatch, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -434,6 +434,8 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.deepEqual(stats.reviewQueue.invalidEvalCaseIds, []);
   assert.deepEqual(stats.reviewQueue.invalidJapaneseRealEstateRecordIds, ["risk-1"]);
   assert.deepEqual(stats.reviewQueue.invalidCalculationRunIds, ["calc-bad"]);
+  assert.equal(stats.reviewQueueItems.some(item => item.target_id === "rule-1" && item.reasons.includes("high_risk_missing_evidence")), true);
+  assert.equal(stats.reviewQueueItems.some(item => item.target_id === "risk-1" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
 });
 
 test("knowledge brain reference integrity detects broken source and evidence graph", () => {
@@ -526,6 +528,42 @@ test("knowledge brain review queue summarizes pending and expert review work", (
   assert.equal(summary.invalidJapaneseRealEstateRecords, 1);
   assert.deepEqual(summary.invalidJapaneseRealEstateRecordIds, ["risk-review"]);
   assert.equal(summary.invalidCalculationRuns, 0);
+});
+
+test("knowledge brain review queue items expose actionable reasons across stores", () => {
+  const items = knowledgeBrainReviewQueueItems({
+    sources:[
+      { id:"src-review", source_type:"manual", title:"Source", review_status:"candidate", risk_level:"medium", version:1 },
+    ],
+    evidenceRefs:[
+      { id:"ev-risk", source_id:"src-review", target_type:"knowledge_unit", target_id:"ku-risk", locator:"", quote:"", review_status:"candidate", risk_level:"high", version:1 },
+    ],
+    knowledgeUnits:[
+      { id:"ku-risk", source_id:"src-review", domain:"D01", title:"Risk", content:"High risk source-backed finding.", review_status:"candidate", risk_level:"high", version:1, evidence_ref_ids:[] },
+    ],
+    policyRules:[
+      { id:"rule-risk", source_id:"src-review", rule_type:"expert", title:"Expert", rule_text:"Expert review required.", review_status:"in_review", risk_level:"high", version:1, evidence_ref_ids:[], requires_expert_confirmation:true },
+    ],
+    scenarios:[
+      { id:"scenario-review", source_id:"src-review", scenario_type:"due_diligence", title:"Review", description:"Review evidence.", review_status:"candidate", risk_level:"medium", version:1, evidence_ref_ids:[] },
+    ],
+    evalCases:[
+      { id:"eval-review", source_id:"src-review", prompt:"Prompt", expected_behavior:"Expected", review_status:"candidate", risk_level:"medium", version:1, evidence_ref_ids:[] },
+    ],
+    japaneseRealEstateRecords:[
+      { id:"risk-review", entity_type:"risk", source_id:"src-review", property_id:"prop-1", title:"Risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:[], requires_expert_confirmation:false },
+    ],
+    calculationRuns:[
+      { id:"calc-review", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{}, formulas:{}, outputs:{}, source_ids:[], evidence_ref_ids:[], review_status:"candidate", risk_level:"medium", version:1 },
+    ],
+  });
+
+  assert.equal(items[0].risk_level, "high");
+  assert.equal(items.some(item => item.target_type === "evidence_ref" && item.reasons.includes("missing_locator")), true);
+  assert.equal(items.some(item => item.target_id === "ku-risk" && item.reasons.includes("high_risk_missing_evidence")), true);
+  assert.equal(items.some(item => item.target_id === "rule-risk" && item.reasons.includes("expert_confirmation_required")), true);
+  assert.equal(items.some(item => item.target_id === "risk-review" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
+  assert.equal(items.some(item => item.target_id === "calc-review" && item.reasons.includes("missing_source_ids")), true);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
