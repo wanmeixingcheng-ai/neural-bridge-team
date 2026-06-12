@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -326,6 +326,24 @@ test("knowledge unit search only returns approved, retained source-backed units"
   assert.equal(hits[0].score, 2);
   assert.equal(hits[0].docId, "doc-1");
   assert.deepEqual(hits[0].evidenceRefIds, ["ev-1"]);
+});
+
+test("knowledge unit filters source domain review risk query and recency", () => {
+  const filtered = filterKnowledgeUnitRecords([
+    { id:"old", source_id:"src-1", domain:"risk", review_status:"candidate", risk_level:"high", title:"Hazard note", content:"Flood hazard finding.", tags:["flood"], updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", source_id:"src-1", domain:"risk", review_status:"candidate", risk_level:"high", title:"Updated hazard note", content:"Flood hazard finding.", tags:["flood"], updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"approved", source_id:"src-1", domain:"risk", review_status:"approved", risk_level:"high", title:"Approved hazard", content:"Flood hazard finding.", updated_at:"2026-06-12T03:00:00.000Z" },
+    { id:"other-domain", source_id:"src-1", domain:"area", review_status:"candidate", risk_level:"high", title:"Area hazard", content:"Flood hazard finding.", updated_at:"2026-06-12T04:00:00.000Z" },
+    { id:"other-source", source_id:"src-2", domain:"risk", review_status:"candidate", risk_level:"high", title:"Other hazard", content:"Flood hazard finding.", updated_at:"2026-06-12T05:00:00.000Z" },
+  ], {
+    sourceIds:["src-1"],
+    domains:["risk"],
+    reviewStatuses:["candidate"],
+    riskLevels:["high"],
+    query:"flood",
+  });
+
+  assert.deepEqual(filtered.map(unit => unit.id), ["new", "old"]);
 });
 
 test("knowledge unit update payload versions source-backed content", () => {
