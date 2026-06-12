@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, chunkText, filterProjectMemoriesBySourceType, knowledgeBrainInventoryStats, knowledgeBrainReviewQueueSummary, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -71,6 +71,48 @@ test("japanese real estate record payload routes entities to their stores and bl
     calculation_method:"llm",
     evidence_ref_ids:["ev-1"],
   }), /must not use LLM calculation/);
+});
+
+test("japanese real estate source ingest builds auditable source, evidence, and entity records", () => {
+  const ingest = buildJapaneseRealEstateSourceIngestRecords({
+    title:"User uploaded REINS listing",
+    source:"REINS manual upload",
+    text:"Uploaded listing text retained locally.",
+    records:[
+      {
+        id:"prop-1",
+        entity_type:"property",
+        property_id:"prop-1",
+        title:"Property profile",
+        address:"Tokyo",
+        evidence:{ locator:"page 1", quote:"Property profile quote" },
+      },
+      {
+        id:"risk-1",
+        entity_type:"risk",
+        property_id:"prop-1",
+        title:"Flood risk",
+        risk_level:"high",
+        requires_expert_confirmation:true,
+        evidence:{ locator:"page 3", quote:"Flood risk quote" },
+      },
+    ],
+    metadata:{ trainingAllowed:true, consentScope:"explicit_opt_in" },
+  });
+
+  assert.equal(ingest.source.source_type, "reins_user_upload");
+  assert.equal(ingest.source.risk_level, "high");
+  assert.equal(ingest.source.training_allowed, false);
+  assert.equal(ingest.records.length, 2);
+  assert.equal(ingest.records[0].storeName, "property_records");
+  assert.equal(ingest.records[0].record.source_id, ingest.source.id);
+  assert.deepEqual(ingest.records[0].record.evidence_ref_ids, ["ev-prop-1"]);
+  assert.equal(ingest.evidenceRefs[0].target_type, "jre_property");
+  assert.equal(ingest.evidenceRefs[0].target_id, "prop-1");
+  assert.equal(ingest.reviewQueue.japaneseRealEstateRecords, 2);
+  assert.equal(ingest.reviewQueue.highRiskExpertReview, 3);
+  assert.equal(ingest.referenceIntegrity.ok, false);
+  assert.equal(ingest.referenceIntegrity.issues.filter(issue => issue.issue === "high_risk_unapproved_evidence").length, 2);
 });
 
 test("property dossier groups records and exposes review and quality queues", () => {
