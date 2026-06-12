@@ -97,7 +97,8 @@ create table if not exists nb_policy_rules (
   updated_at timestamptz not null default now(),
   constraint nb_policy_rules_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_policy_rules_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_policy_rules_version_chk check (version >= 1)
+  constraint nb_policy_rules_version_chk check (version >= 1),
+  constraint nb_policy_rules_core_text_chk check (length(trim(rule_type)) > 0 and length(trim(title)) > 0 and length(trim(rule_text)) > 0)
 );
 
 create table if not exists nb_scenarios (
@@ -116,7 +117,8 @@ create table if not exists nb_scenarios (
   updated_at timestamptz not null default now(),
   constraint nb_scenarios_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_scenarios_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_scenarios_version_chk check (version >= 1)
+  constraint nb_scenarios_version_chk check (version >= 1),
+  constraint nb_scenarios_core_text_chk check (length(trim(scenario_type)) > 0 and length(trim(title)) > 0 and length(trim(description)) > 0)
 );
 
 create table if not exists nb_eval_cases (
@@ -136,7 +138,8 @@ create table if not exists nb_eval_cases (
   updated_at timestamptz not null default now(),
   constraint nb_eval_cases_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
   constraint nb_eval_cases_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
-  constraint nb_eval_cases_version_chk check (version >= 1)
+  constraint nb_eval_cases_version_chk check (version >= 1),
+  constraint nb_eval_cases_core_text_chk check (length(trim(prompt)) > 0 and length(trim(expected_behavior)) > 0)
 );
 
 create table if not exists nb_evidence_refs (

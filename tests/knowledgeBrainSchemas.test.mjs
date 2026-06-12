@@ -207,6 +207,17 @@ test("database schema enforces knowledge unit content quality boundary", () => {
   assert.match(sql, /length\(trim\(content\)\) >= 12/);
 });
 
+test("database schema enforces governance record core text boundaries", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /nb_policy_rules_core_text_chk/);
+  assert.match(sql, /length\(trim\(rule_type\)\) > 0 and length\(trim\(title\)\) > 0 and length\(trim\(rule_text\)\) > 0/);
+  assert.match(sql, /nb_scenarios_core_text_chk/);
+  assert.match(sql, /length\(trim\(scenario_type\)\) > 0 and length\(trim\(title\)\) > 0 and length\(trim\(description\)\) > 0/);
+  assert.match(sql, /nb_eval_cases_core_text_chk/);
+  assert.match(sql, /length\(trim\(prompt\)\) > 0 and length\(trim\(expected_behavior\)\) > 0/);
+});
+
 test("knowledge unit requires source, review status, risk level, and version", () => {
   const unit = buildKnowledgeUnitRecord({
     source_id:"src-1",
