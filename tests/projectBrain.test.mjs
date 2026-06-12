@@ -648,7 +648,9 @@ test("source withdrawal patch disables training and preserves deletion audit met
 
   assert.equal(withdrawn.review_status, "archived");
   assert.equal(withdrawn.training_allowed, false);
+  assert.equal(withdrawn.consent_scope, "none");
   assert.equal(withdrawn.deletion_requested, true);
+  assert.equal(withdrawn.metadata.previous_consent_scope, "explicit_opt_in");
   assert.equal(withdrawn.metadata.deletion_reason, "free_tier_opt_out");
   assert.equal(withdrawn.metadata.deletion_requested_by, "owner");
   assert.equal(withdrawn.metadata.training_withdrawn_at, "2026-06-12T00:00:00.000Z");
