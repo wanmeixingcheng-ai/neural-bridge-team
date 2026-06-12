@@ -258,6 +258,26 @@ test("database schema enforces metadata and payload fields as json objects", () 
   assert.match(sql, /jsonb_typeof\(dossier_snapshot\) = 'object'/);
 });
 
+test("database schema requires reviewer metadata for approved high risk records", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  for (const constraintName of [
+    "nb_source_registry_high_risk_review_metadata_chk",
+    "nb_knowledge_units_high_risk_review_metadata_chk",
+    "nb_policy_rules_high_risk_review_metadata_chk",
+    "nb_scenarios_high_risk_review_metadata_chk",
+    "nb_eval_cases_high_risk_review_metadata_chk",
+    "nb_evidence_refs_high_risk_review_metadata_chk",
+    "nb_jre_records_high_risk_review_metadata_chk",
+  ]) {
+    assert.match(sql, new RegExp(constraintName));
+  }
+
+  assert.match(sql, /review_status <> 'approved' or risk_level not in \('high', 'restricted'\)/);
+  assert.match(sql, /length\(trim\(metadata->>'reviewed_by'\)\) > 0/);
+  assert.match(sql, /length\(trim\(metadata->>'reviewed_at'\)\) > 0/);
+});
+
 test("database schema enforces governance record core text boundaries", () => {
   const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
 
