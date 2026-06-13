@@ -1402,6 +1402,32 @@ test("cold start readiness can gate reviewer role coverage", () => {
   assert.ok(readiness.actions.some(item => item.action === "assign_takken_reviewer_for_partner_cases"));
 });
 
+test("cold start readiness gates source contribution consent gaps", () => {
+  const readiness = knowledgeBrainColdStartReadiness({
+    sources:[
+      { id:"src-1", source_type:"public_web", provider:"MLIT", contributor_tier:"free_tier", consent_scope:"none", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false },
+      { id:"src-2", source_type:"industry_association", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-3", source_type:"partner_practitioner_case", review_status:"approved", risk_level:"medium", training_allowed:false, deletion_requested:false },
+    ],
+    knowledgeUnits:[
+      { id:"ku-1", source_id:"src-1", domain:"D01", title:"D01", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evalCases:[
+      { id:"eval-1", source_id:"src-1", domain:"D01", prompt:"Prompt", expected_behavior:"Expected", review_status:"approved", risk_level:"medium", version:1 },
+    ],
+  }, {
+    minApprovedKnowledgeUnits:1,
+    minEvalCases:1,
+    requireAllDomains:false,
+    requireCleanReferenceIntegrity:false,
+  });
+
+  assert.equal(readiness.ready, false);
+  assert.ok(readiness.blockers.some(item => item.gate.startsWith("source_contribution_consent:")));
+  assert.ok(readiness.actions.some(item => item.action === "collect_free_tier_explicit_opt_in_or_disable_use"));
+  assert.ok(readiness.actions.some(item => item.action === "disable_training_or_collect_explicit_consent"));
+});
+
 test("high-risk tools stay internal until cold start and eval set gates pass", () => {
   const blocked = knowledgeBrainHighRiskToolReadiness({
     sources:[
