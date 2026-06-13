@@ -578,6 +578,24 @@ test("knowledge brain search only returns approved source-backed phase 1 records
   assert.deepEqual(hits.find(hit => hit.id === "rule-1").evidenceRefIds, ["ev-rule"]);
 });
 
+test("approved knowledge search excludes high risk records without reviewer metadata", () => {
+  const reviewedMetadata = { reviewed_by:"expert", reviewed_at:"2026-06-12T00:00:00.000Z" };
+  const hits = approvedKnowledgeBrainSearchResults({
+    query:"hazard",
+    sources:[
+      { id:"src-reviewed", review_status:"approved", risk_level:"high", deletion_requested:false, metadata:reviewedMetadata },
+      { id:"src-unreviewed", review_status:"approved", risk_level:"high", deletion_requested:false, metadata:{} },
+    ],
+    policyRules:[
+      { id:"rule-reviewed", source_id:"src-reviewed", review_status:"approved", risk_level:"high", metadata:reviewedMetadata, title:"Hazard policy", rule_type:"risk", rule_text:"hazard reviewed", evidence_ref_ids:["ev-1"] },
+      { id:"rule-missing-reviewer", source_id:"src-reviewed", review_status:"approved", risk_level:"high", metadata:{}, title:"Hazard policy", rule_type:"risk", rule_text:"hazard unreviewed", evidence_ref_ids:["ev-2"] },
+      { id:"rule-unreviewed-source", source_id:"src-unreviewed", review_status:"approved", risk_level:"low", title:"Hazard policy", rule_type:"risk", rule_text:"hazard source unreviewed", evidence_ref_ids:["ev-3"] },
+    ],
+  });
+
+  assert.deepEqual(hits.map(hit => hit.id), ["rule-reviewed"]);
+});
+
 test("training eligible sources require opt-in, approval, low risk, and no deletion request", () => {
   const eligible = trainingEligibleSources([
     { id:"ok", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
