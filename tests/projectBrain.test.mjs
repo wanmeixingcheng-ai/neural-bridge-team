@@ -827,6 +827,8 @@ test("knowledge unit update payload versions source-backed content", () => {
   assert.equal(update.record.metadata.changed_by, "reviewer");
   assert.equal(update.record.metadata.change_reason, "wording_correction");
   assert.equal(update.quality.ok, true);
+  assert.equal(update.reviewQueueItems.some(item => item.target_type === "knowledge_unit" && item.target_id === "ku-1" && item.reasons.includes("needs_review")), true);
+  assert.equal(update.reviewQueueActionSummary.some(item => item.action === "complete_record_review"), true);
 });
 
 test("evidence ref update payload versions source and target linked evidence", () => {
@@ -860,6 +862,8 @@ test("evidence ref update payload versions source and target linked evidence", (
   assert.equal(update.record.metadata.changed_by, "reviewer");
   assert.equal(update.record.metadata.change_reason, "evidence_locator_correction");
   assert.equal(update.quality.ok, true);
+  assert.equal(update.reviewQueueItems.some(item => item.target_type === "evidence_ref" && item.target_id === "ev-1" && item.reasons.includes("needs_review")), true);
+  assert.equal(update.reviewQueueActionSummary.some(item => item.action === "complete_record_review"), true);
 });
 
 test("evidence ref filters source target review risk query and recency", () => {
