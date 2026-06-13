@@ -170,6 +170,28 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.stores.knowledge_units.reviewDowngraded, 1);
 });
 
+test("knowledge import size summary counts evidence and governance text fields", () => {
+  const payload = {
+    evidence_refs:[
+      {
+        id:"ev-large",
+        source_id:"src-1",
+        target_type:"knowledge_unit",
+        target_id:"ku-1",
+        locator:"page 1",
+        quote:"x".repeat(2_000_001),
+        review_status:"candidate",
+        risk_level:"low",
+      },
+    ],
+  };
+  const size = knowledgeBrainImportSizeSummary(payload);
+
+  assert.equal(size.totalItems, 1);
+  assert.equal(size.tooLarge, true);
+  assert.ok(size.totalTextChars > size.maxTextChars);
+});
+
 test("source registry ingest payload enforces training and REINS boundaries", () => {
   const publicSource = buildSourceRegistryIngestPayload({
     title:"Tokyo public hazard map",
