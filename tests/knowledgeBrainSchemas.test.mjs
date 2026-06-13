@@ -178,6 +178,7 @@ test("source registry validation enforces consent and deletion boundaries", () =
     "missing_title",
     "deleted_source_training_enabled",
     "high_risk_training_enabled",
+    "high_risk_source_type_training_enabled",
     "training_without_explicit_consent",
   ]);
 
