@@ -1276,6 +1276,13 @@ test("cold start source acquisition plan exposes source strategy and review boun
   ]);
   assert.deepEqual(plan[0].recommendedArtifacts, ["official_guidance", "qa", "case_notes", "checklist"]);
   assert.equal(plan[0].dataBoundary, "public_authoritative_reference_only");
+  assert.equal(plan[0].defaultTrainingAllowed, false);
+  assert.equal(plan[0].defaultConsentScope, "none");
+  assert.equal(plan[0].ingestionPolicy.databaseFirst, true);
+  assert.equal(plan[0].ingestionPolicy.requiresSourceRegistry, true);
+  assert.equal(plan[0].ingestionPolicy.requiresEvidenceRefs, true);
+  assert.equal(plan[0].ingestionPolicy.prohibitsReinsAutomation, true);
+  assert.equal(plan[0].ingestionPolicy.storesCredentials, false);
   assert.equal(plan[2].reviewerRoleRequired, "takken");
   assert.equal(plan[2].dataBoundary, "desensitized_partner_material_with_explicit_use_agreement");
   assert.equal(plan[3].dataBoundary, "draft_only_until_human_reviewed");
@@ -1299,7 +1306,12 @@ test("cold start ingestion batch manifest turns source plan into import batches"
   const partnerBatch = manifest.find(item => item.phase === "phase_2_3_partner_cases");
   assert.equal(partnerBatch.defaultReviewStatus, "in_review");
   assert.equal(partnerBatch.defaultTrainingAllowed, false);
+  assert.equal(partnerBatch.defaultConsentScope, "none");
   assert.equal(partnerBatch.requiresExplicitUseAgreement, true);
+  assert.equal(partnerBatch.requiresTakkenReviewer, true);
+  assert.equal(partnerBatch.prohibitsReinsAutomation, true);
+  assert.equal(partnerBatch.storesCredentials, false);
+  assert.equal(partnerBatch.ingestionPolicy.requiresHumanReview, true);
   assert.equal(partnerBatch.reviewerRoleRequired, "takken");
   assert.equal(partnerBatch.dataBoundary, "desensitized_partner_material_with_explicit_use_agreement");
 });
@@ -1377,6 +1389,14 @@ test("cold start ingestion queue filters phase domain and source query", () => {
   assert.deepEqual(filterKnowledgeBrainColdStartIngestionQueue(queue, {
     query:"retio",
   }).map(item => item.phase), ["phase_2_1_official_public"]);
+
+  assert.deepEqual(filterKnowledgeBrainColdStartIngestionQueue(queue, {
+    query:"desensitized_partner_material",
+  }).map(item => item.phase), ["phase_2_3_partner_cases"]);
+
+  assert.deepEqual(filterKnowledgeBrainColdStartIngestionQueue(queue, {
+    query:"culture_disclaimer",
+  }).map(item => item.phase), ["phase_2_4_ai_assisted_long_tail"]);
 
   assert.deepEqual(filterKnowledgeBrainColdStartIngestionQueue(queue, {
     sourceTiers:["tier_4_ai_assisted_draft"],
