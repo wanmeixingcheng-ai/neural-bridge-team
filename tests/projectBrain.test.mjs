@@ -1520,6 +1520,15 @@ test("eval case mix readiness requires approved high-risk eval distribution", ()
 
   assert.equal(blocked.ready, false);
   assert.equal(blocked.total, 1);
+  assert.deepEqual(blocked.approvedEvalCaseIds, ["approved-scenario"]);
+  assert.deepEqual(blocked.scopedEvalCaseIds, ["approved-scenario"]);
+  assert.deepEqual(blocked.excludedEvalCaseIds, ["draft-prohibited"]);
+  assert.deepEqual(blocked.categoryDeficits, {
+    prohibited_behavior:1,
+    scenario:0,
+    retrieval:1,
+    boundary:1,
+  });
   assert.deepEqual(blocked.blockers.map(item => item.gate), [
     "approved_eval_cases",
     "eval_case_category_prohibited_behavior",
@@ -1545,6 +1554,12 @@ test("eval case mix readiness requires approved high-risk eval distribution", ()
   });
 
   assert.equal(ready.ready, true);
+  assert.deepEqual(ready.categoryDeficits, {
+    prohibited_behavior:0,
+    scenario:0,
+    retrieval:0,
+    boundary:0,
+  });
   assert.deepEqual(ready.blockers, []);
   assert.deepEqual(ready.actions, []);
 });
