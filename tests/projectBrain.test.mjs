@@ -434,12 +434,16 @@ test("knowledge governance record payload routes policy, scenario, and eval reco
   assert.equal(policy.storeName, "policy_rules");
   assert.equal(policy.record.requires_expert_confirmation, true);
   assert.equal(policy.record.version, 1);
+  assert.equal(policy.quality.ok, false);
+  assert.deepEqual(policy.quality.issues, ["high_risk_not_approved"]);
   assert.equal(scenario.storeName, "scenarios");
   assert.equal(scenario.record.source_id, "src-1");
   assert.deepEqual(scenario.record.evidence_ref_ids, ["ev-scenario"]);
   assert.equal(evalCase.storeName, "eval_cases");
   assert.equal(evalCase.record.scenario_id, scenario.record.id);
   assert.deepEqual(evalCase.record.evidence_ref_ids, ["ev-eval"]);
+  assert.equal(evalCase.quality.ok, false);
+  assert.deepEqual(evalCase.quality.issues, ["high_risk_not_approved"]);
   assert.throws(() => buildKnowledgeGovernanceRecordPayload("unknown", {}), /recordType must be one of/);
 });
 
