@@ -426,6 +426,11 @@ test("japanese real estate source ingest builds auditable source, evidence, and 
   assert.equal(ingest.source.source_type, "reins_user_upload");
   assert.equal(ingest.source.risk_level, "high");
   assert.equal(ingest.source.training_allowed, false);
+  assert.equal(ingest.sourceColdStartTier, "unclassified");
+  assert.equal(ingest.sourceTrainingEligible, false);
+  assert.equal(ingest.sourceUsagePermissions.derivative.allowed, false);
+  assert.equal(ingest.sourceUsagePermissions.training.allowed, false);
+  assert.equal(ingest.sourceUsagePermissions.training.reasons.includes("high_risk_source_type"), true);
   assert.equal(ingest.records.length, 2);
   assert.equal(ingest.records[0].storeName, "property_records");
   assert.equal(ingest.records[0].record.source_id, ingest.source.id);
