@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -800,6 +800,23 @@ test("knowledge brain domain coverage tracks D01-D16 unit and eval gaps", () => 
   assert.equal(coverage.missingEvalCaseDomains.includes("D01"), false);
 });
 
+test("eval case category counts support cold-start eval set mix tracking", () => {
+  const evalCases = [
+    { id:"prohibited", forbidden_behavior:"Do not produce legal advice." },
+    { id:"scenario", scenario_id:"scenario-1" },
+    { id:"retrieval", evidence_ref_ids:["ev-1"] },
+    { id:"boundary", metadata:{ eval_category:"boundary" } },
+  ];
+
+  assert.equal(evalCaseCategory(evalCases[0]), "prohibited_behavior");
+  assert.deepEqual(evalCaseCategoryCounts(evalCases), {
+    prohibited_behavior:1,
+    scenario:1,
+    retrieval:1,
+    boundary:1,
+  });
+});
+
 test("source registry filters review risk training query and deletion state", () => {
   const filtered = filterSourceRegistryRecords([
     { id:"old", title:"Hazard map", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false, updated_at:"2026-06-12T01:00:00.000Z" },
@@ -991,7 +1008,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"scenario-1", source_id:"src-1", scenario_type:"due_diligence", title:"Review", description:"Review uploaded evidence.", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[], version:1 },
       { id:"scenario-2", source_id:"src-1", scenario_type:"reporting", title:"Report", description:"Report approved evidence.", review_status:"approved", risk_level:"medium", evidence_ref_ids:[], version:1 },
     ],
-    evalCases:[{ id:"eval-1", source_id:"src-1", prompt:"Cite evidence.", expected_behavior:"Cite approved evidence.", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[], version:1 }],
+    evalCases:[{ id:"eval-1", source_id:"src-1", prompt:"Cite evidence.", expected_behavior:"Cite approved evidence.", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[], version:1, metadata:{ eval_category:"retrieval" } }],
     calculationRuns:[
       { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{ acquisitionPrice:60000000 }, formulas:{ grossYieldPercent:"annualPotentialRent / acquisitionPrice * 100" }, outputs:{ grossYieldPercent:3 }, source_ids:["src-1"], evidence_ref_ids:["ev-1"], review_status:"candidate", risk_level:"medium", version:1 },
       { id:"calc-bad", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"llm", inputs:{}, formulas:{}, outputs:{}, source_ids:[], evidence_ref_ids:[], review_status:"approved", risk_level:"medium", version:1 },
@@ -1064,6 +1081,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.invalidScenarios, 0);
   assert.equal(stats.evalCases, 1);
   assert.equal(stats.evalCaseReviewStatus.candidate, 1);
+  assert.deepEqual(stats.evalCaseCategoryCounts, { retrieval:1 });
   assert.equal(stats.invalidEvalCases, 0);
   assert.equal(stats.calculationRuns, 2);
   assert.equal(stats.invalidCalculationRuns, 1);
