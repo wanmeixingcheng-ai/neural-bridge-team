@@ -419,8 +419,8 @@ test("japanese real estate source ingest disables training for high-risk source 
 
 test("japanese real estate filters property source review risk query and archived records", () => {
   const filtered = filterJapaneseRealEstateRecords([
-    { id:"old", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T01:00:00.000Z" },
-    { id:"new", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Updated flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"old", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", evidence_ref_ids:["ev-risk-old"], version:1, updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Updated flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", evidence_ref_ids:["ev-risk-new"], version:2, updated_at:"2026-06-12T02:00:00.000Z" },
     { id:"approved", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Approved flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"approved", risk_level:"high", updated_at:"2026-06-12T03:00:00.000Z" },
     { id:"other-source", entity_type:"risk", source_id:"src-2", property_id:"prop-1", title:"Other flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T04:00:00.000Z" },
     { id:"other-property", entity_type:"risk", source_id:"src-1", property_id:"prop-2", title:"Other flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T05:00:00.000Z" },
@@ -434,6 +434,11 @@ test("japanese real estate filters property source review risk query and archive
   });
 
   assert.deepEqual(filtered.map(record => record.id), ["new", "old"]);
+
+  const evidenceMatches = filterJapaneseRealEstateRecords(filtered, { query:"ev-risk-new" });
+  const sourceMatches = filterJapaneseRealEstateRecords(filtered, { query:"src-1" });
+  assert.deepEqual(evidenceMatches.map(record => record.id), ["new"]);
+  assert.deepEqual(sourceMatches.map(record => record.id), ["new", "old"]);
 });
 
 test("knowledge governance record payload routes policy, scenario, and eval records", () => {
@@ -518,8 +523,8 @@ test("knowledge governance update payload versions reviewed records", () => {
 
 test("knowledge governance filters source review risk query archived and recency", () => {
   const filtered = filterKnowledgeGovernanceRecords([
-    { id:"old", source_id:"src-1", review_status:"candidate", risk_level:"high", title:"REINS rule", rule_text:"Do not automate REINS login.", updated_at:"2026-06-12T01:00:00.000Z" },
-    { id:"new", source_id:"src-1", review_status:"candidate", risk_level:"high", title:"REINS boundary", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"old", source_id:"src-1", review_status:"candidate", risk_level:"high", title:"REINS rule", rule_text:"Do not automate REINS login.", evidence_ref_ids:["ev-rule-old"], version:1, updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", source_id:"src-1", review_status:"candidate", risk_level:"high", title:"REINS boundary", rule_text:"Do not scrape REINS.", evidence_ref_ids:["ev-rule-new"], version:2, updated_at:"2026-06-12T02:00:00.000Z" },
     { id:"approved", source_id:"src-1", review_status:"approved", risk_level:"high", title:"REINS approved", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T03:00:00.000Z" },
     { id:"medium", source_id:"src-1", review_status:"candidate", risk_level:"medium", title:"REINS medium", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T04:00:00.000Z" },
     { id:"other-source", source_id:"src-2", review_status:"candidate", risk_level:"high", title:"REINS other", rule_text:"Do not scrape REINS.", updated_at:"2026-06-12T05:00:00.000Z" },
@@ -532,6 +537,11 @@ test("knowledge governance filters source review risk query archived and recency
   });
 
   assert.deepEqual(filtered.map(record => record.id), ["new", "old"]);
+
+  const evidenceMatches = filterKnowledgeGovernanceRecords(filtered, { query:"ev-rule-new" });
+  const sourceMatches = filterKnowledgeGovernanceRecords(filtered, { query:"src-1" });
+  assert.deepEqual(evidenceMatches.map(record => record.id), ["new"]);
+  assert.deepEqual(sourceMatches.map(record => record.id), ["new", "old"]);
 });
 
 test("property dossier groups records and exposes review and quality queues", () => {
@@ -632,8 +642,8 @@ test("calculation run update payload versions deterministic outputs", () => {
 
 test("calculation run filters property type source review risk query and archived records", () => {
   const filtered = filterCalculationRunRecords([
-    { id:"old", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.2 }, updated_at:"2026-06-12T01:00:00.000Z" },
-    { id:"new", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.4 }, updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"old", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], evidence_ref_ids:["ev-calc-old"], version:1, outputs:{ noiYield:5.2 }, updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], evidence_ref_ids:["ev-calc-new"], version:2, outputs:{ noiYield:5.4 }, updated_at:"2026-06-12T02:00:00.000Z" },
     { id:"approved", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"approved", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.5 }, updated_at:"2026-06-12T03:00:00.000Z" },
     { id:"other-source", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-2"], outputs:{ noiYield:5.6 }, updated_at:"2026-06-12T04:00:00.000Z" },
     { id:"other-property", property_id:"prop-2", calculation_type:"investment_metrics", review_status:"candidate", risk_level:"medium", source_ids:["src-1"], outputs:{ noiYield:5.7 }, updated_at:"2026-06-12T05:00:00.000Z" },
@@ -648,6 +658,11 @@ test("calculation run filters property type source review risk query and archive
   });
 
   assert.deepEqual(filtered.map(record => record.id), ["new", "old"]);
+
+  const evidenceMatches = filterCalculationRunRecords(filtered, { query:"ev-calc-new" });
+  const sourceMatches = filterCalculationRunRecords(filtered, { query:"src-1" });
+  assert.deepEqual(evidenceMatches.map(record => record.id), ["new"]);
+  assert.deepEqual(sourceMatches.map(record => record.id), ["new", "old"]);
 });
 
 test("property dossier investment metrics refuse to guess acquisition price", () => {
@@ -668,7 +683,7 @@ test("knowledge unit search only returns approved, retained source-backed units"
       { id:"src-deleted", review_status:"approved", deletion_requested:true },
     ],
     units:[
-      { id:"ku-approved", source_id:"src-approved", review_status:"approved", title:"Approved", content:"hazard hazard note", evidence_ref_ids:["ev-1"], metadata:{ legacyDocumentId:"doc-1", legacyChunkIndex:0 } },
+      { id:"ku-approved", source_id:"src-approved", domain:"D06", review_status:"approved", risk_level:"medium", version:3, title:"Approved", content:"hazard hazard note", evidence_ref_ids:["ev-1"], metadata:{ legacyDocumentId:"doc-1", legacyChunkIndex:0 } },
       { id:"ku-candidate-source", source_id:"src-candidate", review_status:"approved", title:"Candidate source", content:"hazard note" },
       { id:"ku-deleted-source", source_id:"src-deleted", review_status:"approved", title:"Deleted source", content:"hazard note" },
       { id:"ku-candidate-unit", source_id:"src-approved", review_status:"candidate", title:"Candidate unit", content:"hazard note" },
@@ -679,6 +694,10 @@ test("knowledge unit search only returns approved, retained source-backed units"
   assert.equal(hits[0].id, "ku-approved");
   assert.equal(hits[0].score, 2);
   assert.equal(hits[0].docId, "doc-1");
+  assert.equal(hits[0].domain, "D06");
+  assert.equal(hits[0].reviewStatus, "approved");
+  assert.equal(hits[0].riskLevel, "medium");
+  assert.equal(hits[0].version, 3);
   assert.deepEqual(hits[0].evidenceRefIds, ["ev-1"]);
 });
 
@@ -835,9 +854,11 @@ test("knowledge brain search only returns approved source-backed phase 1 records
   assert.deepEqual(hits.map(hit => hit.id).sort(), ["calc-1", "ev-direct", "eval-1", "risk-1", "rule-1", "scenario-1"].sort());
   assert.equal(hits.find(hit => hit.id === "ev-direct").type, "evidence_ref");
   assert.deepEqual(hits.find(hit => hit.id === "ev-direct").evidenceRefIds, ["ev-direct"]);
+  assert.deepEqual(hits.find(hit => hit.id === "ev-direct").sourceIds, ["src-approved"]);
   assert.equal(hits.find(hit => hit.id === "ev-direct").reviewStatus, "approved");
   assert.equal(hits.find(hit => hit.id === "ev-direct").riskLevel, "low");
   assert.equal(hits.find(hit => hit.id === "risk-1").type, "jre_risk");
+  assert.deepEqual(hits.find(hit => hit.id === "risk-1").sourceIds, ["src-approved"]);
   assert.deepEqual(hits.find(hit => hit.id === "calc-1").sourceIds, ["src-approved"]);
   assert.equal(hits.find(hit => hit.id === "calc-1").reviewStatus, "approved");
   assert.deepEqual(hits.find(hit => hit.id === "rule-1").evidenceRefIds, ["ev-rule"]);
