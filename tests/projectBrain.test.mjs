@@ -354,6 +354,35 @@ test("japanese real estate source ingest builds auditable source, evidence, and 
   assert.equal(ingest.referenceIntegrity.issues.filter(issue => issue.issue === "high_risk_unapproved_evidence").length, 2);
 });
 
+test("japanese real estate source ingest disables training for high-risk source types", () => {
+  const ingest = buildJapaneseRealEstateSourceIngestRecords({
+    title:"Uploaded contract facts",
+    source:"contract",
+    records:[
+      {
+        id:"lease-1",
+        entity_type:"lease",
+        property_id:"prop-1",
+        title:"Lease facts",
+        rent_amount:120000,
+        period:"monthly",
+        evidence:{ locator:"clause 4", quote:"Monthly rent is 120000." },
+      },
+    ],
+    metadata:{ trainingAllowed:true, consentScope:"explicit_opt_in" },
+  });
+
+  assert.equal(ingest.source.source_type, "contract");
+  assert.equal(ingest.source.risk_level, "high");
+  assert.equal(ingest.source.training_allowed, false);
+  assert.deepEqual(ingest.source.metadata.import_warnings, [
+    "training_disabled_high_risk",
+    "training_disabled_high_risk_source_type",
+  ]);
+  assert.equal(ingest.records[0].record.source_id, ingest.source.id);
+  assert.equal(ingest.evidenceRefs[0].source_id, ingest.source.id);
+});
+
 test("japanese real estate filters property source review risk query and archived records", () => {
   const filtered = filterJapaneseRealEstateRecords([
     { id:"old", entity_type:"risk", source_id:"src-1", property_id:"prop-1", title:"Flood risk", risk_type:"hazard", finding:"Flood hazard finding.", review_status:"candidate", risk_level:"high", updated_at:"2026-06-12T01:00:00.000Z" },
