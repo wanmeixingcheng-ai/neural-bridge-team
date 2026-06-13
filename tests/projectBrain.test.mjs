@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -817,6 +817,38 @@ test("eval case category counts support cold-start eval set mix tracking", () =>
   });
 });
 
+test("eval case mix readiness requires approved high-risk eval distribution", () => {
+  const blocked = evalCaseMixReadiness([
+    { id:"draft-prohibited", review_status:"candidate", forbidden_behavior:"Do not produce legal advice." },
+    { id:"approved-scenario", review_status:"approved", scenario_id:"scenario-1" },
+  ], {
+    minEvalCases:4,
+    minCategoryRatios:{ prohibited_behavior:0.25, scenario:0.25, retrieval:0.25, boundary:0.25 },
+  });
+
+  assert.equal(blocked.ready, false);
+  assert.equal(blocked.total, 1);
+  assert.deepEqual(blocked.blockers.map(item => item.gate), [
+    "approved_eval_cases",
+    "eval_case_category_prohibited_behavior",
+    "eval_case_category_retrieval",
+    "eval_case_category_boundary",
+  ]);
+
+  const ready = evalCaseMixReadiness([
+    { id:"prohibited", review_status:"approved", forbidden_behavior:"Do not produce legal advice." },
+    { id:"scenario", review_status:"approved", scenario_id:"scenario-1" },
+    { id:"retrieval", review_status:"approved", evidence_ref_ids:["ev-1"] },
+    { id:"boundary", review_status:"approved", metadata:{ eval_category:"boundary" } },
+  ], {
+    minEvalCases:4,
+    minCategoryRatios:{ prohibited_behavior:0.25, scenario:0.25, retrieval:0.25, boundary:0.25 },
+  });
+
+  assert.equal(ready.ready, true);
+  assert.deepEqual(ready.blockers, []);
+});
+
 test("knowledge brain cold start readiness reports v0.1 blockers", () => {
   const blocked = knowledgeBrainColdStartReadiness({
     sources:[
@@ -861,6 +893,75 @@ test("knowledge brain cold start readiness reports v0.1 blockers", () => {
   });
 
   assert.equal(ready.ready, true);
+  assert.deepEqual(ready.blockers, []);
+});
+
+test("high-risk tools stay internal until cold start and eval set gates pass", () => {
+  const blocked = knowledgeBrainHighRiskToolReadiness({
+    sources:[
+      { id:"src-1", source_type:"public_web", provider:"MLIT", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+    ],
+    knowledgeUnits:[
+      { id:"ku-1", source_id:"src-1", domain:"D01", title:"D01", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evalCases:[
+      { id:"eval-1", source_id:"src-1", prompt:"Check source.", expected_behavior:"Cite source.", review_status:"approved", risk_level:"medium", version:1, scenario_id:"scenario-1" },
+    ],
+  }, {
+    toolId:"M4",
+    coldStartOptions:{
+      minApprovedKnowledgeUnits:2,
+      minEvalCases:4,
+      requireAllDomains:false,
+      requireIndustryAssociationSource:true,
+      requirePartnerPractitionerSource:true,
+      requireCleanReferenceIntegrity:false,
+    },
+    evalMixOptions:{
+      minEvalCases:4,
+      minCategoryRatios:{ prohibited_behavior:0.25, scenario:0.25, retrieval:0.25, boundary:0.25 },
+    },
+  });
+
+  assert.equal(blocked.ready, false);
+  assert.equal(blocked.releaseMode, "internal_pilot");
+  assert.equal(blocked.externalReleaseAllowed, false);
+  assert.equal(blocked.internalPilotAllowed, true);
+  assert.ok(blocked.blockers.some(item => item.gate === "cold_start_readiness"));
+  assert.ok(blocked.blockers.some(item => item.gate === "eval_set_mix"));
+
+  const ready = knowledgeBrainHighRiskToolReadiness({
+    sources:[
+      { id:"src-1", source_type:"public_web", provider:"MLIT", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-2", source_type:"industry_association", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-3", source_type:"partner_practitioner_case", review_status:"approved", risk_level:"medium", training_allowed:false, deletion_requested:false },
+    ],
+    knowledgeUnits:[
+      { id:"ku-1", source_id:"src-1", domain:"D01", title:"D01", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evalCases:[
+      { id:"prohibited", source_id:"src-1", prompt:"Forbidden.", expected_behavior:"Refuse.", review_status:"approved", risk_level:"medium", version:1, forbidden_behavior:"Do not provide legal advice." },
+      { id:"scenario", source_id:"src-1", prompt:"Scenario.", expected_behavior:"Route correctly.", review_status:"approved", risk_level:"medium", version:1, scenario_id:"scenario-1" },
+      { id:"retrieval", source_id:"src-1", prompt:"Retrieve.", expected_behavior:"Cite evidence.", review_status:"approved", risk_level:"medium", version:1, evidence_ref_ids:["ev-1"] },
+      { id:"boundary", source_id:"src-1", prompt:"Boundary.", expected_behavior:"Ask for expert review.", review_status:"approved", risk_level:"medium", version:1, metadata:{ eval_category:"boundary" } },
+    ],
+  }, {
+    toolId:"M5",
+    coldStartOptions:{
+      minApprovedKnowledgeUnits:1,
+      minEvalCases:4,
+      requireAllDomains:false,
+      requireCleanReferenceIntegrity:false,
+    },
+    evalMixOptions:{
+      minEvalCases:4,
+      minCategoryRatios:{ prohibited_behavior:0.25, scenario:0.25, retrieval:0.25, boundary:0.25 },
+    },
+  });
+
+  assert.equal(ready.ready, true);
+  assert.equal(ready.releaseMode, "external_release");
+  assert.equal(ready.externalReleaseAllowed, true);
   assert.deepEqual(ready.blockers, []);
 });
 
