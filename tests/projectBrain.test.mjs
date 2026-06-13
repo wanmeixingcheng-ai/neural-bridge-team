@@ -887,6 +887,8 @@ test("cold start domain plan maps D01-D16 into source acquisition phases", () =>
   assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_2_industry_templates.domains, ["D01", "D02", "D03", "D09", "D10"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_3_partner_cases.domains, ["D04", "D05", "D06"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_4_ai_assisted_long_tail.domains, ["D11", "D12", "D13", "D14", "D15"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_1_official_public.recommendedProviders, ["MLIT", "RETIO", "Consumer Affairs Agency"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_3_partner_cases.recommendedSourceTypes, ["partner_practitioner_case", "desensitized_case"]);
 
   const coveredDomains = Object.values(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS).flatMap(group => group.domains).sort();
   assert.deepEqual(coveredDomains, [...JRE_KNOWLEDGE_DOMAINS].sort());
@@ -936,6 +938,8 @@ test("cold start ingestion queue prioritizes missing domains by source phase", (
     "phase_2_4_ai_assisted_long_tail",
   ]);
   assert.equal(queue[0].sourceTier, "tier_1_official_public");
+  assert.deepEqual(queue[0].recommendedSourceTypes, ["public_manual", "public_web", "official_public"]);
+  assert.deepEqual(queue[0].recommendedProviders, ["MLIT", "RETIO", "Consumer Affairs Agency"]);
   assert.equal(queue[0].approvedKnowledgeUnitDeficit, 299);
   assert.deepEqual(queue[0].nextDomains, ["D08", "D16"]);
   assert.equal(queue[1].domainPriorities[0].domain, "D02");
