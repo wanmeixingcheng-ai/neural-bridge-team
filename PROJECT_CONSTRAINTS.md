@@ -61,6 +61,36 @@ Primary users: project manager, internal team, future customers
 - High-risk knowledge must include source_id, review_status, risk_level, and version before it can be reused.
 ```
 
+### Knowledge Brain cold-start plan
+
+```text
+- Knowledge Brain cold-start is a product-critical bottleneck and must be treated as Phase 1 / Phase 2 scope, not as a later content task.
+- v0.1 should prioritize quality-gated coverage over raw volume: target 800-1,500 approved knowledge units and 300-500 eval cases before broad external use.
+- The prior commercial target of 1,000-3,000 approved knowledge units may be used only when source coverage, reviewer capacity, and evidence quality are visible.
+- v1.0 scale targets such as 100,000-300,000 knowledge units are long-term knowledge asset goals, not MVP success criteria.
+- Knowledge unit counts must not be inflated by arbitrary splitting; each unit must remain source-backed, reviewable, and useful for retrieval or policy evaluation.
+```
+
+### Approved cold-start source tiers
+
+```text
+- Tier 1 official public sources: MLIT, RETIO, Consumer Affairs Agency, and similar authorities. These are preferred for D07 contract / important matter, D08 legal / tax / loan boundary, and D16 prohibited actions / disclaimers.
+- Tier 2 industry association materials: public templates, standard workflows, checklists, and sample wording from recognized real estate associations. These are preferred for D01-D03, D09, and D10 template-first workflows.
+- Tier 3 partner practitioner cases: real but desensitized cases from cooperating宅建士 or real estate companies. These are preferred for D04-D06 high-value experiential domains and must have explicit contribution scope, source registry records, and reviewer metadata.
+- Tier 4 AI-assisted drafts: AI may create draft material for long-tail domains such as D11-D15, but these records must enter as draft or candidate and must not become approved without human review.
+- Publicly accessible material is not automatically training-eligible. License, consent_scope, retention policy, and training_allowed must be captured in Source Registry before downstream reuse.
+```
+
+### Cold-start phase gates
+
+```text
+- Phase 1 / 2.1: official public sources for D07, D08, and D16, target 300-500 approved source-backed units.
+- Phase 1 / 2.2: association templates and workflows for D01, D02, D03, D09, and D10, target 400-600 approved source-backed units.
+- Phase 1 / 2.3: partner practitioner cases for D04, D05, and D06, target 200-400 approved units, with宅建士 or equivalent reviewer metadata.
+- Phase 1 / 2.4: AI-assisted drafts for D11-D15, target 300-500 candidate or approved-after-review units, with explicit disclaimers where cultural or subjective material is involved.
+- Phase 1 / 2.5: Eval Set must cover all D01-D16 domains and include prohibited behavior, scenario, retrieval, and boundary cases before risky tools are exposed externally.
+```
+
 ## 4. Dependency Policy
 
 ### Approved existing dependencies
@@ -123,6 +153,8 @@ Primary users: project manager, internal team, future customers
 - Free-tier data contribution requires explicit opt-in consent, a visible withdrawal path, and a deletion path.
 - Opt-out, withdrawal, or deletion requests must be represented in source registry metadata before downstream reuse.
 - No uploaded business material may be silently sent to cloud storage, third-party model providers, or training datasets.
+- Partner practitioner cases and contributed real-world examples are non-training by default unless a separate explicit training grant exists.
+- Source Registry must distinguish retrieval/reference use, summarization/derivative knowledge use, training use, and deletion/withdrawal state.
 ```
 
 ### REINS boundary
@@ -143,6 +175,16 @@ Primary users: project manager, internal team, future customers
 - Financial and numeric calculations must be performed by deterministic code with inputs, formulas, outputs, and audit traces.
 - High-risk conclusions involving contracts, important matter explanations, legal risk, financing, tax, rights relationships, or customer-sensitive facts require expert confirmation before being treated as approved knowledge.
 - The model must not generate source-less industry conclusions; high-risk output must reference approved evidence or state that evidence is missing.
+```
+
+### High-risk product tool rollout
+
+```text
+- M4 valuation rationale and M5 contract risk check are high-value but high-risk tools and must initially be treated as internal employee assistive tools.
+- M4 / M5 outputs must be framed as review candidates or "needs confirmation" findings, not as final legal, financial, tax, or brokerage advice.
+- M4 / M5 must require approved source references, evidence refs, policy rules, and Eval Set coverage before external release.
+- Eval Set E12 coverage for M4 / M5 must be stricter than template-first tools and include false-negative tests for missing "needs confirmation" flags.
+- Customer-facing M4 / M5 release requires an explicit human approval decision after internal validation and expert review workflow evidence.
 ```
 
 ## 6. External API / Service Boundary

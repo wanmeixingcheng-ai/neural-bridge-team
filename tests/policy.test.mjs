@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   ATTACHMENT_MAX_TOTAL_BYTES,
@@ -127,4 +128,19 @@ test("memory conflict predicate only matches conflict metadata", () => {
   assert.equal(memoryHasConflict({ metadata:{ conflict:{ memoryId:"m1" } } }), true);
   assert.equal(memoryHasConflict({ metadata:{ conflictReviewedAt:"2026-01-01T00:00:00.000Z" } }), false);
   assert.equal(memoryHasConflict({}), false);
+});
+
+test("project constraints define knowledge brain cold start and high risk tool gates", () => {
+  const constraints = readFileSync(new URL("../PROJECT_CONSTRAINTS.md", import.meta.url), "utf8");
+
+  assert.match(constraints, /Knowledge Brain cold-start is a product-critical bottleneck/);
+  assert.match(constraints, /800-1,500 approved knowledge units/);
+  assert.match(constraints, /300-500 eval cases/);
+  assert.match(constraints, /Tier 1 official public sources/);
+  assert.match(constraints, /Tier 3 partner practitioner cases/);
+  assert.match(constraints, /AI-assisted drafts/);
+  assert.match(constraints, /Partner practitioner cases and contributed real-world examples are non-training by default/);
+  assert.match(constraints, /M4 valuation rationale and M5 contract risk check/);
+  assert.match(constraints, /internal employee assistive tools/);
+  assert.match(constraints, /false-negative tests for missing "needs confirmation" flags/);
 });
