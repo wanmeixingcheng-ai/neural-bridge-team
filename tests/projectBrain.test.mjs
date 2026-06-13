@@ -947,13 +947,15 @@ test("training eligible sources require opt-in, approval, low risk, and no delet
 
 test("source training eligibility report explains blocked training reasons", () => {
   const sources = [
-    { id:"ok", source_type:"public_manual", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
-    { id:"blocked", source_type:"contract", review_status:"candidate", training_allowed:false, consent_scope:"none", deletion_requested:true, risk_level:"restricted" },
+    { id:"ok", title:"MLIT public guide", provider:"MLIT", source_type:"public_manual", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
+    { id:"blocked", title:"Contract draft", provider:"Partner", source_type:"contract", review_status:"candidate", training_allowed:false, consent_scope:"none", deletion_requested:true, risk_level:"restricted" },
   ];
   const report = sourceTrainingEligibilityReport(sources);
 
   assert.deepEqual(sourceTrainingEligibilityReasons(sources[0]), []);
   assert.equal(report[0].eligible, true);
+  assert.equal(report[0].title, "MLIT public guide");
+  assert.equal(report[0].provider, "MLIT");
   assert.equal(report[1].eligible, false);
   assert.deepEqual(report[1].reasons, [
     "source_not_approved",
@@ -1104,11 +1106,15 @@ test("source usage permission actions map blocked scopes to repair work", () => 
 
 test("source usage permission report lists per-source scope decisions", () => {
   const report = sourceUsagePermissionReport([
-    { id:"ok", source_type:"public_manual", review_status:"approved", risk_level:"low", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false },
-    { id:"deleted", source_type:"public_manual", review_status:"approved", risk_level:"low", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:true },
+    { id:"ok", title:"MLIT guide", provider:"MLIT", source_type:"public_manual", review_status:"approved", risk_level:"low", training_allowed:true, consent_scope:"explicit_opt_in", retention_policy:"project_local_default", deletion_requested:false },
+    { id:"deleted", title:"Deleted guide", provider:"Owner", source_type:"public_manual", review_status:"approved", risk_level:"low", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:true },
   ]);
 
   assert.deepEqual(report.map(item => item.source_id), ["ok", "deleted"]);
+  assert.equal(report[0].title, "MLIT guide");
+  assert.equal(report[0].provider, "MLIT");
+  assert.equal(report[0].consent_scope, "explicit_opt_in");
+  assert.equal(report[0].retention_policy, "project_local_default");
   assert.equal(report[0].reference.allowed, true);
   assert.equal(report[0].training.allowed, true);
   assert.equal(report[1].reference.allowed, false);
@@ -1139,6 +1145,12 @@ test("source usage permission report filters blocked scopes and reasons", () => 
     scopes:["reference"],
     allowed:false,
   }).map(item => item.source_id), ["candidate"]);
+
+  const searchableReport = sourceUsagePermissionReport([
+    { id:"mlit", title:"MLIT public guide", provider:"MLIT", source_type:"public_manual", review_status:"approved", risk_level:"low", training_allowed:true, consent_scope:"explicit_opt_in", retention_policy:"project_local_default", deletion_requested:false },
+  ]);
+  assert.deepEqual(filterSourceUsagePermissionReport(searchableReport, { query:"mlit public" }).map(item => item.source_id), ["mlit"]);
+  assert.deepEqual(filterSourceUsagePermissionReport(searchableReport, { query:"project_local_default" }).map(item => item.source_id), ["mlit"]);
 });
 
 test("reviewer role summary exposes takken reviewer gaps for partner case domains", () => {
