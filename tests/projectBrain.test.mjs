@@ -1135,6 +1135,7 @@ test("knowledge brain review queue items expose actionable reasons across stores
   assert.equal(items.some(item => item.target_id === "rule-risk" && item.reasons.includes("expert_confirmation_required")), true);
   assert.equal(items.some(item => item.target_id === "rule-approved-missing-reviewer" && item.reasons.includes("missing_reviewed_by")), true);
   assert.equal(items.some(item => item.target_id === "rule-approved-missing-reviewer" && item.reasons.includes("missing_reviewed_at")), true);
+  assert.equal(items.some(item => item.target_id === "rule-approved-missing-reviewer" && item.reasons.includes("approved_record_unapproved_source")), true);
   assert.equal(items.some(item => item.target_id === "risk-review" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
   assert.equal(items.some(item => item.target_id === "calc-review" && item.reasons.includes("missing_source_ids")), true);
 });
