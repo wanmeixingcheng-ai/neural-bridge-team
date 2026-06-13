@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -755,6 +755,26 @@ test("source training eligibility report explains blocked training reasons", () 
   });
 });
 
+test("source cold start tier classifies explicit and known source categories", () => {
+  const sources = [
+    { id:"mlit", source_type:"public_web", provider:"MLIT" },
+    { id:"assoc", source_type:"industry_association" },
+    { id:"partner", source_type:"attachment", metadata:{ cold_start_tier:"partner_practitioner_case" } },
+    { id:"ai", source_type:"ai_assisted_draft" },
+    { id:"unknown", source_type:"attachment" },
+  ];
+
+  assert.equal(sourceColdStartTier(sources[0]), "tier_1_official_public");
+  assert.equal(sourceColdStartTier(sources[2]), "tier_3_partner_practitioner_case");
+  assert.deepEqual(sourceColdStartTierCounts(sources), {
+    tier_1_official_public:1,
+    tier_2_industry_association:1,
+    tier_3_partner_practitioner_case:1,
+    tier_4_ai_assisted_draft:1,
+    unclassified:1,
+  });
+});
+
 test("knowledge brain domain coverage tracks D01-D16 unit and eval gaps", () => {
   const coverage = knowledgeBrainDomainCoverage({
     knowledgeUnits:[
@@ -949,10 +969,10 @@ test("versioned approved knowledge patch records reviewer metadata", () => {
 test("knowledge brain inventory stats expose review, risk, evidence, and training counts", () => {
   const stats = knowledgeBrainInventoryStats({
     sources:[
-      { id:"src-1", source_type:"public_manual", title:"Public source", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low", version:1, consent_scope:"explicit_opt_in" },
-      { id:"src-2", source_type:"attachment", title:"Candidate source", review_status:"candidate", training_allowed:false, deletion_requested:false, risk_level:"medium", version:1 },
-      { id:"src-3", source_type:"contract", title:"Deleted contract", review_status:"archived", training_allowed:false, deletion_requested:true, risk_level:"high", version:1 },
-      { id:"src-4", source_type:"contract", title:"Bad source", review_status:"approved", training_allowed:true, deletion_requested:true, risk_level:"high", version:1, consent_scope:"none" },
+      { id:"src-1", source_type:"public_manual", title:"Public source", provider:"MLIT", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low", version:1, consent_scope:"explicit_opt_in" },
+      { id:"src-2", source_type:"attachment", title:"Candidate source", review_status:"candidate", training_allowed:false, deletion_requested:false, risk_level:"medium", version:1, metadata:{ cold_start_tier:"partner_practitioner_case" } },
+      { id:"src-3", source_type:"contract", title:"Deleted contract", review_status:"archived", training_allowed:false, deletion_requested:true, risk_level:"high", version:1, metadata:{ cold_start_tier:"partner_practitioner_case" } },
+      { id:"src-4", source_type:"contract", title:"Bad source", review_status:"approved", training_allowed:true, deletion_requested:true, risk_level:"high", version:1, consent_scope:"none", metadata:{ cold_start_tier:"industry_association" } },
     ],
     knowledgeUnits:[
       { id:"ku-1", source_id:"src-1", domain:"D01", title:"Approved unit", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1, evidence_ref_ids:[] },
@@ -1000,6 +1020,11 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
     deletion_requested:2,
     high_risk_source:2,
     high_risk_source_type:2,
+  });
+  assert.deepEqual(stats.sourceColdStartTierCounts, {
+    tier_1_official_public:1,
+    tier_3_partner_practitioner_case:2,
+    tier_2_industry_association:1,
   });
   assert.equal(stats.knowledgeUnits, 6);
   assert.equal(stats.approvedKnowledgeUnits, 4);
