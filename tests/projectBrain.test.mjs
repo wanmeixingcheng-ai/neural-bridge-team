@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -1169,6 +1169,28 @@ test("cold start source acquisition plan exposes source strategy and review boun
   assert.equal(plan.every(item => item.blocksReadiness), true);
 });
 
+test("cold start ingestion batch manifest turns source plan into import batches", () => {
+  const manifest = knowledgeBrainColdStartIngestionBatchManifest({
+    knowledgeUnits:[
+      { id:"ku-d07", domain:"D07", review_status:"approved" },
+    ],
+    evalCases:[],
+  });
+
+  assert.deepEqual(manifest.map(item => item.id), [
+    "ingestion-batch:phase_2_1_official_public",
+    "ingestion-batch:phase_2_2_industry_templates",
+    "ingestion-batch:phase_2_3_partner_cases",
+    "ingestion-batch:phase_2_4_ai_assisted_long_tail",
+  ]);
+  const partnerBatch = manifest.find(item => item.phase === "phase_2_3_partner_cases");
+  assert.equal(partnerBatch.defaultReviewStatus, "in_review");
+  assert.equal(partnerBatch.defaultTrainingAllowed, false);
+  assert.equal(partnerBatch.requiresExplicitUseAgreement, true);
+  assert.equal(partnerBatch.reviewerRoleRequired, "takken");
+  assert.equal(partnerBatch.dataBoundary, "desensitized_partner_material_with_explicit_use_agreement");
+});
+
 test("cold start ingestion queue prioritizes missing domains by source phase", () => {
   const queue = knowledgeBrainColdStartIngestionQueue({
     knowledgeUnits:[
@@ -1827,6 +1849,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.knowledgeBrainDomainCoverage.missingApprovedKnowledgeUnitDomains.includes("D04"), true);
   assert.equal(stats.knowledgeBrainDomainCoverage.missingEvalCaseDomains.length, 16);
   assert.equal(stats.knowledgeBrainColdStartSourceAcquisitionPlan[2].reviewerRoleRequired, "takken");
+  assert.equal(stats.knowledgeBrainColdStartIngestionBatchManifest[2].requiresExplicitUseAgreement, true);
   assert.equal(stats.evidenceRefs, 2);
   assert.equal(stats.approvedEvidenceRefs, 1);
   assert.equal(stats.invalidEvidenceRefs, 1);
