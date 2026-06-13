@@ -938,6 +938,8 @@ test("cold start ingestion queue prioritizes missing domains by source phase", (
     "phase_2_4_ai_assisted_long_tail",
   ]);
   assert.equal(queue[0].sourceTier, "tier_1_official_public");
+  assert.equal(queue[0].id, "cold-start-ingest:phase_2_1_official_public");
+  assert.equal(queue[0].taskType, "cold_start_ingestion_gap");
   assert.deepEqual(queue[0].recommendedSourceTypes, ["public_manual", "public_web", "official_public"]);
   assert.deepEqual(queue[0].recommendedProviders, ["MLIT", "RETIO", "Consumer Affairs Agency"]);
   assert.equal(queue[0].approvedKnowledgeUnitDeficit, 299);
