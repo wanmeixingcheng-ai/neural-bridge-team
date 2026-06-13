@@ -835,9 +835,14 @@ test("knowledge brain search only returns approved source-backed phase 1 records
   assert.deepEqual(hits.map(hit => hit.id).sort(), ["calc-1", "ev-direct", "eval-1", "risk-1", "rule-1", "scenario-1"].sort());
   assert.equal(hits.find(hit => hit.id === "ev-direct").type, "evidence_ref");
   assert.deepEqual(hits.find(hit => hit.id === "ev-direct").evidenceRefIds, ["ev-direct"]);
+  assert.equal(hits.find(hit => hit.id === "ev-direct").reviewStatus, "approved");
+  assert.equal(hits.find(hit => hit.id === "ev-direct").riskLevel, "low");
   assert.equal(hits.find(hit => hit.id === "risk-1").type, "jre_risk");
   assert.deepEqual(hits.find(hit => hit.id === "calc-1").sourceIds, ["src-approved"]);
+  assert.equal(hits.find(hit => hit.id === "calc-1").reviewStatus, "approved");
   assert.deepEqual(hits.find(hit => hit.id === "rule-1").evidenceRefIds, ["ev-rule"]);
+  assert.equal(hits.find(hit => hit.id === "rule-1").riskLevel, "");
+  assert.equal(hits.find(hit => hit.id === "rule-1").version, 1);
 });
 
 test("approved knowledge search excludes high risk records without reviewer metadata", () => {
