@@ -2094,6 +2094,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.sourceRegistryQualityIssues.deleted_source_training_enabled, 1);
   assert.equal(stats.sourceRegistryQualityIssues.high_risk_training_enabled, 1);
   assert.equal(stats.sourceRegistryQualityIssues.training_without_explicit_consent, 1);
+  assert.equal(stats.sourceTrainingEligibilityReport.length, 4);
+  assert.equal(stats.sourceTrainingEligibilityReport[0].source_id, "src-1");
+  assert.equal(stats.sourceTrainingEligibilityReport[0].eligible, true);
+  assert.equal(stats.sourceTrainingEligibilityReport[3].reasons.includes("deletion_requested"), true);
   assert.deepEqual(stats.sourceTrainingEligibilityBlockedReasons, {
     source_not_approved:2,
     training_not_enabled:2,
