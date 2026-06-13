@@ -41,6 +41,17 @@ test("knowledge import disables unsafe source training flags", () => {
   ]) {
     assert.equal(normalizeImportedSourceRegistryRecord(source).training_allowed, false);
   }
+
+  const reins = normalizeImportedSourceRegistryRecord({
+    source_type:"reins_user_upload",
+    consent_scope:"explicit_opt_in",
+    risk_level:"high",
+    collection_method:"automated_scrape",
+    training_allowed:true,
+  });
+  assert.equal(reins.collection_method, "manual");
+  assert.equal(reins.training_allowed, false);
+  assert.deepEqual(reins.metadata.import_warnings, ["reins_collection_method_sanitized"]);
 });
 
 test("knowledge document ingest builds source, units, and evidence refs", () => {
