@@ -243,6 +243,24 @@ test("knowledge document ingest keeps REINS uploads high-risk and out of trainin
   assert.equal(records.evidenceRefs[0].risk_level, "high");
 });
 
+test("knowledge document ingest disables training for high-risk source records", () => {
+  const records = buildKnowledgeDocumentIngestRecords({
+    title:"Official risk note",
+    source:"public_manual",
+    text:"High-risk official guidance excerpt.",
+    riskLevel:"high",
+    trainingAllowed:true,
+    consentScope:"explicit_opt_in",
+  });
+
+  assert.equal(records.source.source_type, "public_manual");
+  assert.equal(records.source.risk_level, "high");
+  assert.equal(records.source.training_allowed, false);
+  assert.deepEqual(records.source.metadata.import_warnings, ["training_disabled_high_risk"]);
+  assert.equal(records.knowledgeUnits[0].risk_level, "high");
+  assert.equal(records.evidenceRefs[0].risk_level, "high");
+});
+
 test("knowledge document filters status source query archived and recency", () => {
   const filtered = filterKnowledgeDocumentRecords([
     { id:"old", title:"Hazard notes", source:"attachment", status:"candidate", archived:false, updatedAt:"2026-06-12T01:00:00.000Z" },
