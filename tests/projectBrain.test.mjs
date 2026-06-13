@@ -256,9 +256,10 @@ test("knowledge document ingest builds source, units, and evidence refs", () => 
   assert.deepEqual(records.knowledgeUnits[0].evidence_ref_ids, [records.evidenceRefs[0].id]);
   assert.equal(records.quality.ok, true);
   assert.equal(records.referenceIntegrity.ok, true);
-  assert.equal(records.reviewQueue.total, 3);
+  assert.equal(records.reviewQueue.total, 5);
   assert.equal(records.reviewQueue.sources, 1);
   assert.equal(records.reviewQueue.knowledgeUnits, 2);
+  assert.equal(records.reviewQueue.evidenceRefs, 2);
 });
 
 test("knowledge document ingest keeps REINS uploads high-risk and out of training", () => {
@@ -1984,16 +1985,18 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.invalidJapaneseRealEstateRecords, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.high_risk_missing_evidence, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.risk_record_missing_expert_confirmation, 1);
-  assert.equal(stats.reviewQueue.total, 8);
+  assert.equal(stats.reviewQueue.total, 9);
   assert.equal(stats.reviewQueue.sources, 1);
   assert.equal(stats.reviewQueue.knowledgeUnits, 2);
+  assert.equal(stats.reviewQueue.evidenceRefs, 1);
   assert.equal(stats.reviewQueue.policyRules, 1);
   assert.equal(stats.reviewQueue.scenarios, 1);
   assert.equal(stats.reviewQueue.evalCases, 1);
   assert.equal(stats.reviewQueue.japaneseRealEstateRecords, 1);
   assert.equal(stats.reviewQueue.calculationRuns, 1);
-  assert.equal(stats.reviewQueue.highRiskExpertReview, 4);
+  assert.equal(stats.reviewQueue.highRiskExpertReview, 5);
   assert.deepEqual(stats.reviewQueue.invalidKnowledgeUnitIds, ["ku-2", "ku-4"]);
+  assert.deepEqual(stats.reviewQueue.invalidEvidenceRefIds, ["ev-2"]);
   assert.deepEqual(stats.reviewQueue.invalidPolicyRuleIds, ["rule-1"]);
   assert.deepEqual(stats.reviewQueue.invalidScenarioIds, []);
   assert.deepEqual(stats.reviewQueue.invalidEvalCaseIds, []);
