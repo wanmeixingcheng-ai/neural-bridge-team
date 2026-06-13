@@ -587,6 +587,8 @@ test("training eligible sources require opt-in, approval, low risk, and no delet
     { id:"deleted", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:true, risk_level:"low" },
     { id:"high-risk", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"high" },
     { id:"restricted", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"restricted" },
+    { id:"reins-low-risk-bad-data", source_type:"reins_user_upload", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
+    { id:"contract-low-risk-bad-data", source_type:"contract", review_status:"approved", training_allowed:true, consent_scope:"explicit_opt_in", deletion_requested:false, risk_level:"low" },
   ]);
 
   assert.deepEqual(eligible.map(source => source.id), ["ok"]);
