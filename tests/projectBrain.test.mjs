@@ -169,6 +169,11 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.importWarnings.approved_high_risk_missing_reviewer_metadata, 2);
   assert.equal(summary.stores.source_registry.reinsCollectionSanitized, 1);
   assert.equal(summary.stores.knowledge_units.reviewDowngraded, 1);
+  assert.equal(summary.governance.reviewQueue.total, 2);
+  assert.equal(summary.governance.reviewQueue.highRiskExpertReview, 2);
+  assert.equal(summary.governance.referenceIntegrityIssues, 0);
+  assert.equal(summary.governance.sourceTrainingEligibilityBlockedReasons.high_risk_source_type, 1);
+  assert.ok(summary.governance.reviewQueueActionSummary.some(item => item.action === "assign_expert_reviewer"));
   assert.ok(summary.actions.some(item => item.action === "review_training_consent_and_high_risk_sources" && item.current === 1));
   assert.ok(summary.actions.some(item => item.action === "route_imported_high_risk_records_to_review" && item.current === 2));
   assert.ok(summary.actions.some(item => item.action === "verify_reins_manual_upload_boundary" && item.current === 1));
@@ -231,6 +236,11 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
   assert.deepEqual(manifest.stores.knowledge_units.reviewStatuses, { approved:1, candidate:1 });
   assert.deepEqual(manifest.stores.knowledge_units.riskLevels, { high:1, restricted:1 });
   assert.equal(manifest.stores.calculation_runs.missingSourceId, 1);
+  assert.equal(manifest.reviewQueue.total, 2);
+  assert.equal(manifest.reviewQueue.highRiskExpertReview, 1);
+  assert.equal(manifest.referenceIntegrityIssues, 3);
+  assert.ok(manifest.reviewQueueActionSummary.some(item => item.action === "attach_source_or_archive_record"));
+  assert.ok(manifest.referenceIntegrityActions.some(item => item.action === "attach_source_or_archive_record"));
 });
 
 test("source registry ingest payload enforces training and REINS boundaries", () => {
