@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -876,6 +876,30 @@ test("source usage permission report filters blocked scopes and reasons", () => 
   }).map(item => item.source_id), ["candidate"]);
 });
 
+test("reviewer role summary exposes takken reviewer gaps for partner case domains", () => {
+  const summary = knowledgeBrainReviewerRoleSummary({
+    knowledgeUnits:[
+      { id:"ku-d04-reviewed", domain:"D04", review_status:"approved", risk_level:"medium", metadata:{ reviewer_role:"takken_shi" } },
+      { id:"ku-d05-missing-role", domain:"D05", review_status:"approved", risk_level:"medium", metadata:{ reviewed_by:"expert", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"ku-d07-high", domain:"D07", review_status:"approved", risk_level:"high", metadata:{ reviewer_role:"legal_expert" } },
+      { id:"ku-d06-candidate", domain:"D06", review_status:"candidate", risk_level:"medium", metadata:{} },
+    ],
+    policyRules:[
+      { id:"rule-high-missing", review_status:"approved", risk_level:"restricted", metadata:{ reviewed_by:"expert" } },
+    ],
+  });
+
+  assert.equal(summary.approvedRecords, 4);
+  assert.equal(summary.highRiskApprovedRecords, 2);
+  assert.equal(summary.missingReviewerRole, 2);
+  assert.equal(summary.highRiskMissingReviewerRole, 1);
+  assert.equal(summary.takkenReviewedRecords, 1);
+  assert.equal(summary.partnerCaseApprovedKnowledgeUnits, 2);
+  assert.equal(summary.partnerCaseKnowledgeUnitsMissingTakkenRole, 1);
+  assert.equal(summary.byRole.takken_shi, 1);
+  assert.equal(summary.byRole.unspecified, 2);
+});
+
 test("source cold start tier classifies explicit and known source categories", () => {
   const sources = [
     { id:"mlit", source_type:"public_web", provider:"MLIT" },
@@ -1523,6 +1547,9 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.referenceIntegrityIssues, 0);
   assert.deepEqual(stats.knowledgeBrainReferenceIntegrityIssues, []);
   assert.deepEqual(stats.knowledgeBrainReferenceIntegrityActions, []);
+  assert.equal(stats.reviewerRoleSummary.approvedRecords > 0, true);
+  assert.equal(stats.reviewerRoleSummary.highRiskApprovedRecords, 2);
+  assert.equal(stats.reviewerRoleSummary.highRiskMissingReviewerRole, 2);
   assert.equal(stats.policyRules, 1);
   assert.equal(stats.policyRuleReviewStatus.in_review, 1);
   assert.equal(stats.policyRuleRiskLevels.high, 1);
