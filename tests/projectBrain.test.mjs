@@ -219,10 +219,15 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
 
   assert.equal(manifest.schemaVersion, 5);
   assert.equal(manifest.total, 5);
+  assert.equal(manifest.approvedRecords, 3);
+  assert.equal(manifest.highRiskRecords, 2);
+  assert.equal(manifest.approvedHighRiskRecords, 1);
   assert.equal(manifest.missingSourceId, 2);
   assert.equal(manifest.missingVersion, 1);
   assert.equal(manifest.highRiskMissingEvidence, 1);
   assert.equal(manifest.stores.source_registry.total, 1);
+  assert.equal(manifest.stores.knowledge_units.highRiskRecords, 2);
+  assert.equal(manifest.stores.knowledge_units.approvedHighRiskRecords, 1);
   assert.deepEqual(manifest.stores.knowledge_units.reviewStatuses, { approved:1, candidate:1 });
   assert.deepEqual(manifest.stores.knowledge_units.riskLevels, { high:1, restricted:1 });
   assert.equal(manifest.stores.calculation_runs.missingSourceId, 1);
@@ -625,6 +630,24 @@ test("property dossier groups records and exposes review and quality queues", ()
   assert.deepEqual(dossier.evidenceRefIds, ["ev-1", "ev-2"]);
   assert.deepEqual(dossier.needsReview, ["lease-1", "risk-1"]);
   assert.deepEqual(dossier.qualityIssues.map(item => item.id), ["risk-1"]);
+  assert.equal(dossier.reviewQueueItems.some(item => item.target_type === "jre_risk" && item.target_id === "risk-1"), true);
+  assert.equal(dossier.reviewQueueActionSummary.some(item => item.action === "complete_expert_confirmation"), true);
+});
+
+test("property dossier reference context exposes source and evidence repair work", () => {
+  const dossier = buildPropertyDossier({
+    propertyId:"prop-1",
+    sources:[
+      { id:"src-1", title:"Approved source", source_type:"official_public", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evidenceRefs:[],
+    records:[
+      { id:"prop-1", entity_type:"property", source_id:"src-1", property_id:"prop-1", title:"Property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-missing"] },
+    ],
+  });
+
+  assert.equal(dossier.reviewQueueItems.some(item => item.target_type === "jre_property" && item.target_id === "prop-1" && item.reasons.includes("missing_evidence_ref")), true);
+  assert.equal(dossier.reviewQueueActionSummary.some(item => item.action === "attach_evidence_or_downgrade_record"), true);
 });
 
 test("property dossier investment metrics use deterministic code and transaction price", () => {
@@ -648,6 +671,7 @@ test("property dossier investment metrics use deterministic code and transaction
   assert.equal(metrics.outputs.netYieldPercent, 2.15);
   assert.deepEqual(metrics.audit.sourceIds, ["src-lease", "src-expense", "src-tax", "src-loan"]);
   assert.deepEqual(metrics.dossier.needsReview, []);
+  assert.deepEqual(metrics.dossier.reviewQueueItems, []);
 });
 
 test("investment metrics become auditable calculation run records", () => {
@@ -701,6 +725,8 @@ test("calculation run update payload versions deterministic outputs", () => {
   assert.equal(update.record.metadata.previous_version, 2);
   assert.equal(update.record.metadata.changed_by, "calculation-service");
   assert.equal(update.quality.ok, true);
+  assert.equal(update.reviewQueueItems.some(item => item.target_type === "calculation_run" && item.target_id === "calc-1" && item.reasons.includes("needs_review")), true);
+  assert.equal(update.reviewQueueActionSummary.some(item => item.action === "complete_record_review"), true);
 });
 
 test("calculation run filters property type source review risk query and archived records", () => {
