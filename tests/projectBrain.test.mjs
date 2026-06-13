@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -755,6 +755,31 @@ test("source training eligibility report explains blocked training reasons", () 
   });
 });
 
+test("knowledge brain domain coverage tracks D01-D16 unit and eval gaps", () => {
+  const coverage = knowledgeBrainDomainCoverage({
+    knowledgeUnits:[
+      { id:"ku-d01", domain:"D01", review_status:"approved" },
+      { id:"ku-d02", domain:"D02", review_status:"candidate" },
+      { id:"ku-other", domain:"DX", review_status:"approved" },
+    ],
+    evalCases:[
+      { id:"eval-d01", domain:"D01", review_status:"approved" },
+      { id:"eval-d03", metadata:{ domain:"D03" }, review_status:"candidate" },
+      { id:"eval-other", domain:"DX", review_status:"approved" },
+    ],
+  });
+
+  assert.equal(coverage.domains.D01.approvedKnowledgeUnits, 1);
+  assert.equal(coverage.domains.D02.knowledgeUnits, 1);
+  assert.equal(coverage.domains.D02.approvedKnowledgeUnits, 0);
+  assert.equal(coverage.domains.D03.evalCases, 1);
+  assert.equal(coverage.other.knowledgeUnits, 1);
+  assert.equal(coverage.other.evalCases, 1);
+  assert.equal(coverage.missingApprovedKnowledgeUnitDomains.includes("D02"), true);
+  assert.equal(coverage.missingEvalCaseDomains.includes("D02"), true);
+  assert.equal(coverage.missingEvalCaseDomains.includes("D01"), false);
+});
+
 test("source registry filters review risk training query and deletion state", () => {
   const filtered = filterSourceRegistryRecords([
     { id:"old", title:"Hazard map", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false, updated_at:"2026-06-12T01:00:00.000Z" },
@@ -988,6 +1013,12 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.versionChainIssues, 1);
   assert.deepEqual(stats.knowledgeUnitVersionChainIssues, [{ id:"ku-6", issue:"non_incrementing_version" }]);
   assert.equal(stats.knowledgeUnitReviewStatus.candidate, 2);
+  assert.equal(stats.knowledgeBrainDomainCoverage.domains.D01.approvedKnowledgeUnits, 3);
+  assert.equal(stats.knowledgeBrainDomainCoverage.domains.D02.knowledgeUnits, 1);
+  assert.equal(stats.knowledgeBrainDomainCoverage.domains.D03.approvedKnowledgeUnits, 1);
+  assert.equal(stats.knowledgeBrainDomainCoverage.domains.D01.evalCases, 0);
+  assert.equal(stats.knowledgeBrainDomainCoverage.missingApprovedKnowledgeUnitDomains.includes("D04"), true);
+  assert.equal(stats.knowledgeBrainDomainCoverage.missingEvalCaseDomains.length, 16);
   assert.equal(stats.evidenceRefs, 2);
   assert.equal(stats.approvedEvidenceRefs, 1);
   assert.equal(stats.invalidEvidenceRefs, 1);

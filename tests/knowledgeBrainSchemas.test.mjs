@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 import {
   HIGH_RISK_SOURCE_TYPES,
+  JRE_KNOWLEDGE_DOMAINS,
   JRE_ENTITY_TYPES,
   KNOWLEDGE_BRAIN_STORES,
   assertHighRiskReviewable,
@@ -72,6 +73,27 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.knowledgeUnits.indexes.find(([name]) => name === "sourceReview")?.[1], ["source_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.evidenceRefs.indexes.find(([name]) => name === "targetReview")?.[1], ["target_type", "target_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.calculationRuns.indexes.find(([name]) => name === "propertyType")?.[1], ["property_id", "calculation_type"]);
+});
+
+test("japanese real estate knowledge domains cover D01 through D16", () => {
+  assert.deepEqual(JRE_KNOWLEDGE_DOMAINS, [
+    "D01",
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "D08",
+    "D09",
+    "D10",
+    "D11",
+    "D12",
+    "D13",
+    "D14",
+    "D15",
+    "D16",
+  ]);
 });
 
 test("japanese real estate entity schemas cover property workspace data domains", () => {
