@@ -1219,6 +1219,39 @@ test("cold start readiness actions map blockers to repair actions", () => {
   ]);
 });
 
+test("cold start readiness can gate reviewer role coverage", () => {
+  const readiness = knowledgeBrainColdStartReadiness({
+    sources:[
+      { id:"src-1", source_type:"public_web", provider:"MLIT", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-2", source_type:"industry_association", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-3", source_type:"partner_practitioner_case", review_status:"approved", risk_level:"medium", training_allowed:false, deletion_requested:false },
+    ],
+    knowledgeUnits:[
+      { id:"ku-risk", source_id:"src-1", domain:"D07", title:"Risk", content:"Approved high-risk source-backed content.", review_status:"approved", risk_level:"high", version:1, evidence_ref_ids:["ev-1"], metadata:{ reviewed_by:"expert", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"ku-partner", source_id:"src-3", domain:"D04", title:"Partner", content:"Approved partner source-backed content.", review_status:"approved", risk_level:"medium", version:1, evidence_ref_ids:["ev-2"], metadata:{ reviewed_by:"expert", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+    ],
+    evidenceRefs:[
+      { id:"ev-1", source_id:"src-1", target_type:"knowledge_unit", target_id:"ku-risk", locator:"p1", quote:"risk quote", review_status:"approved", risk_level:"low", version:1 },
+      { id:"ev-2", source_id:"src-3", target_type:"knowledge_unit", target_id:"ku-partner", locator:"p2", quote:"partner quote", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evalCases:[
+      { id:"eval-1", source_id:"src-1", domain:"D07", prompt:"Prompt", expected_behavior:"Expected", review_status:"approved", risk_level:"medium", version:1 },
+    ],
+  }, {
+    minApprovedKnowledgeUnits:2,
+    minEvalCases:1,
+    requireAllDomains:false,
+    requireReviewerRoleCoverage:true,
+    requirePartnerCaseTakkenReviewer:true,
+  });
+
+  assert.equal(readiness.ready, false);
+  assert.ok(readiness.blockers.some(item => item.gate === "high_risk_reviewer_role_coverage"));
+  assert.ok(readiness.blockers.some(item => item.gate === "partner_case_takken_reviewer_coverage"));
+  assert.ok(readiness.actions.some(item => item.action === "record_high_risk_reviewer_roles"));
+  assert.ok(readiness.actions.some(item => item.action === "assign_takken_reviewer_for_partner_cases"));
+});
+
 test("high-risk tools stay internal until cold start and eval set gates pass", () => {
   const blocked = knowledgeBrainHighRiskToolReadiness({
     sources:[
