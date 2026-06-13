@@ -161,6 +161,7 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(size.tooLarge, false);
   assert.equal(summary.size.totalItems, 2);
   assert.equal(summary.size.tooLarge, false);
+  assert.equal(summary.blocked, false);
   assert.equal(summary.trainingDisabled, 1);
   assert.equal(summary.reviewDowngraded, 2);
   assert.equal(summary.reinsCollectionSanitized, 1);
@@ -168,6 +169,9 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.importWarnings.approved_high_risk_missing_reviewer_metadata, 2);
   assert.equal(summary.stores.source_registry.reinsCollectionSanitized, 1);
   assert.equal(summary.stores.knowledge_units.reviewDowngraded, 1);
+  assert.ok(summary.actions.some(item => item.action === "review_training_consent_and_high_risk_sources" && item.current === 1));
+  assert.ok(summary.actions.some(item => item.action === "route_imported_high_risk_records_to_review" && item.current === 2));
+  assert.ok(summary.actions.some(item => item.action === "verify_reins_manual_upload_boundary" && item.current === 1));
 });
 
 test("knowledge import size summary counts evidence and governance text fields", () => {
@@ -190,6 +194,10 @@ test("knowledge import size summary counts evidence and governance text fields",
   assert.equal(size.totalItems, 1);
   assert.equal(size.tooLarge, true);
   assert.ok(size.totalTextChars > size.maxTextChars);
+
+  const summary = knowledgeBrainImportAuditSummary(payload);
+  assert.equal(summary.blocked, true);
+  assert.ok(summary.actions.some(item => item.action === "split_import_file_or_reduce_payload" && item.blocksImport === true));
 });
 
 test("source registry ingest payload enforces training and REINS boundaries", () => {
