@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -771,8 +771,24 @@ test("source contribution consent report tracks free tier opt-in and withdrawal 
   assert.equal(report.trainingAllowedWithoutExplicitConsent, 1);
   assert.equal(report.deletionRequestedSources, 1);
   assert.equal(report.withdrawalAuditRecords, 1);
+  assert.equal(report.deletionRequestsMissingAudit, 0);
   assert.equal(report.byContributorTier.free_tier, 3);
   assert.equal(report.byConsentScope.none, 2);
+});
+
+test("source contribution consent actions map consent gaps to repair work", () => {
+  const actions = sourceContributionConsentActions({
+    freeTierMissingOptIn:2,
+    trainingAllowedWithoutExplicitConsent:1,
+    deletionRequestsMissingAudit:1,
+  });
+
+  assert.deepEqual(actions.map(item => item.action), [
+    "collect_free_tier_explicit_opt_in_or_disable_use",
+    "disable_training_or_collect_explicit_consent",
+    "record_deletion_and_training_withdrawal_audit",
+  ]);
+  assert.equal(actions.every(item => item.blocksReadiness), true);
 });
 
 test("source usage permissions separate reference derivative and training boundaries", () => {
@@ -1582,6 +1598,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   });
   assert.equal(stats.sourceContributionConsentReport.freeTierSources, 1);
   assert.equal(stats.sourceContributionConsentReport.trainingAllowedWithoutExplicitConsent, 1);
+  assert.ok(stats.sourceContributionConsentActions.some(item => item.action === "disable_training_or_collect_explicit_consent"));
   assert.equal(stats.sourceUsagePermissionReport.length, 4);
   assert.equal(stats.sourceUsagePermissionReport[0].source_id, "src-1");
   assert.equal(stats.sourceUsagePermissionReport[0].reference.allowed, true);
