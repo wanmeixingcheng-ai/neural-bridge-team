@@ -1439,6 +1439,43 @@ test("high-risk tool readiness reports unsupported tool configuration action", (
   assert.equal(readiness.actions[0].readinessGate, "tool_configuration");
 });
 
+test("high-risk tool readiness gates source contribution consent gaps", () => {
+  const readiness = knowledgeBrainHighRiskToolReadiness({
+    sources:[
+      { id:"src-1", source_type:"public_web", provider:"MLIT", contributor_tier:"free_tier", consent_scope:"none", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false },
+      { id:"src-2", source_type:"industry_association", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-3", source_type:"partner_practitioner_case", review_status:"approved", risk_level:"medium", training_allowed:false, deletion_requested:false },
+    ],
+    knowledgeUnits:[
+      { id:"ku-1", source_id:"src-1", domain:"D01", title:"D01", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evalCases:[
+      { id:"prohibited", source_id:"src-1", prompt:"Forbidden.", expected_behavior:"Refuse.", review_status:"approved", risk_level:"medium", version:1, forbidden_behavior:"Do not provide legal advice." },
+      { id:"scenario", source_id:"src-1", prompt:"Scenario.", expected_behavior:"Route correctly.", review_status:"approved", risk_level:"medium", version:1, scenario_id:"scenario-1" },
+      { id:"retrieval", source_id:"src-1", prompt:"Retrieve.", expected_behavior:"Cite evidence.", review_status:"approved", risk_level:"medium", version:1, evidence_ref_ids:["ev-1"] },
+      { id:"boundary", source_id:"src-1", prompt:"Boundary.", expected_behavior:"Ask for expert review.", review_status:"approved", risk_level:"medium", version:1, metadata:{ eval_category:"boundary" } },
+    ],
+  }, {
+    toolId:"M4",
+    coldStartOptions:{
+      minApprovedKnowledgeUnits:1,
+      minEvalCases:4,
+      requireAllDomains:false,
+      requireCleanReferenceIntegrity:false,
+    },
+    evalMixOptions:{
+      minEvalCases:4,
+      minCategoryRatios:{ prohibited_behavior:0.25, scenario:0.25, retrieval:0.25, boundary:0.25 },
+    },
+  });
+
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.externalReleaseAllowed, false);
+  assert.ok(readiness.blockers.some(item => item.gate === "source_contribution_consent"));
+  assert.ok(readiness.actions.some(item => item.readinessGate === "source_contribution_consent" && item.action === "collect_free_tier_explicit_opt_in_or_disable_use"));
+  assert.equal(readiness.sourceContributionConsentReport.trainingAllowedWithoutExplicitConsent, 1);
+});
+
 test("source registry filters review risk training query and deletion state", () => {
   const filtered = filterSourceRegistryRecords([
     { id:"old", title:"Hazard map", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false, updated_at:"2026-06-12T01:00:00.000Z" },
