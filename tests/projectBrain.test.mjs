@@ -981,17 +981,22 @@ test("source contribution consent report tracks free tier opt-in and withdrawal 
     { id:"free-missing", metadata:{ contributor_tier:"free_tier" }, consent_scope:"none", training_allowed:false, deletion_requested:false },
     { id:"partner", contributor_tier:"partner", consent_scope:"opt_in", training_allowed:true, deletion_requested:false },
     { id:"deleted", contributor_tier:"free_tier", consent_scope:"none", training_allowed:false, deletion_requested:true, metadata:{ deletion_requested_at:"2026-06-12T00:00:00.000Z", training_withdrawn_at:"2026-06-12T00:00:00.000Z" } },
+    { id:"deleted-missing-audit", contributor_tier:"free_tier", consent_scope:"explicit_opt_in", training_allowed:false, deletion_requested:true, metadata:{} },
   ]);
 
-  assert.equal(report.total, 4);
-  assert.equal(report.freeTierSources, 3);
+  assert.equal(report.total, 5);
+  assert.equal(report.freeTierSources, 4);
   assert.equal(report.freeTierMissingOptIn, 2);
   assert.equal(report.trainingAllowedSources, 2);
   assert.equal(report.trainingAllowedWithoutExplicitConsent, 1);
-  assert.equal(report.deletionRequestedSources, 1);
+  assert.equal(report.deletionRequestedSources, 2);
   assert.equal(report.withdrawalAuditRecords, 1);
-  assert.equal(report.deletionRequestsMissingAudit, 0);
-  assert.equal(report.byContributorTier.free_tier, 3);
+  assert.equal(report.deletionRequestsMissingAudit, 1);
+  assert.deepEqual(report.freeTierMissingOptInSourceIds, ["free-missing", "deleted"]);
+  assert.deepEqual(report.trainingAllowedWithoutExplicitConsentSourceIds, ["partner"]);
+  assert.deepEqual(report.deletionRequestedSourceIds, ["deleted", "deleted-missing-audit"]);
+  assert.deepEqual(report.deletionRequestsMissingAuditSourceIds, ["deleted-missing-audit"]);
+  assert.equal(report.byContributorTier.free_tier, 4);
   assert.equal(report.byConsentScope.none, 2);
 });
 
@@ -1008,6 +1013,18 @@ test("source contribution consent actions map consent gaps to repair work", () =
     "record_deletion_and_training_withdrawal_audit",
   ]);
   assert.equal(actions.every(item => item.blocksReadiness), true);
+
+  const sourceActions = sourceContributionConsentActions({
+    freeTierMissingOptIn:1,
+    trainingAllowedWithoutExplicitConsent:1,
+    deletionRequestsMissingAudit:1,
+    freeTierMissingOptInSourceIds:["src-free"],
+    trainingAllowedWithoutExplicitConsentSourceIds:["src-training"],
+    deletionRequestsMissingAuditSourceIds:["src-deleted"],
+  });
+  assert.deepEqual(sourceActions[0].sourceIds, ["src-free"]);
+  assert.deepEqual(sourceActions[1].sourceIds, ["src-training"]);
+  assert.deepEqual(sourceActions[2].sourceIds, ["src-deleted"]);
 });
 
 test("source usage permissions separate reference derivative and training boundaries", () => {
