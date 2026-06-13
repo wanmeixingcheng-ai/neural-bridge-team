@@ -1396,6 +1396,10 @@ test("cold start domain plan reports phase targets and missing domains", () => {
   });
 
   assert.equal(plan.groups.phase_2_1_official_public.approvedKnowledgeUnits, 300);
+  assert.equal(plan.groups.phase_2_1_official_public.approvedKnowledgeUnitDeficit, 0);
+  assert.equal(plan.groups.phase_2_1_official_public.targetProgressPercent, 100);
+  assert.equal(plan.groups.phase_2_1_official_public.suggestedNextApprovedUnits, 0);
+  assert.equal(plan.groups.phase_2_1_official_public.evalCaseDomainDeficit, 2);
   assert.equal(plan.groups.phase_2_1_official_public.targetMet, true);
   assert.deepEqual(plan.groups.phase_2_1_official_public.missingApprovedKnowledgeUnitDomains, ["D16"]);
   assert.deepEqual(plan.groups.phase_2_2_industry_templates.missingEvalCaseDomains, ["D02", "D03", "D09", "D10"]);
@@ -1429,6 +1433,9 @@ test("cold start source acquisition plan exposes source strategy and review boun
   assert.equal(plan[0].ingestionPolicy.requiresEvidenceRefs, true);
   assert.equal(plan[0].ingestionPolicy.prohibitsReinsAutomation, true);
   assert.equal(plan[0].ingestionPolicy.storesCredentials, false);
+  assert.equal(plan[0].targetProgressPercent, 0);
+  assert.equal(plan[0].suggestedNextApprovedUnits, 100);
+  assert.equal(plan[0].evalCaseDomainDeficit, 2);
   assert.equal(plan[2].reviewerRoleRequired, "takken");
   assert.equal(plan[2].dataBoundary, "desensitized_partner_material_with_explicit_use_agreement");
   assert.equal(plan[3].dataBoundary, "draft_only_until_human_reviewed");
@@ -1460,6 +1467,9 @@ test("cold start ingestion batch manifest turns source plan into import batches"
   assert.equal(partnerBatch.ingestionPolicy.requiresHumanReview, true);
   assert.equal(partnerBatch.reviewerRoleRequired, "takken");
   assert.equal(partnerBatch.dataBoundary, "desensitized_partner_material_with_explicit_use_agreement");
+  assert.equal(partnerBatch.targetProgressPercent, 0);
+  assert.equal(partnerBatch.suggestedNextApprovedUnits, 67);
+  assert.equal(partnerBatch.evalCaseDomainDeficit, 3);
 });
 
 test("cold start ingestion queue prioritizes missing domains by source phase", () => {
@@ -1485,6 +1495,9 @@ test("cold start ingestion queue prioritizes missing domains by source phase", (
   assert.deepEqual(queue[0].recommendedSourceTypes, ["public_manual", "public_web", "official_public"]);
   assert.deepEqual(queue[0].recommendedProviders, ["MLIT", "RETIO", "Consumer Affairs Agency"]);
   assert.equal(queue[0].approvedKnowledgeUnitDeficit, 299);
+  assert.equal(queue[0].targetProgressPercent, 0);
+  assert.equal(queue[0].suggestedNextApprovedUnits, 100);
+  assert.equal(queue[0].evalCaseDomainDeficit, 2);
   assert.deepEqual(queue[0].nextDomains, ["D08", "D16"]);
   assert.equal(queue[1].domainPriorities[0].domain, "D02");
   assert.equal(queue[1].domainPriorities[0].priorityScore, 3);
