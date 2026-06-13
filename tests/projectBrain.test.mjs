@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -815,6 +815,53 @@ test("eval case category counts support cold-start eval set mix tracking", () =>
     retrieval:1,
     boundary:1,
   });
+});
+
+test("knowledge brain cold start readiness reports v0.1 blockers", () => {
+  const blocked = knowledgeBrainColdStartReadiness({
+    sources:[
+      { id:"src-1", source_type:"public_web", provider:"MLIT", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+    ],
+    knowledgeUnits:[
+      { id:"ku-1", source_id:"src-1", domain:"D01", title:"D01", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evalCases:[],
+  }, {
+    minApprovedKnowledgeUnits:2,
+    minEvalCases:1,
+    requireAllDomains:false,
+    requireIndustryAssociationSource:true,
+    requirePartnerPractitionerSource:true,
+  });
+
+  assert.equal(blocked.ready, false);
+  assert.deepEqual(blocked.blockers.map(item => item.gate), [
+    "approved_knowledge_units",
+    "eval_cases",
+    "industry_association_source_tier",
+    "partner_practitioner_source_tier",
+  ]);
+
+  const ready = knowledgeBrainColdStartReadiness({
+    sources:[
+      { id:"src-1", source_type:"public_web", provider:"MLIT", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-2", source_type:"industry_association", review_status:"approved", risk_level:"low", training_allowed:false, deletion_requested:false },
+      { id:"src-3", source_type:"partner_practitioner_case", review_status:"approved", risk_level:"medium", training_allowed:false, deletion_requested:false },
+    ],
+    knowledgeUnits:[
+      { id:"ku-1", source_id:"src-1", domain:"D01", title:"D01", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1 },
+    ],
+    evalCases:[
+      { id:"eval-1", source_id:"src-1", prompt:"Check source.", expected_behavior:"Cite source.", review_status:"candidate", risk_level:"medium", version:1 },
+    ],
+  }, {
+    minApprovedKnowledgeUnits:1,
+    minEvalCases:1,
+    requireAllDomains:false,
+  });
+
+  assert.equal(ready.ready, true);
+  assert.deepEqual(ready.blockers, []);
 });
 
 test("source registry filters review risk training query and deletion state", () => {
