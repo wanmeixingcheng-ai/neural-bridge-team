@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -71,6 +71,47 @@ test("knowledge import disables unsafe source training flags", () => {
     "training_disabled_high_risk",
     "training_disabled_missing_explicit_consent",
     "training_disabled_deleted_source",
+    "training_disabled_high_risk_source_type",
+  ]);
+});
+
+test("source registry ingest payload enforces training and REINS boundaries", () => {
+  const publicSource = buildSourceRegistryIngestPayload({
+    title:"Tokyo public hazard map",
+    source:"public_manual",
+    sourceType:"public_manual",
+    provider:"Tokyo",
+    reviewStatus:"approved",
+    riskLevel:"low",
+    consentScope:"explicit_opt_in",
+    trainingAllowed:true,
+    metadata:{ owner:"free-tier-user" },
+  });
+
+  assert.equal(publicSource.quality.ok, true);
+  assert.equal(publicSource.record.training_allowed, true);
+  assert.equal(publicSource.trainingEligible, true);
+  assert.equal(publicSource.record.metadata.owner, "free-tier-user");
+  assert.equal(publicSource.record.metadata.legacySource, "public_manual");
+
+  const reinsSource = buildSourceRegistryIngestPayload({
+    title:"User uploaded REINS listing",
+    source:"reins_user_upload",
+    collectionMethod:"automated_scrape",
+    reviewStatus:"approved",
+    consentScope:"explicit_opt_in",
+    trainingAllowed:true,
+  });
+
+  assert.equal(reinsSource.quality.ok, true);
+  assert.equal(reinsSource.record.source_type, "reins_user_upload");
+  assert.equal(reinsSource.record.collection_method, "manual");
+  assert.equal(reinsSource.record.risk_level, "high");
+  assert.equal(reinsSource.record.training_allowed, false);
+  assert.equal(reinsSource.trainingEligible, false);
+  assert.deepEqual(reinsSource.record.metadata.import_warnings, [
+    "reins_collection_method_sanitized",
+    "training_disabled_high_risk",
     "training_disabled_high_risk_source_type",
   ]);
 });
