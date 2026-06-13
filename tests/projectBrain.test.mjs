@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -916,6 +916,53 @@ test("cold start domain plan reports phase targets and missing domains", () => {
   assert.deepEqual(plan.groups.phase_2_2_industry_templates.missingEvalCaseDomains, ["D02", "D03", "D09", "D10"]);
   assert.equal(plan.groups.phase_2_3_partner_cases.targetMet, false);
   assert.equal(plan.allTargetsMet, false);
+});
+
+test("cold start ingestion queue prioritizes missing domains by source phase", () => {
+  const queue = knowledgeBrainColdStartIngestionQueue({
+    knowledgeUnits:[
+      { id:"ku-d07", domain:"D07", review_status:"approved" },
+      { id:"ku-d01", domain:"D01", review_status:"approved" },
+    ],
+    evalCases:[
+      { id:"eval-d07", domain:"D07", review_status:"approved" },
+    ],
+  });
+
+  assert.deepEqual(queue.map(item => item.phase), [
+    "phase_2_1_official_public",
+    "phase_2_2_industry_templates",
+    "phase_2_3_partner_cases",
+    "phase_2_4_ai_assisted_long_tail",
+  ]);
+  assert.equal(queue[0].sourceTier, "tier_1_official_public");
+  assert.equal(queue[0].approvedKnowledgeUnitDeficit, 299);
+  assert.deepEqual(queue[0].nextDomains, ["D08", "D16"]);
+  assert.equal(queue[1].domainPriorities[0].domain, "D02");
+  assert.equal(queue[1].domainPriorities[0].priorityScore, 3);
+  assert.equal(queue[1].domainPriorities.find(item => item.domain === "D01").priorityScore, 1);
+});
+
+test("cold start ingestion queue omits completed phase targets", () => {
+  const officialUnits = Array.from({ length:300 }, (_, index) => ({
+    id:`ku-official-${index}`,
+    domain:["D07", "D08", "D16"][index % 3],
+    review_status:"approved",
+  }));
+  const queue = knowledgeBrainColdStartIngestionQueue({
+    knowledgeUnits:[
+      ...officialUnits,
+      { id:"ku-d01", domain:"D01", review_status:"approved" },
+    ],
+    evalCases:[
+      { id:"eval-d07", domain:"D07", review_status:"approved" },
+      { id:"eval-d08", domain:"D08", review_status:"approved" },
+      { id:"eval-d16", domain:"D16", review_status:"approved" },
+    ],
+  });
+
+  assert.equal(queue.some(item => item.phase === "phase_2_1_official_public"), false);
+  assert.equal(queue[0].phase, "phase_2_2_industry_templates");
 });
 
 test("eval case category counts support cold-start eval set mix tracking", () => {
