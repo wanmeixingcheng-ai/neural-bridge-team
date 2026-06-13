@@ -2226,6 +2226,17 @@ test("knowledge brain review queue items filter target source review risk reason
   });
 
   assert.deepEqual(items.map(item => item.target_id), ["ku-1"]);
+
+  const calculationItems = filterKnowledgeBrainReviewQueueItems([
+    { target_type:"calculation_run", target_id:"calc-1", source_ids:["src-calc"], review_status:"candidate", risk_level:"medium", reasons:["missing_evidence_ref_ids"] },
+    { target_type:"calculation_run", target_id:"calc-2", source_ids:["src-other"], review_status:"candidate", risk_level:"medium", reasons:["missing_evidence_ref_ids"] },
+  ], {
+    sourceIds:["src-calc"],
+    query:"src-calc",
+  });
+
+  assert.deepEqual(calculationItems.map(item => item.target_id), ["calc-1"]);
+  assert.deepEqual(calculationItems[0].source_ids, ["src-calc"]);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
