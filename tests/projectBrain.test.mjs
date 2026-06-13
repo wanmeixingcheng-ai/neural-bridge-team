@@ -781,7 +781,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
     knowledgeUnits:[
       { id:"ku-1", source_id:"src-1", domain:"D01", title:"Approved unit", content:"Approved source-backed content.", review_status:"approved", risk_level:"low", version:1, evidence_ref_ids:[] },
       { id:"ku-2", source_id:"src-2", domain:"D02", title:"High risk candidate", content:"High-risk candidate content.", review_status:"candidate", risk_level:"high", version:1, evidence_ref_ids:[] },
-      { id:"ku-3", source_id:"src-1", domain:"D03", title:"Restricted unit", content:"Restricted source-backed content.", review_status:"approved", risk_level:"restricted", version:1, evidence_ref_ids:["ev-1"] },
+      { id:"ku-3", source_id:"src-1", domain:"D03", title:"Restricted unit", content:"Restricted source-backed content.", review_status:"approved", risk_level:"restricted", version:1, evidence_ref_ids:["ev-1"], metadata:{ reviewed_by:"expert-reviewer", reviewed_at:"2026-06-12T06:00:00.000Z" } },
       { id:"ku-4", source_id:"src-1", domain:"", title:"", content:"short", review_status:"candidate", risk_level:"low", version:1, evidence_ref_ids:[] },
       { id:"ku-5", source_id:"src-1", domain:"D01", title:"Versioned unit", content:"Versioned source-backed content.", review_status:"approved", risk_level:"low", version:2, supersedes_id:"ku-1", evidence_ref_ids:[] },
       { id:"ku-6", source_id:"src-1", domain:"D01", title:"Broken version", content:"Broken version lineage content.", review_status:"approved", risk_level:"low", version:1, supersedes_id:"ku-1", evidence_ref_ids:[] },
@@ -924,6 +924,8 @@ test("knowledge brain reference integrity detects broken source and evidence gra
     "high_risk_unapproved_evidence",
     "missing_evidence_ref",
     "missing_evidence_ref",
+    "missing_reviewed_at",
+    "missing_reviewed_by",
     "missing_source_ref",
     "missing_source_ref",
   ].sort());
@@ -932,6 +934,7 @@ test("knowledge brain reference integrity detects broken source and evidence gra
   assert.equal(integrity.issues.find(issue => issue.target_id === "rule-unapproved-source").issue, "approved_record_unapproved_source");
   assert.equal(integrity.issues.find(issue => issue.target_id === "scenario-missing-source").issue, "missing_source_ref");
   assert.equal(integrity.issues.find(issue => issue.target_id === "eval-missing-evidence").issue, "missing_evidence_ref");
+  assert.equal(integrity.issues.some(issue => issue.target_id === "risk-1" && issue.issue === "missing_reviewed_by"), true);
 });
 
 test("knowledge brain reference integrity actions map issues to repair guidance", () => {
@@ -940,6 +943,7 @@ test("knowledge brain reference integrity actions map issues to repair guidance"
       { target_type:"knowledge_unit", target_id:"ku-1", issue:"missing_source_ref", source_id:"src-missing" },
       { target_type:"knowledge_unit", target_id:"ku-2", issue:"evidence_target_mismatch", evidence_ref_id:"ev-1" },
       { target_type:"jre_risk", target_id:"risk-1", issue:"high_risk_unapproved_evidence", evidence_ref_id:"ev-2" },
+      { target_type:"policy_rule", target_id:"rule-1", issue:"missing_reviewed_by" },
       { target_type:"calculation_run", target_id:"calc-1", issue:"unknown_issue" },
     ],
   });
@@ -948,10 +952,12 @@ test("knowledge brain reference integrity actions map issues to repair guidance"
     "restore_source_or_archive_record",
     "relink_evidence_to_target",
     "expert_review_evidence_before_approval",
+    "record_expert_reviewer_metadata",
     "manual_review_required",
   ]);
   assert.equal(actions[0].blocks_approval, true);
-  assert.equal(actions[3].blocks_approval, false);
+  assert.equal(actions[3].blocks_approval, true);
+  assert.equal(actions[4].blocks_approval, false);
 });
 
 test("knowledge brain reference integrity actions filter blockers target source issue action and query", () => {
