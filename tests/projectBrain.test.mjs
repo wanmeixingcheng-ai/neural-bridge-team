@@ -682,6 +682,22 @@ test("knowledge unit search only returns approved, retained source-backed units"
   assert.deepEqual(hits[0].evidenceRefIds, ["ev-1"]);
 });
 
+test("knowledge unit search matches approved titles domains and tags", () => {
+  const hits = approvedKnowledgeUnitSearchResults({
+    query:"flood",
+    sources:[
+      { id:"src-approved", review_status:"approved", deletion_requested:false },
+    ],
+    units:[
+      { id:"ku-title", source_id:"src-approved", domain:"D06", review_status:"approved", title:"Flood disclosure checklist", content:"Approved source-backed content.", tags:["hazard"], evidence_ref_ids:["ev-title"] },
+      { id:"ku-tag", source_id:"src-approved", domain:"D07", review_status:"approved", title:"Disclosure checklist", content:"Approved source-backed content.", tags:["flood"], evidence_ref_ids:["ev-tag"] },
+    ],
+  });
+
+  assert.deepEqual(hits.map(hit => hit.id).sort(), ["ku-tag", "ku-title"]);
+  assert.deepEqual(hits.find(hit => hit.id === "ku-title").evidenceRefIds, ["ev-title"]);
+});
+
 test("knowledge unit filters source domain review risk query and recency", () => {
   const filtered = filterKnowledgeUnitRecords([
     { id:"old", source_id:"src-1", domain:"risk", review_status:"candidate", risk_level:"high", title:"Hazard note", content:"Flood hazard finding.", tags:["flood"], updated_at:"2026-06-12T01:00:00.000Z" },
