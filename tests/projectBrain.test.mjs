@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -73,6 +73,55 @@ test("knowledge import disables unsafe source training flags", () => {
     "training_disabled_deleted_source",
     "training_disabled_high_risk_source_type",
   ]);
+});
+
+test("knowledge import downgrades approved high risk records without reviewer metadata", () => {
+  const source = normalizeImportedKnowledgeBrainRecord("source_registry", {
+    id:"src-risk",
+    source_type:"contract",
+    title:"Contract",
+    review_status:"approved",
+    risk_level:"high",
+    consent_scope:"explicit_opt_in",
+    training_allowed:true,
+    metadata:{ owner:"ops" },
+  });
+
+  assert.equal(source.review_status, "in_review");
+  assert.equal(source.training_allowed, false);
+  assert.equal(source.metadata.owner, "ops");
+  assert.equal(source.metadata.import_original_review_status, "approved");
+  assert.deepEqual(source.metadata.import_warnings, [
+    "training_disabled_high_risk",
+    "training_disabled_high_risk_source_type",
+    "approved_high_risk_missing_reviewer_metadata",
+    "missing_reviewed_by",
+    "missing_reviewed_at",
+  ]);
+
+  const unit = normalizeImportedKnowledgeBrainRecord("knowledge_units", {
+    id:"ku-risk",
+    source_id:"src-risk",
+    review_status:"approved",
+    risk_level:"restricted",
+    metadata:{ reviewed_by:"expert" },
+  });
+
+  assert.equal(unit.review_status, "in_review");
+  assert.deepEqual(unit.metadata.import_warnings, [
+    "approved_high_risk_missing_reviewer_metadata",
+    "missing_reviewed_at",
+  ]);
+
+  const reviewed = normalizeImportedKnowledgeBrainRecord("knowledge_units", {
+    id:"ku-reviewed",
+    source_id:"src-risk",
+    review_status:"approved",
+    risk_level:"high",
+    metadata:{ reviewed_by:"expert", reviewed_at:"2026-06-12T00:00:00.000Z" },
+  });
+
+  assert.equal(reviewed.review_status, "approved");
 });
 
 test("source registry ingest payload enforces training and REINS boundaries", () => {
