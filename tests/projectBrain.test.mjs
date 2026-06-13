@@ -533,6 +533,8 @@ test("knowledge governance record payload routes policy, scenario, and eval reco
   assert.equal(policy.record.version, 1);
   assert.equal(policy.quality.ok, false);
   assert.deepEqual(policy.quality.issues, ["high_risk_not_approved"]);
+  assert.equal(policy.reviewQueueItems.some(item => item.target_type === "policy_rule" && item.reasons.includes("high_risk_not_approved")), true);
+  assert.equal(policy.reviewQueueActionSummary.some(item => item.action === "route_high_risk_record_to_review"), true);
   assert.equal(scenario.storeName, "scenarios");
   assert.equal(scenario.record.source_id, "src-1");
   assert.deepEqual(scenario.record.evidence_ref_ids, ["ev-scenario"]);
@@ -541,6 +543,7 @@ test("knowledge governance record payload routes policy, scenario, and eval reco
   assert.deepEqual(evalCase.record.evidence_ref_ids, ["ev-eval"]);
   assert.equal(evalCase.quality.ok, false);
   assert.deepEqual(evalCase.quality.issues, ["high_risk_not_approved"]);
+  assert.equal(evalCase.reviewQueueItems.some(item => item.target_type === "eval_case" && item.reasons.includes("high_risk_not_approved")), true);
   assert.throws(() => buildKnowledgeGovernanceRecordPayload("unknown", {}), /recordType must be one of/);
 });
 
@@ -577,6 +580,8 @@ test("knowledge governance update payload versions reviewed records", () => {
   assert.equal(update.record.metadata.change_reason, "policy_refinement");
   assert.equal(update.quality.ok, false);
   assert.deepEqual(update.quality.issues, ["high_risk_not_approved"]);
+  assert.equal(update.reviewQueueItems.some(item => item.target_id === "rule-1" && item.reasons.includes("high_risk_not_approved")), true);
+  assert.equal(update.reviewQueueActionSummary.some(item => item.action === "route_high_risk_record_to_review"), true);
 });
 
 test("knowledge governance filters source review risk query archived and recency", () => {
