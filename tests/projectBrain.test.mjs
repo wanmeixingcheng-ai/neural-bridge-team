@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, knowledgePanelSearchResults, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -806,6 +806,37 @@ test("approved knowledge search excludes high risk records without reviewer meta
   });
 
   assert.deepEqual(hits.map(hit => hit.id), ["rule-reviewed"]);
+});
+
+test("knowledge panel search includes approved knowledge brain records and legacy chunks", () => {
+  const hits = knowledgePanelSearchResults({
+    query:"hazard",
+    documents:[
+      { id:"doc-approved", status:"approved", archived:false },
+      { id:"doc-candidate", status:"candidate", archived:false },
+    ],
+    chunks:[
+      { id:"chunk-ok", docId:"doc-approved", content:"hazard hazard legacy note" },
+      { id:"chunk-candidate", docId:"doc-candidate", content:"hazard candidate note" },
+    ],
+    sources:[
+      { id:"src-approved", review_status:"approved", deletion_requested:false },
+      { id:"src-candidate", review_status:"candidate", deletion_requested:false },
+    ],
+    units:[
+      { id:"ku-approved", source_id:"src-approved", review_status:"approved", title:"Approved", content:"hazard source-backed content", evidence_ref_ids:["ev-1"], metadata:{ legacyDocumentId:"doc-approved", legacyChunkIndex:0 } },
+      { id:"ku-candidate-source", source_id:"src-candidate", review_status:"approved", title:"Candidate source", content:"hazard should not appear" },
+    ],
+    policyRules:[
+      { id:"rule-1", source_id:"src-approved", review_status:"approved", risk_level:"low", title:"Hazard policy", rule_type:"risk", rule_text:"hazard findings require expert review", evidence_ref_ids:["ev-rule"] },
+    ],
+  });
+
+  assert.equal(hits.some(hit => hit.id === "ku-approved"), true);
+  assert.equal(hits.some(hit => hit.id === "rule-1"), true);
+  assert.equal(hits.some(hit => hit.id === "chunk-ok"), true);
+  assert.equal(hits.some(hit => hit.id === "chunk-candidate"), false);
+  assert.equal(hits.some(hit => hit.id === "ku-candidate-source"), false);
 });
 
 test("training eligible sources require opt-in, approval, low risk, and no deletion request", () => {
