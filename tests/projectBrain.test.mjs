@@ -254,6 +254,11 @@ test("knowledge document ingest builds source, units, and evidence refs", () => 
   assert.equal(records.knowledgeUnits[0].source_id, records.source.id);
   assert.equal(records.evidenceRefs[0].target_id, records.knowledgeUnits[0].id);
   assert.deepEqual(records.knowledgeUnits[0].evidence_ref_ids, [records.evidenceRefs[0].id]);
+  assert.equal(records.quality.ok, true);
+  assert.equal(records.referenceIntegrity.ok, true);
+  assert.equal(records.reviewQueue.total, 3);
+  assert.equal(records.reviewQueue.sources, 1);
+  assert.equal(records.reviewQueue.knowledgeUnits, 2);
 });
 
 test("knowledge document ingest keeps REINS uploads high-risk and out of training", () => {
