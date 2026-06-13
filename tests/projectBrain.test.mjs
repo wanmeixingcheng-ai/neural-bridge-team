@@ -1730,12 +1730,15 @@ test("high-risk tool readiness gates source contribution consent gaps", () => {
 });
 
 test("source registry filters review risk training query and deletion state", () => {
-  const filtered = filterSourceRegistryRecords([
-    { id:"old", title:"Hazard map", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false, updated_at:"2026-06-12T01:00:00.000Z" },
-    { id:"new", title:"New hazard map", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false, updated_at:"2026-06-12T02:00:00.000Z" },
+  const sources = [
+    { id:"old", title:"Hazard map", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false, license:"public_reference", consent_scope:"explicit_opt_in", retention_policy:"project_local_default", contributor_tier:"free_tier", updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", title:"New hazard map", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:false, license:"public_reference", consent_scope:"explicit_opt_in", retention_policy:"project_local_default", contributor_tier:"free_tier", updated_at:"2026-06-12T02:00:00.000Z" },
     { id:"candidate", title:"Hazard draft", provider:"Tokyo", source_type:"public_web", review_status:"candidate", risk_level:"low", training_allowed:true, deletion_requested:false, updated_at:"2026-06-12T03:00:00.000Z" },
     { id:"high", title:"Hazard REINS upload", provider:"User", source_type:"reins_user_upload", review_status:"approved", risk_level:"high", training_allowed:false, deletion_requested:false, updated_at:"2026-06-12T04:00:00.000Z" },
-    { id:"deleted", title:"Hazard deleted", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:true, updated_at:"2026-06-12T05:00:00.000Z" },
+    { id:"deleted", title:"Hazard deleted", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:true, metadata:{ deletion_requested_at:"2026-06-12T00:00:00.000Z", deletion_reason:"free_tier_opt_out" }, updated_at:"2026-06-12T05:00:00.000Z" },
+  ];
+  const filtered = filterSourceRegistryRecords([
+    ...sources,
   ], {
     sourceTypes:["public_web"],
     reviewStatuses:["approved"],
@@ -1745,6 +1748,10 @@ test("source registry filters review risk training query and deletion state", ()
   });
 
   assert.deepEqual(filtered.map(source => source.id), ["new", "old"]);
+  assert.deepEqual(filterSourceRegistryRecords(sources, { query:"explicit_opt_in" }).map(source => source.id), ["new", "old"]);
+  assert.deepEqual(filterSourceRegistryRecords(sources, { query:"public_reference" }).map(source => source.id), ["new", "old"]);
+  assert.deepEqual(filterSourceRegistryRecords(sources, { query:"project_local_default" }).map(source => source.id), ["new", "old"]);
+  assert.deepEqual(filterSourceRegistryRecords(sources, { includeDeleted:true, query:"free_tier_opt_out" }).map(source => source.id), ["deleted"]);
 
   const sourceTypeMatches = filterSourceRegistryRecords([
     { id:"reins", title:"Uploaded listing", provider:"User", source_type:"reins_user_upload", review_status:"candidate", risk_level:"high", training_allowed:false, deletion_requested:false, updated_at:"2026-06-12T01:00:00.000Z" },
