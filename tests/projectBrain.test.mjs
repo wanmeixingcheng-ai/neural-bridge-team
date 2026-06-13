@@ -2217,6 +2217,9 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.sourceUsagePermissionReport[0].reference.allowed, true);
   assert.equal(stats.sourceUsagePermissionReport[2].reference.allowed, false);
   assert.ok(stats.sourceUsagePermissionActions.some(item => item.action === "honor_source_deletion_or_restore_with_owner_approval"));
+  assert.equal(stats.sourceDeletionImpactSummaries.length, 2);
+  assert.deepEqual(stats.sourceDeletionImpactSummaries.map(item => item.sourceId), ["src-3", "src-4"]);
+  assert.equal(stats.sourceDeletionImpactSummaries.find(item => item.sourceId === "src-4").wouldDisableTraining, true);
   assert.deepEqual(stats.sourceColdStartTierCounts, {
     tier_1_official_public:1,
     tier_3_partner_practitioner_case:2,
