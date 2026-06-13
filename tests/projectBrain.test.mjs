@@ -51,7 +51,28 @@ test("knowledge import disables unsafe source training flags", () => {
   });
   assert.equal(reins.collection_method, "manual");
   assert.equal(reins.training_allowed, false);
-  assert.deepEqual(reins.metadata.import_warnings, ["reins_collection_method_sanitized"]);
+  assert.deepEqual(reins.metadata.import_warnings, [
+    "reins_collection_method_sanitized",
+    "training_disabled_high_risk",
+    "training_disabled_high_risk_source_type",
+  ]);
+
+  const contract = normalizeImportedSourceRegistryRecord({
+    source_type:"contract",
+    consent_scope:"none",
+    risk_level:"restricted",
+    deletion_requested:true,
+    training_allowed:true,
+    metadata:{ owner:"ops", import_warnings:["training_disabled_high_risk"] },
+  });
+  assert.equal(contract.training_allowed, false);
+  assert.equal(contract.metadata.owner, "ops");
+  assert.deepEqual(contract.metadata.import_warnings, [
+    "training_disabled_high_risk",
+    "training_disabled_missing_explicit_consent",
+    "training_disabled_deleted_source",
+    "training_disabled_high_risk_source_type",
+  ]);
 });
 
 test("knowledge document ingest builds source, units, and evidence refs", () => {
