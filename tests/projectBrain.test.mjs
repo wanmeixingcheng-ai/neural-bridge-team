@@ -1913,6 +1913,13 @@ test("source registry update payload versions records and disables high-risk tra
   assert.equal(update.record.metadata.changed_by, "reviewer");
   assert.equal(update.record.metadata.change_reason, "source_reclassified");
   assert.equal(update.quality.ok, true);
+  assert.equal(update.coldStartTier, "unclassified");
+  assert.equal(update.trainingEligible, false);
+  assert.equal(update.usagePermissions.reference.allowed, false);
+  assert.equal(update.usagePermissions.reference.reasons.includes("source_not_approved"), true);
+  assert.equal(update.usagePermissions.derivative.allowed, false);
+  assert.equal(update.usagePermissions.training.allowed, false);
+  assert.equal(update.usagePermissions.training.reasons.includes("high_risk_source_type"), true);
   assert.deepEqual(trainingEligibleSources([update.record]), []);
 });
 
