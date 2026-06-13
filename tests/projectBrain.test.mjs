@@ -763,6 +763,10 @@ test("knowledge brain search only returns approved source-backed phase 1 records
       { id:"src-candidate", review_status:"candidate", deletion_requested:false },
       { id:"src-deleted", review_status:"approved", deletion_requested:true },
     ],
+    evidenceRefs:[
+      { id:"ev-direct", source_id:"src-approved", target_type:"knowledge_unit", target_id:"ku-1", review_status:"approved", locator:"page 7", quote:"hazard evidence quote", risk_level:"low" },
+      { id:"ev-candidate-source", source_id:"src-candidate", target_type:"knowledge_unit", target_id:"ku-2", review_status:"approved", locator:"page 8", quote:"hazard candidate source quote", risk_level:"low" },
+    ],
     policyRules:[
       { id:"rule-1", source_id:"src-approved", review_status:"approved", title:"Hazard policy", rule_type:"risk", rule_text:"hazard findings require expert review", evidence_ref_ids:["ev-rule"] },
       { id:"rule-candidate-source", source_id:"src-candidate", review_status:"approved", title:"Hazard candidate source", rule_text:"hazard", evidence_ref_ids:["ev-x"] },
@@ -784,7 +788,9 @@ test("knowledge brain search only returns approved source-backed phase 1 records
     ],
   });
 
-  assert.deepEqual(hits.map(hit => hit.id).sort(), ["calc-1", "eval-1", "risk-1", "rule-1", "scenario-1"].sort());
+  assert.deepEqual(hits.map(hit => hit.id).sort(), ["calc-1", "ev-direct", "eval-1", "risk-1", "rule-1", "scenario-1"].sort());
+  assert.equal(hits.find(hit => hit.id === "ev-direct").type, "evidence_ref");
+  assert.deepEqual(hits.find(hit => hit.id === "ev-direct").evidenceRefIds, ["ev-direct"]);
   assert.equal(hits.find(hit => hit.id === "risk-1").type, "jre_risk");
   assert.deepEqual(hits.find(hit => hit.id === "calc-1").sourceIds, ["src-approved"]);
   assert.deepEqual(hits.find(hit => hit.id === "rule-1").evidenceRefIds, ["ev-rule"]);
@@ -827,16 +833,22 @@ test("knowledge panel search includes approved knowledge brain records and legac
       { id:"ku-approved", source_id:"src-approved", review_status:"approved", title:"Approved", content:"hazard source-backed content", evidence_ref_ids:["ev-1"], metadata:{ legacyDocumentId:"doc-approved", legacyChunkIndex:0 } },
       { id:"ku-candidate-source", source_id:"src-candidate", review_status:"approved", title:"Candidate source", content:"hazard should not appear" },
     ],
+    evidenceRefs:[
+      { id:"ev-panel", source_id:"src-approved", target_type:"knowledge_unit", target_id:"ku-approved", review_status:"approved", locator:"page 3", quote:"hazard panel evidence", risk_level:"low" },
+      { id:"ev-candidate-source", source_id:"src-candidate", target_type:"knowledge_unit", target_id:"ku-candidate-source", review_status:"approved", locator:"page 4", quote:"hazard candidate source evidence", risk_level:"low" },
+    ],
     policyRules:[
       { id:"rule-1", source_id:"src-approved", review_status:"approved", risk_level:"low", title:"Hazard policy", rule_type:"risk", rule_text:"hazard findings require expert review", evidence_ref_ids:["ev-rule"] },
     ],
   });
 
   assert.equal(hits.some(hit => hit.id === "ku-approved"), true);
+  assert.equal(hits.some(hit => hit.id === "ev-panel"), true);
   assert.equal(hits.some(hit => hit.id === "rule-1"), true);
   assert.equal(hits.some(hit => hit.id === "chunk-ok"), true);
   assert.equal(hits.some(hit => hit.id === "chunk-candidate"), false);
   assert.equal(hits.some(hit => hit.id === "ku-candidate-source"), false);
+  assert.equal(hits.some(hit => hit.id === "ev-candidate-source"), false);
 });
 
 test("training eligible sources require opt-in, approval, low risk, and no deletion request", () => {
