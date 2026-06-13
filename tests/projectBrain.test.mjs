@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceUsagePermissionReport, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -754,6 +754,25 @@ test("source training eligibility report explains blocked training reasons", () 
     high_risk_source:1,
     high_risk_source_type:1,
   });
+});
+
+test("source contribution consent report tracks free tier opt-in and withdrawal audit", () => {
+  const report = sourceContributionConsentReport([
+    { id:"free-ok", contributor_tier:"free_tier", consent_scope:"explicit_opt_in", training_allowed:true, deletion_requested:false },
+    { id:"free-missing", metadata:{ contributor_tier:"free_tier" }, consent_scope:"none", training_allowed:false, deletion_requested:false },
+    { id:"partner", contributor_tier:"partner", consent_scope:"opt_in", training_allowed:true, deletion_requested:false },
+    { id:"deleted", contributor_tier:"free_tier", consent_scope:"none", training_allowed:false, deletion_requested:true, metadata:{ deletion_requested_at:"2026-06-12T00:00:00.000Z", training_withdrawn_at:"2026-06-12T00:00:00.000Z" } },
+  ]);
+
+  assert.equal(report.total, 4);
+  assert.equal(report.freeTierSources, 3);
+  assert.equal(report.freeTierMissingOptIn, 2);
+  assert.equal(report.trainingAllowedSources, 2);
+  assert.equal(report.trainingAllowedWithoutExplicitConsent, 1);
+  assert.equal(report.deletionRequestedSources, 1);
+  assert.equal(report.withdrawalAuditRecords, 1);
+  assert.equal(report.byContributorTier.free_tier, 3);
+  assert.equal(report.byConsentScope.none, 2);
 });
 
 test("source usage permissions separate reference derivative and training boundaries", () => {
@@ -1509,7 +1528,7 @@ test("versioned approved knowledge patch records reviewer metadata", () => {
 test("knowledge brain inventory stats expose review, risk, evidence, and training counts", () => {
   const stats = knowledgeBrainInventoryStats({
     sources:[
-      { id:"src-1", source_type:"public_manual", title:"Public source", provider:"MLIT", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low", version:1, consent_scope:"explicit_opt_in" },
+      { id:"src-1", source_type:"public_manual", title:"Public source", provider:"MLIT", review_status:"approved", training_allowed:true, deletion_requested:false, risk_level:"low", version:1, consent_scope:"explicit_opt_in", contributor_tier:"free_tier" },
       { id:"src-2", source_type:"attachment", title:"Candidate source", review_status:"candidate", training_allowed:false, deletion_requested:false, risk_level:"medium", version:1, metadata:{ cold_start_tier:"partner_practitioner_case" } },
       { id:"src-3", source_type:"contract", title:"Deleted contract", review_status:"archived", training_allowed:false, deletion_requested:true, risk_level:"high", version:1, metadata:{ cold_start_tier:"partner_practitioner_case" } },
       { id:"src-4", source_type:"contract", title:"Bad source", review_status:"approved", training_allowed:true, deletion_requested:true, risk_level:"high", version:1, consent_scope:"none", metadata:{ cold_start_tier:"industry_association" } },
@@ -1561,6 +1580,8 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
     high_risk_source:2,
     high_risk_source_type:2,
   });
+  assert.equal(stats.sourceContributionConsentReport.freeTierSources, 1);
+  assert.equal(stats.sourceContributionConsentReport.trainingAllowedWithoutExplicitConsent, 1);
   assert.equal(stats.sourceUsagePermissionReport.length, 4);
   assert.equal(stats.sourceUsagePermissionReport[0].source_id, "src-1");
   assert.equal(stats.sourceUsagePermissionReport[0].reference.allowed, true);
