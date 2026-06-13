@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -753,6 +753,87 @@ test("source training eligibility report explains blocked training reasons", () 
     high_risk_source:1,
     high_risk_source_type:1,
   });
+});
+
+test("source usage permissions separate reference derivative and training boundaries", () => {
+  const publicSource = sourceUsagePermissions({
+    id:"public",
+    source_type:"public_manual",
+    review_status:"approved",
+    risk_level:"low",
+    training_allowed:true,
+    consent_scope:"explicit_opt_in",
+    deletion_requested:false,
+  });
+  assert.equal(publicSource.reference.allowed, true);
+  assert.equal(publicSource.derivative.allowed, true);
+  assert.equal(publicSource.training.allowed, true);
+
+  const contractSource = sourceUsagePermissions({
+    id:"contract",
+    source_type:"contract",
+    review_status:"approved",
+    risk_level:"high",
+    training_allowed:true,
+    consent_scope:"explicit_opt_in",
+    deletion_requested:false,
+    metadata:{ reviewed_by:"takken-reviewer", reviewed_at:"2026-06-12T00:00:00.000Z" },
+  });
+  assert.equal(contractSource.reference.allowed, true);
+  assert.equal(contractSource.derivative.allowed, false);
+  assert.deepEqual(contractSource.derivative.reasons, ["high_risk_derivative_requires_explicit_approval"]);
+  assert.equal(contractSource.training.allowed, false);
+  assert.deepEqual(contractSource.training.reasons, [
+    "high_risk_source",
+    "high_risk_source_type",
+  ]);
+
+  const explicitlyApprovedDerivative = sourceUsagePermissions({
+    id:"reins-case",
+    source_type:"reins_user_upload",
+    review_status:"approved",
+    risk_level:"high",
+    training_allowed:false,
+    consent_scope:"none",
+    deletion_requested:false,
+    metadata:{
+      derivative_allowed:true,
+      reviewed_by:"takken-reviewer",
+      reviewed_at:"2026-06-12T00:00:00.000Z",
+    },
+  });
+  assert.equal(explicitlyApprovedDerivative.reference.allowed, true);
+  assert.equal(explicitlyApprovedDerivative.derivative.allowed, true);
+  assert.equal(explicitlyApprovedDerivative.training.allowed, false);
+
+  const deleted = sourceUsagePermissions({
+    id:"deleted",
+    source_type:"public_manual",
+    review_status:"approved",
+    risk_level:"low",
+    training_allowed:true,
+    consent_scope:"explicit_opt_in",
+    deletion_requested:true,
+  });
+  assert.equal(deleted.reference.allowed, false);
+  assert.equal(deleted.derivative.allowed, false);
+  assert.deepEqual(deleted.reference.reasons, ["deletion_requested"]);
+});
+
+test("source usage permission blocker counts expose scope-specific reasons", () => {
+  const counts = sourceUsagePermissionBlockedReasonCounts([
+    { id:"candidate", source_type:"public_manual", review_status:"candidate", risk_level:"low", training_allowed:false, consent_scope:"none", deletion_requested:false },
+    { id:"contract", source_type:"contract", review_status:"approved", risk_level:"high", training_allowed:false, consent_scope:"none", deletion_requested:false, metadata:{} },
+  ]);
+
+  assert.equal(counts["reference:source_not_approved"], 1);
+  assert.equal(counts["derivative:source_not_approved"], 1);
+  assert.equal(counts["derivative:high_risk_derivative_requires_explicit_approval"], 1);
+  assert.equal(counts["derivative:missing_reviewed_by"], 1);
+  assert.equal(counts["derivative:missing_reviewed_at"], 1);
+  assert.equal(counts["training:training_not_enabled"], 2);
+  assert.equal(counts["training:missing_explicit_consent"], 2);
+  assert.equal(counts["training:high_risk_source_type"], 1);
 });
 
 test("source cold start tier classifies explicit and known source categories", () => {
