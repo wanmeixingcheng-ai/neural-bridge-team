@@ -1548,6 +1548,8 @@ test("high-risk tool readiness gates source contribution consent gaps", () => {
 
   assert.equal(readiness.ready, false);
   assert.equal(readiness.externalReleaseAllowed, false);
+  assert.equal(readiness.blockers.filter(item => item.gate === "source_contribution_consent").length, 2);
+  assert.equal(readiness.blockers.some(item => item.gate === "cold_start_readiness" && `${item.sub_gate || ""}`.startsWith("source_contribution_consent:")), false);
   assert.ok(readiness.blockers.some(item => item.gate === "source_contribution_consent"));
   assert.ok(readiness.actions.some(item => item.readinessGate === "source_contribution_consent" && item.action === "collect_free_tier_explicit_opt_in_or_disable_use"));
   assert.equal(readiness.sourceContributionConsentReport.trainingAllowedWithoutExplicitConsent, 1);
