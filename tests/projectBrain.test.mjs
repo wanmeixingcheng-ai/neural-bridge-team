@@ -244,6 +244,10 @@ test("source registry ingest payload enforces training and REINS boundaries", ()
   assert.equal(publicSource.quality.ok, true);
   assert.equal(publicSource.record.training_allowed, true);
   assert.equal(publicSource.trainingEligible, true);
+  assert.equal(publicSource.coldStartTier, "unclassified");
+  assert.equal(publicSource.usagePermissions.reference.allowed, true);
+  assert.equal(publicSource.usagePermissions.derivative.allowed, true);
+  assert.equal(publicSource.usagePermissions.training.allowed, true);
   assert.equal(publicSource.record.metadata.owner, "free-tier-user");
   assert.equal(publicSource.record.metadata.legacySource, "public_manual");
 
@@ -262,6 +266,11 @@ test("source registry ingest payload enforces training and REINS boundaries", ()
   assert.equal(reinsSource.record.risk_level, "high");
   assert.equal(reinsSource.record.training_allowed, false);
   assert.equal(reinsSource.trainingEligible, false);
+  assert.equal(reinsSource.coldStartTier, "unclassified");
+  assert.equal(reinsSource.usagePermissions.reference.allowed, true);
+  assert.equal(reinsSource.usagePermissions.derivative.allowed, false);
+  assert.equal(reinsSource.usagePermissions.training.allowed, false);
+  assert.equal(reinsSource.usagePermissions.training.reasons.includes("high_risk_source_type"), true);
   assert.deepEqual(reinsSource.record.metadata.import_warnings, [
     "reins_collection_method_sanitized",
     "training_disabled_high_risk",
