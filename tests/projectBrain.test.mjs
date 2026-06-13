@@ -694,6 +694,14 @@ test("source registry filters review risk training query and deletion state", ()
   });
 
   assert.deepEqual(filtered.map(source => source.id), ["new", "old"]);
+
+  const sourceTypeMatches = filterSourceRegistryRecords([
+    { id:"reins", title:"Uploaded listing", provider:"User", source_type:"reins_user_upload", review_status:"candidate", risk_level:"high", training_allowed:false, deletion_requested:false, updated_at:"2026-06-12T01:00:00.000Z" },
+  ], {
+    query:"reins_user_upload",
+  });
+
+  assert.deepEqual(sourceTypeMatches.map(source => source.id), ["reins"]);
 });
 
 test("source registry update payload versions records and disables high-risk training", () => {
