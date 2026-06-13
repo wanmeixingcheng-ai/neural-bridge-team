@@ -294,6 +294,10 @@ test("knowledge document ingest builds source, units, and evidence refs", () => 
   assert.equal(records.source.source_type, "attachment");
   assert.equal(records.source.review_status, "candidate");
   assert.equal(records.source.training_allowed, false);
+  assert.equal(records.sourceColdStartTier, "unclassified");
+  assert.equal(records.sourceTrainingEligible, false);
+  assert.equal(records.sourceUsagePermissions.reference.allowed, false);
+  assert.equal(records.sourceUsagePermissions.reference.reasons.includes("source_not_approved"), true);
   assert.equal(records.knowledgeUnits.length, 2);
   assert.equal(records.evidenceRefs.length, 2);
   assert.equal(records.knowledgeUnits[0].source_id, records.source.id);
@@ -318,6 +322,10 @@ test("knowledge document ingest keeps REINS uploads high-risk and out of trainin
   assert.equal(records.source.source_type, "reins_user_upload");
   assert.equal(records.source.risk_level, "high");
   assert.equal(records.source.training_allowed, false);
+  assert.equal(records.sourceTrainingEligible, false);
+  assert.equal(records.sourceUsagePermissions.derivative.allowed, false);
+  assert.equal(records.sourceUsagePermissions.training.allowed, false);
+  assert.equal(records.sourceUsagePermissions.training.reasons.includes("high_risk_source_type"), true);
   assert.equal(records.knowledgeUnits[0].risk_level, "high");
   assert.equal(records.evidenceRefs[0].risk_level, "high");
 });
