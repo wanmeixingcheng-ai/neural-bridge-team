@@ -2246,13 +2246,13 @@ test("knowledge brain review queue summarizes pending and expert review work", (
 test("knowledge brain review queue items expose actionable reasons across stores", () => {
   const items = knowledgeBrainReviewQueueItems({
     sources:[
-      { id:"src-review", source_type:"manual", title:"Source", review_status:"candidate", risk_level:"medium", version:1 },
+      { id:"src-review", source_type:"manual", provider:"PartnerCo", title:"Source", review_status:"candidate", risk_level:"medium", version:1 },
     ],
     evidenceRefs:[
       { id:"ev-risk", source_id:"src-review", target_type:"knowledge_unit", target_id:"ku-risk", locator:"", quote:"", review_status:"candidate", risk_level:"high", version:1 },
     ],
     knowledgeUnits:[
-      { id:"ku-risk", source_id:"src-review", domain:"D01", title:"Risk", content:"High risk source-backed finding.", review_status:"candidate", risk_level:"high", version:1, evidence_ref_ids:[] },
+      { id:"ku-risk", source_id:"src-review", domain:"D01", title:"Risk", content:"High risk source-backed finding.", review_status:"candidate", risk_level:"high", version:1, evidence_ref_ids:[], metadata:{ reviewer_role:"legal_expert" } },
     ],
     policyRules:[
       { id:"rule-risk", source_id:"src-review", rule_type:"expert", title:"Expert", rule_text:"Expert review required.", review_status:"in_review", risk_level:"high", version:1, evidence_ref_ids:[], requires_expert_confirmation:true },
@@ -2273,6 +2273,12 @@ test("knowledge brain review queue items expose actionable reasons across stores
   });
 
   assert.equal(items[0].risk_level, "high");
+  const riskUnit = items.find(item => item.target_id === "ku-risk");
+  assert.equal(riskUnit.title, "Risk");
+  assert.equal(riskUnit.domain, "D01");
+  assert.equal(riskUnit.version, 1);
+  assert.equal(riskUnit.reviewer_role, "legal_expert");
+  assert.equal(items.find(item => item.target_id === "src-review").provider, "PartnerCo");
   assert.equal(items.some(item => item.target_type === "evidence_ref" && item.reasons.includes("missing_locator")), true);
   assert.equal(items.some(item => item.target_id === "ku-risk" && item.reasons.includes("high_risk_missing_evidence")), true);
   assert.equal(items.some(item => item.target_id === "rule-risk" && item.reasons.includes("expert_confirmation_required")), true);
@@ -2295,6 +2301,9 @@ test("knowledge brain review queue action summary groups reviewer work", () => {
   assert.ok(summary.some(item => item.action === "attach_approved_evidence" && item.targetIds.includes("knowledge_unit:ku-1")));
   assert.ok(summary.some(item => item.action === "record_expert_reviewer_metadata" && item.current === 1 && item.reasons.missing_reviewed_by === 1 && item.reasons.missing_reviewed_at === 1));
   assert.ok(summary.some(item => item.action === "attach_calculation_sources" && item.targetIds.includes("calculation_run:calc-1")));
+  assert.deepEqual(summary.find(item => item.action === "assign_expert_reviewer").targetTypes, { knowledge_unit:1 });
+  assert.equal(summary.find(item => item.action === "attach_approved_evidence").highRiskTargets, 1);
+  assert.deepEqual(summary.find(item => item.action === "attach_calculation_sources").riskLevels, { medium:1 });
   assert.equal(summary.find(item => item.action === "complete_record_review").blocksApproval, false);
 });
 
@@ -2326,6 +2335,15 @@ test("knowledge brain review queue items filter target source review risk reason
 
   assert.deepEqual(calculationItems.map(item => item.target_id), ["calc-1"]);
   assert.deepEqual(calculationItems[0].source_ids, ["src-calc"]);
+
+  const metadataSearchItems = [
+    { target_type:"knowledge_unit", target_id:"ku-title", title:"Partner valuation note", domain:"D06", version:3, source_id:"src-partner", provider:"PartnerCo", reviewer_role:"takken_shi", review_status:"in_review", risk_level:"medium", reasons:["needs_review"] },
+  ];
+
+  assert.deepEqual(filterKnowledgeBrainReviewQueueItems(metadataSearchItems, { query:"Partner valuation" }).map(item => item.target_id), ["ku-title"]);
+  assert.deepEqual(filterKnowledgeBrainReviewQueueItems(metadataSearchItems, { query:"D06" }).map(item => item.target_id), ["ku-title"]);
+  assert.deepEqual(filterKnowledgeBrainReviewQueueItems(metadataSearchItems, { query:"takken_shi" }).map(item => item.target_id), ["ku-title"]);
+  assert.deepEqual(filterKnowledgeBrainReviewQueueItems(metadataSearchItems, { query:"3" }).map(item => item.target_id), ["ku-title"]);
 });
 
 test("workflow artifact memory title is local to project brain", async () => {
