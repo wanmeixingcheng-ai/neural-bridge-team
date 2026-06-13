@@ -1736,6 +1736,11 @@ test("high-risk tools stay internal until cold start and eval set gates pass", (
   assert.equal(blocked.releaseMode, "internal_pilot");
   assert.equal(blocked.externalReleaseAllowed, false);
   assert.equal(blocked.internalPilotAllowed, true);
+  assert.equal(blocked.supportedTool, true);
+  assert.equal(blocked.blockerSummary.byGate.cold_start_readiness > 0, true);
+  assert.equal(blocked.blockerSummary.byGate.eval_set_mix > 0, true);
+  assert.equal(blocked.externalReleaseBlockedReasons.includes("approved_knowledge_units"), true);
+  assert.equal(blocked.externalReleaseBlockedReasons.includes("eval_case_category_prohibited_behavior"), true);
   assert.ok(blocked.blockers.some(item => item.gate === "cold_start_readiness"));
   assert.ok(blocked.blockers.some(item => item.gate === "eval_set_mix"));
   assert.ok(blocked.actions.some(item => item.readinessGate === "cold_start_readiness" && item.action === "ingest_approved_knowledge_units"));
@@ -1771,8 +1776,11 @@ test("high-risk tools stay internal until cold start and eval set gates pass", (
   });
 
   assert.equal(ready.ready, true);
+  assert.equal(ready.supportedTool, true);
   assert.equal(ready.releaseMode, "external_release");
   assert.equal(ready.externalReleaseAllowed, true);
+  assert.deepEqual(ready.externalReleaseBlockedReasons, []);
+  assert.deepEqual(ready.blockerSummary, { total:0, byGate:{}, bySubGate:{} });
   assert.deepEqual(ready.blockers, []);
   assert.deepEqual(ready.actions, []);
 });
@@ -1789,6 +1797,9 @@ test("high-risk tool readiness reports unsupported tool configuration action", (
   });
 
   assert.equal(readiness.ready, false);
+  assert.equal(readiness.supportedTool, false);
+  assert.equal(readiness.blockerSummary.byGate.high_risk_tool_id, 1);
+  assert.equal(readiness.externalReleaseBlockedReasons.includes("high_risk_tool_id"), true);
   assert.deepEqual(readiness.actions.map(item => item.action), ["select_supported_high_risk_tool"]);
   assert.equal(readiness.actions[0].readinessGate, "tool_configuration");
 });
