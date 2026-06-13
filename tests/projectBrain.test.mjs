@@ -964,6 +964,8 @@ test("knowledge brain reference integrity detects broken source and evidence gra
       { id:"ev-wrong-target", source_id:"src-approved", target_type:"knowledge_unit", target_id:"other-ku", review_status:"approved" },
       { id:"ev-candidate", source_id:"src-approved", target_type:"jre_risk", target_id:"risk-1", review_status:"candidate" },
       { id:"ev-missing-source", source_id:"src-missing", target_type:"calculation_run", target_id:"calc-1", review_status:"approved" },
+      { id:"ev-deleted-source", source_id:"src-deleted", target_type:"scenario", target_id:"scenario-deleted-evidence-source", review_status:"candidate" },
+      { id:"ev-unapproved-source", source_id:"src-candidate", target_type:"eval_case", target_id:"eval-unapproved-evidence-source", review_status:"approved" },
     ],
     knowledgeUnits:[
       { id:"ku-unapproved-source", source_id:"src-candidate", review_status:"approved", risk_level:"medium", evidence_ref_ids:[] },
@@ -975,9 +977,11 @@ test("knowledge brain reference integrity detects broken source and evidence gra
     ],
     scenarios:[
       { id:"scenario-missing-source", source_id:"src-missing", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[] },
+      { id:"scenario-deleted-evidence-source", source_id:"src-approved", review_status:"candidate", risk_level:"medium", evidence_ref_ids:["ev-deleted-source"] },
     ],
     evalCases:[
       { id:"eval-missing-evidence", source_id:"src-approved", review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-missing-eval"] },
+      { id:"eval-unapproved-evidence-source", source_id:"src-approved", review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-unapproved-source"] },
     ],
     japaneseRealEstateRecords:[
       { id:"risk-1", entity_type:"risk", source_id:"src-approved", review_status:"approved", risk_level:"high", evidence_ref_ids:["ev-candidate"] },
@@ -990,9 +994,11 @@ test("knowledge brain reference integrity detects broken source and evidence gra
   assert.equal(integrity.ok, false);
   assert.deepEqual(integrity.issues.map(issue => issue.issue).sort(), [
     "approved_record_unapproved_evidence",
+    "approved_evidence_unapproved_source",
     "approved_record_unapproved_source",
     "approved_record_unapproved_source",
     "deleted_source_ref",
+    "evidence_deleted_source_ref",
     "evidence_missing_source_ref",
     "evidence_target_mismatch",
     "high_risk_unapproved_evidence",
@@ -1008,6 +1014,8 @@ test("knowledge brain reference integrity detects broken source and evidence gra
   assert.equal(integrity.issues.find(issue => issue.target_id === "rule-unapproved-source").issue, "approved_record_unapproved_source");
   assert.equal(integrity.issues.find(issue => issue.target_id === "scenario-missing-source").issue, "missing_source_ref");
   assert.equal(integrity.issues.find(issue => issue.target_id === "eval-missing-evidence").issue, "missing_evidence_ref");
+  assert.equal(integrity.issues.find(issue => issue.target_id === "scenario-deleted-evidence-source").issue, "evidence_deleted_source_ref");
+  assert.equal(integrity.issues.find(issue => issue.target_id === "eval-unapproved-evidence-source").issue, "approved_evidence_unapproved_source");
   assert.equal(integrity.issues.some(issue => issue.target_id === "risk-1" && issue.issue === "missing_reviewed_by"), true);
 });
 
@@ -1018,6 +1026,7 @@ test("knowledge brain reference integrity actions map issues to repair guidance"
       { target_type:"knowledge_unit", target_id:"ku-2", issue:"evidence_target_mismatch", evidence_ref_id:"ev-1" },
       { target_type:"jre_risk", target_id:"risk-1", issue:"high_risk_unapproved_evidence", evidence_ref_id:"ev-2" },
       { target_type:"policy_rule", target_id:"rule-1", issue:"missing_reviewed_by" },
+      { target_type:"scenario", target_id:"scenario-1", issue:"approved_evidence_unapproved_source", evidence_ref_id:"ev-3", source_id:"src-candidate" },
       { target_type:"calculation_run", target_id:"calc-1", issue:"unknown_issue" },
     ],
   });
@@ -1027,11 +1036,13 @@ test("knowledge brain reference integrity actions map issues to repair guidance"
     "relink_evidence_to_target",
     "expert_review_evidence_before_approval",
     "record_expert_reviewer_metadata",
+    "approve_evidence_source_before_record",
     "manual_review_required",
   ]);
   assert.equal(actions[0].blocks_approval, true);
   assert.equal(actions[3].blocks_approval, true);
-  assert.equal(actions[4].blocks_approval, false);
+  assert.equal(actions[4].blocks_approval, true);
+  assert.equal(actions[5].blocks_approval, false);
 });
 
 test("knowledge brain reference integrity actions filter blockers target source issue action and query", () => {
