@@ -1824,6 +1824,7 @@ test("source registry filters review risk training query and deletion state", ()
     { id:"candidate", title:"Hazard draft", provider:"Tokyo", source_type:"public_web", review_status:"candidate", risk_level:"low", training_allowed:true, deletion_requested:false, updated_at:"2026-06-12T03:00:00.000Z" },
     { id:"high", title:"Hazard REINS upload", provider:"User", source_type:"reins_user_upload", review_status:"approved", risk_level:"high", training_allowed:false, deletion_requested:false, updated_at:"2026-06-12T04:00:00.000Z" },
     { id:"deleted", title:"Hazard deleted", provider:"Tokyo", source_type:"public_web", review_status:"approved", risk_level:"low", training_allowed:true, deletion_requested:true, metadata:{ deletion_requested_at:"2026-06-12T00:00:00.000Z", deletion_reason:"free_tier_opt_out" }, updated_at:"2026-06-12T05:00:00.000Z" },
+    { id:"partner-case", title:"Partner valuation case", provider:"PartnerCo", source_type:"desensitized_case", review_status:"candidate", risk_level:"medium", training_allowed:false, deletion_requested:false, metadata:{ cold_start_tier:"tier_3_partner_practitioner_case" }, updated_at:"2026-06-12T06:00:00.000Z" },
   ];
   const filtered = filterSourceRegistryRecords([
     ...sources,
@@ -1840,6 +1841,8 @@ test("source registry filters review risk training query and deletion state", ()
   assert.deepEqual(filterSourceRegistryRecords(sources, { query:"public_reference" }).map(source => source.id), ["new", "old"]);
   assert.deepEqual(filterSourceRegistryRecords(sources, { query:"project_local_default" }).map(source => source.id), ["new", "old"]);
   assert.deepEqual(filterSourceRegistryRecords(sources, { includeDeleted:true, query:"free_tier_opt_out" }).map(source => source.id), ["deleted"]);
+  assert.deepEqual(filterSourceRegistryRecords(sources, { coldStartTiers:["tier_3_partner_practitioner_case"] }).map(source => source.id), ["partner-case"]);
+  assert.deepEqual(filterSourceRegistryRecords(sources, { query:"tier_3_partner_practitioner_case" }).map(source => source.id), ["partner-case"]);
 
   const sourceTypeMatches = filterSourceRegistryRecords([
     { id:"reins", title:"Uploaded listing", provider:"User", source_type:"reins_user_upload", review_status:"candidate", risk_level:"high", training_allowed:false, deletion_requested:false, updated_at:"2026-06-12T01:00:00.000Z" },
