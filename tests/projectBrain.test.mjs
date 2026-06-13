@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartReadiness, knowledgeBrainDomainCoverage, knowledgeBrainHighRiskToolReadiness, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceColdStartTier, sourceColdStartTierCounts, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -879,6 +880,42 @@ test("knowledge brain domain coverage tracks D01-D16 unit and eval gaps", () => 
   assert.equal(coverage.missingApprovedKnowledgeUnitDomains.includes("D02"), true);
   assert.equal(coverage.missingEvalCaseDomains.includes("D02"), true);
   assert.equal(coverage.missingEvalCaseDomains.includes("D01"), false);
+});
+
+test("cold start domain plan maps D01-D16 into source acquisition phases", () => {
+  assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_1_official_public.domains, ["D07", "D08", "D16"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_2_industry_templates.domains, ["D01", "D02", "D03", "D09", "D10"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_3_partner_cases.domains, ["D04", "D05", "D06"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS.phase_2_4_ai_assisted_long_tail.domains, ["D11", "D12", "D13", "D14", "D15"]);
+
+  const coveredDomains = Object.values(KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS).flatMap(group => group.domains).sort();
+  assert.deepEqual(coveredDomains, [...JRE_KNOWLEDGE_DOMAINS].sort());
+});
+
+test("cold start domain plan reports phase targets and missing domains", () => {
+  const officialUnits = Array.from({ length:300 }, (_, index) => ({
+    id:`ku-official-${index}`,
+    domain:index % 2 === 0 ? "D07" : "D08",
+    review_status:"approved",
+  }));
+  const plan = knowledgeBrainColdStartDomainPlan({
+    knowledgeUnits:[
+      ...officialUnits,
+      { id:"ku-d01", domain:"D01", review_status:"approved" },
+      { id:"ku-d04", domain:"D04", review_status:"candidate" },
+    ],
+    evalCases:[
+      { id:"eval-d07", domain:"D07", review_status:"approved" },
+      { id:"eval-d01", domain:"D01", review_status:"candidate" },
+    ],
+  });
+
+  assert.equal(plan.groups.phase_2_1_official_public.approvedKnowledgeUnits, 300);
+  assert.equal(plan.groups.phase_2_1_official_public.targetMet, true);
+  assert.deepEqual(plan.groups.phase_2_1_official_public.missingApprovedKnowledgeUnitDomains, ["D16"]);
+  assert.deepEqual(plan.groups.phase_2_2_industry_templates.missingEvalCaseDomains, ["D02", "D03", "D09", "D10"]);
+  assert.equal(plan.groups.phase_2_3_partner_cases.targetMet, false);
+  assert.equal(plan.allTargetsMet, false);
 });
 
 test("eval case category counts support cold-start eval set mix tracking", () => {
