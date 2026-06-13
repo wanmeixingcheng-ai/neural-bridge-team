@@ -1172,6 +1172,8 @@ test("high-risk tools stay internal until cold start and eval set gates pass", (
   assert.equal(blocked.internalPilotAllowed, true);
   assert.ok(blocked.blockers.some(item => item.gate === "cold_start_readiness"));
   assert.ok(blocked.blockers.some(item => item.gate === "eval_set_mix"));
+  assert.ok(blocked.actions.some(item => item.readinessGate === "cold_start_readiness" && item.action === "ingest_approved_knowledge_units"));
+  assert.ok(blocked.actions.some(item => item.readinessGate === "eval_set_mix" && item.action === "create_prohibited_behavior_eval_cases"));
 
   const ready = knowledgeBrainHighRiskToolReadiness({
     sources:[
@@ -1206,6 +1208,23 @@ test("high-risk tools stay internal until cold start and eval set gates pass", (
   assert.equal(ready.releaseMode, "external_release");
   assert.equal(ready.externalReleaseAllowed, true);
   assert.deepEqual(ready.blockers, []);
+  assert.deepEqual(ready.actions, []);
+});
+
+test("high-risk tool readiness reports unsupported tool configuration action", () => {
+  const readiness = knowledgeBrainHighRiskToolReadiness({
+    sources:[],
+    knowledgeUnits:[],
+    evalCases:[],
+  }, {
+    toolId:"M9",
+    coldStartOptions:{ minApprovedKnowledgeUnits:0, minEvalCases:0, requireAllDomains:false, requireOfficialPublicSource:false, requireIndustryAssociationSource:false, requirePartnerPractitionerSource:false, requireCleanReferenceIntegrity:false },
+    evalMixOptions:{ minEvalCases:0, minCategoryRatios:{} },
+  });
+
+  assert.equal(readiness.ready, false);
+  assert.deepEqual(readiness.actions.map(item => item.action), ["select_supported_high_risk_tool"]);
+  assert.equal(readiness.actions[0].readinessGate, "tool_configuration");
 });
 
 test("source registry filters review risk training query and deletion state", () => {
