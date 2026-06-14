@@ -59,18 +59,18 @@ function recordsFromBody(body = {}) {
 function runtimeConfigFromBody(body = {}) {
   const config = body.runtime && typeof body.runtime === "object" ? body.runtime : body;
   return {
-    toolId:config.toolId || "",
-    taskType:config.taskType || "",
+    toolId:config.toolId || config.tool_id || "",
+    taskType:config.taskType || config.task_type || "",
     prompt:config.prompt || "",
-    languageMode:config.languageMode || "ja",
-    riskLevel:config.riskLevel || "medium",
-    retrievalResults:Array.isArray(config.retrievalResults) ? config.retrievalResults : [],
-    policyRules:Array.isArray(config.policyRules) ? config.policyRules : [],
+    languageMode:config.languageMode || config.language_mode || "ja",
+    riskLevel:config.riskLevel || config.risk_level || "medium",
+    retrievalResults:Array.isArray(config.retrievalResults) ? config.retrievalResults : Array.isArray(config.retrieval_results) ? config.retrieval_results : [],
+    policyRules:Array.isArray(config.policyRules) ? config.policyRules : Array.isArray(config.policy_rules) ? config.policy_rules : [],
     template:config.template || null,
-    templateInputs:config.templateInputs || {},
-    answerBody:config.answerBody || "",
-    localOnly:config.localOnly === true,
-    auditOnly:config.auditOnly === true,
+    templateInputs:config.templateInputs || config.template_inputs || {},
+    answerBody:config.answerBody || config.answer_body || "",
+    localOnly:config.localOnly === true || config.local_only === true,
+    auditOnly:config.auditOnly === true || config.audit_only === true,
   };
 }
 
@@ -95,11 +95,12 @@ function knowledgeBrainResponse(action, body = {}) {
     return { ok:true, action, tools:knowledgeBrainToolRegistry() };
   }
   if (action === "runtime_gate") {
-    const runtime = buildKnowledgeBrainRuntimeResult(runtimeConfigFromBody(body));
-    const toolGate = knowledgeBrainToolRuntimeGate(body.toolId || body.runtime?.toolId || "", {
+    const runtimeConfig = runtimeConfigFromBody(body);
+    const runtime = buildKnowledgeBrainRuntimeResult(runtimeConfig);
+    const toolGate = knowledgeBrainToolRuntimeGate(runtimeConfig.toolId, {
       toolValidationRuns:records.toolValidationRuns,
       evalCases:records.evalCases,
-      externalRelease:body.externalRelease === true,
+      externalRelease:body.externalRelease === true || body.external_release === true,
     });
     return {
       ok:true,
@@ -109,7 +110,7 @@ function knowledgeBrainResponse(action, body = {}) {
       event:buildRuntimeGateEventRecord({
         tool_id:runtime.tool_id,
         action,
-        task_type:body.runtime?.taskType || body.taskType || "",
+        task_type:runtimeConfig.taskType,
         risk_level:runtime.risk_level === "critical" ? "restricted" : runtime.risk_level,
         route:runtime.route,
         policy:runtime.policy,

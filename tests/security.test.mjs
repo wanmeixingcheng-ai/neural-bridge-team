@@ -398,18 +398,18 @@ test("knowledge brain api computes runtime gate without provider transit", async
       body: JSON.stringify({
         action:"runtime_gate",
         runtime:{
-          toolId:"M4",
-          taskType:"valuation",
+          tool_id:"M4",
+          task_type:"valuation",
           prompt:"賃料査定の根拠を確認する",
-          riskLevel:"high",
-          retrievalResults:[
+          risk_level:"high",
+          retrieval_results:[
             { id:"ku-approved-1", sourceId:"src-official-1", title:"Approved source", content:"Official approved valuation note." },
           ],
-          localOnly:true,
+          local_only:true,
         },
         records:{
-          toolValidationRuns:[],
-          evalCases:[],
+          tool_validation_runs:[],
+          eval_cases:[],
         },
       }),
     });
