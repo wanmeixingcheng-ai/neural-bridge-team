@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceTrainingEligibilityReport, filterSourceUsagePermissionReport, highRiskToolValidationReadiness, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainExportManifest, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, knowledgePanelSearchResults, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceDeletionImpactSummary, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseFalseNegativeCoverage, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceRegistryRecords, filterSourceTrainingEligibilityReport, filterSourceUsagePermissionReport, highRiskToolValidationReadiness, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainExportManifest, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, knowledgePanelSearchResults, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceDeletionImpactSummary, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -1657,6 +1657,25 @@ test("eval case mix readiness actions map blockers to category build tasks", () 
   ]);
 });
 
+test("eval case false negative coverage gates high-risk tool release", () => {
+  const blocked = evalCaseFalseNegativeCoverage([
+    { id:"draft-fn", tool_id:"M4", review_status:"candidate", eval_type:"false_negative" },
+    { id:"other-tool", tool_id:"M5", review_status:"approved", eval_type:"false_negative" },
+  ], { toolId:"M4", minCases:1 });
+
+  assert.equal(blocked.ready, false);
+  assert.deepEqual(blocked.caseIds, []);
+  assert.deepEqual(blocked.blockers, [{ gate:"false_negative_eval_cases", current:0, required:1 }]);
+  assert.equal(blocked.actions[0].action, "create_false_negative_eval_cases");
+
+  const ready = evalCaseFalseNegativeCoverage([
+    { id:"approved-fn", tool_id:"M4", review_status:"approved", metadata:{ eval_type:"false_negative" } },
+  ], { toolId:"M4" });
+
+  assert.equal(ready.ready, true);
+  assert.deepEqual(ready.caseIds, ["approved-fn"]);
+});
+
 test("knowledge brain cold start readiness reports v0.1 blockers", () => {
   const blocked = knowledgeBrainColdStartReadiness({
     sources:[
@@ -1854,15 +1873,19 @@ test("high-risk tools stay internal until cold start and eval set gates pass", (
   assert.equal(blocked.supportedTool, true);
   assert.equal(blocked.blockerSummary.byGate.cold_start_readiness > 0, true);
   assert.equal(blocked.blockerSummary.byGate.eval_set_mix > 0, true);
+  assert.equal(blocked.blockerSummary.byGate.false_negative_eval_set > 0, true);
   assert.equal(blocked.blockerSummary.byGate.internal_validation > 0, true);
   assert.equal(blocked.externalReleaseBlockedReasons.includes("approved_knowledge_units"), true);
   assert.equal(blocked.externalReleaseBlockedReasons.includes("eval_case_category_prohibited_behavior"), true);
+  assert.equal(blocked.externalReleaseBlockedReasons.includes("false_negative_eval_cases"), true);
   assert.equal(blocked.externalReleaseBlockedReasons.includes("false_negative_findings"), true);
   assert.ok(blocked.blockers.some(item => item.gate === "cold_start_readiness"));
   assert.ok(blocked.blockers.some(item => item.gate === "eval_set_mix"));
+  assert.ok(blocked.blockers.some(item => item.gate === "false_negative_eval_set"));
   assert.ok(blocked.blockers.some(item => item.gate === "internal_validation"));
   assert.ok(blocked.actions.some(item => item.readinessGate === "cold_start_readiness" && item.action === "ingest_approved_knowledge_units"));
   assert.ok(blocked.actions.some(item => item.readinessGate === "eval_set_mix" && item.action === "create_prohibited_behavior_eval_cases"));
+  assert.ok(blocked.actions.some(item => item.readinessGate === "false_negative_eval_set" && item.action === "create_false_negative_eval_cases"));
   assert.ok(blocked.actions.some(item => item.readinessGate === "internal_validation" && item.action === "repair_false_negative_eval_failures"));
 
   const ready = knowledgeBrainHighRiskToolReadiness({
@@ -1879,6 +1902,7 @@ test("high-risk tools stay internal until cold start and eval set gates pass", (
       { id:"scenario", source_id:"src-1", prompt:"Scenario.", expected_behavior:"Route correctly.", review_status:"approved", risk_level:"medium", version:1, scenario_id:"scenario-1" },
       { id:"retrieval", source_id:"src-1", prompt:"Retrieve.", expected_behavior:"Cite evidence.", review_status:"approved", risk_level:"medium", version:1, evidence_ref_ids:["ev-1"] },
       { id:"boundary", source_id:"src-1", prompt:"Boundary.", expected_behavior:"Ask for expert review.", review_status:"approved", risk_level:"medium", version:1, metadata:{ eval_category:"boundary" } },
+      { id:"false-negative", source_id:"src-1", tool_id:"M5", prompt:"Missed contract risk.", expected_behavior:"Flag needs confirmation.", review_status:"approved", risk_level:"high", version:1, metadata:{ eval_type:"false_negative", eval_category:"boundary" } },
     ],
     toolValidationRuns:[
       { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
@@ -1916,6 +1940,7 @@ test("high-risk tool readiness reports unsupported tool configuration action", (
     evalCases:[],
   }, {
     toolId:"M9",
+    requireFalseNegativeEvalCoverage:false,
     requireInternalValidation:false,
     coldStartOptions:{ minApprovedKnowledgeUnits:0, minEvalCases:0, requireAllDomains:false, requireOfficialPublicSource:false, requireIndustryAssociationSource:false, requirePartnerPractitionerSource:false, requireCleanReferenceIntegrity:false },
     evalMixOptions:{ minEvalCases:0, minCategoryRatios:{} },
@@ -1944,6 +1969,7 @@ test("high-risk tool readiness gates source contribution consent gaps", () => {
       { id:"scenario", source_id:"src-1", prompt:"Scenario.", expected_behavior:"Route correctly.", review_status:"approved", risk_level:"medium", version:1, scenario_id:"scenario-1" },
       { id:"retrieval", source_id:"src-1", prompt:"Retrieve.", expected_behavior:"Cite evidence.", review_status:"approved", risk_level:"medium", version:1, evidence_ref_ids:["ev-1"] },
       { id:"boundary", source_id:"src-1", prompt:"Boundary.", expected_behavior:"Ask for expert review.", review_status:"approved", risk_level:"medium", version:1, metadata:{ eval_category:"boundary" } },
+      { id:"false-negative", source_id:"src-1", tool_id:"M4", prompt:"Missed assessment risk.", expected_behavior:"Flag needs confirmation.", review_status:"approved", risk_level:"high", version:1, metadata:{ eval_type:"false_negative", eval_category:"boundary" } },
     ],
   }, {
     toolId:"M4",
