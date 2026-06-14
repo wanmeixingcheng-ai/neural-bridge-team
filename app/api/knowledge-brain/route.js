@@ -22,18 +22,24 @@ const KNOWLEDGE_BRAIN_RATE_LIMIT = 20;
 
 function recordsFromBody(body = {}) {
   const records = body.records && typeof body.records === "object" ? body.records : body;
+  const recordArray = (...names) => {
+    for (const name of names) {
+      if (Array.isArray(records[name])) return records[name];
+    }
+    return [];
+  };
   return {
-    sources:Array.isArray(records.sources) ? records.sources : [],
-    knowledgeUnits:Array.isArray(records.knowledgeUnits) ? records.knowledgeUnits : [],
-    evidenceRefs:Array.isArray(records.evidenceRefs) ? records.evidenceRefs : [],
-    policyRules:Array.isArray(records.policyRules) ? records.policyRules : [],
-    scenarios:Array.isArray(records.scenarios) ? records.scenarios : [],
-    evalCases:Array.isArray(records.evalCases) ? records.evalCases : [],
-    japaneseRealEstateRecords:Array.isArray(records.japaneseRealEstateRecords) ? records.japaneseRealEstateRecords : [],
-    calculationRuns:Array.isArray(records.calculationRuns) ? records.calculationRuns : [],
-    propertyDossiers:Array.isArray(records.propertyDossiers) ? records.propertyDossiers : [],
-    toolValidationRuns:Array.isArray(records.toolValidationRuns) ? records.toolValidationRuns : [],
-    runtimeGateEvents:Array.isArray(records.runtimeGateEvents) ? records.runtimeGateEvents : [],
+    sources:recordArray("sources", "source_registry"),
+    knowledgeUnits:recordArray("knowledgeUnits", "knowledge_units"),
+    evidenceRefs:recordArray("evidenceRefs", "evidence_refs"),
+    policyRules:recordArray("policyRules", "policy_rules"),
+    scenarios:recordArray("scenarios"),
+    evalCases:recordArray("evalCases", "eval_cases"),
+    japaneseRealEstateRecords:recordArray("japaneseRealEstateRecords", "japanese_real_estate_records"),
+    calculationRuns:recordArray("calculationRuns", "calculation_runs"),
+    propertyDossiers:recordArray("propertyDossiers", "property_dossiers"),
+    toolValidationRuns:recordArray("toolValidationRuns", "tool_validation_runs"),
+    runtimeGateEvents:recordArray("runtimeGateEvents", "runtime_gate_events"),
   };
 }
 

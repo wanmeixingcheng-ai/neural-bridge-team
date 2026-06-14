@@ -459,7 +459,7 @@ test("knowledge brain api routes runtime gate events into review queue", async (
       body: JSON.stringify({
         action:"review_queue",
         records:{
-          runtimeGateEvents:[
+          runtime_gate_events:[
             { id:"rt-api-risk", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-risk"], knowledge_ids:["ku-risk"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
             { id:"rt-api-other", tool_id:"M1", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:false, blocked_external_reason:"local_only", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-other"], knowledge_ids:["ku-other"], response_status:200, review_status:"candidate", risk_level:"medium", version:1 },
           ],
