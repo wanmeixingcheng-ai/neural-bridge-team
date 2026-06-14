@@ -184,6 +184,7 @@ Primary users: project manager, internal team, future customers
 - M4 / M5 outputs must be framed as review candidates or "needs confirmation" findings, not as final legal, financial, tax, or brokerage advice.
 - M4 / M5 must require approved source references, evidence refs, policy rules, and Eval Set coverage before external release.
 - Eval Set E12 coverage for M4 / M5 must be stricter than template-first tools and include false-negative tests for missing "needs confirmation" flags.
+- M4 / M5 internal validation must be stored as `tool_validation_runs` with `mode=internal_pilot`, source_ids, evidence_ref_ids, eval_case_ids, review_status, risk_level, version, zero false-negative findings, and expert reviewer metadata before any external release gate can pass.
 - Customer-facing M4 / M5 release requires an explicit human approval decision after internal validation and expert review workflow evidence.
 ```
 

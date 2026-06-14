@@ -143,4 +143,7 @@ test("project constraints define knowledge brain cold start and high risk tool g
   assert.match(constraints, /M4 valuation rationale and M5 contract risk check/);
   assert.match(constraints, /internal employee assistive tools/);
   assert.match(constraints, /false-negative tests for missing "needs confirmation" flags/);
+  assert.match(constraints, /tool_validation_runs/);
+  assert.match(constraints, /mode=internal_pilot/);
+  assert.match(constraints, /zero false-negative findings/);
 });
