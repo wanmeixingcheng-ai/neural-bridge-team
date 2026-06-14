@@ -463,6 +463,9 @@ test("knowledge brain api routes runtime gate events into review queue", async (
             { id:"rt-api-risk", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-risk"], knowledge_ids:["ku-risk"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
             { id:"rt-api-other", tool_id:"M1", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:false, blocked_external_reason:"local_only", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-other"], knowledge_ids:["ku-other"], response_status:200, review_status:"candidate", risk_level:"medium", version:1 },
           ],
+          risk_records:[
+            { id:"risk-api-1", entity_type:"risk", source_id:"src-risk", property_id:"prop-api-1", title:"Contract risk", risk_type:"contract", finding:"Needs expert confirmation.", review_status:"candidate", risk_level:"high", evidence_ref_ids:[], requires_expert_confirmation:false, version:1 },
+          ],
         },
         targetTypes:["runtime_gate_event"],
         sourceIds:["src-risk"],
@@ -483,6 +486,8 @@ test("knowledge brain api routes runtime gate events into review queue", async (
     assert.equal(payload.action, "review_queue");
     assert.equal(payload.summary.runtimeGateEvents, 2);
     assert.equal(payload.summary.invalidRuntimeGateEvents, 1);
+    assert.equal(payload.summary.japaneseRealEstateRecords, 1);
+    assert.equal(payload.summary.invalidJapaneseRealEstateRecords, 1);
     assert.equal(payload.items.length, 1);
     assert.equal(payload.items[0].target_type, "runtime_gate_event");
     assert.equal(payload.items[0].target_id, "rt-api-risk");

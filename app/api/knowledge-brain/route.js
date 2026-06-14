@@ -28,6 +28,19 @@ function recordsFromBody(body = {}) {
     }
     return [];
   };
+  const japaneseRealEstateRecords = [
+    ...recordArray("japaneseRealEstateRecords", "japanese_real_estate_records"),
+    ...recordArray("property_records"),
+    ...recordArray("land_records"),
+    ...recordArray("building_records"),
+    ...recordArray("lease_records"),
+    ...recordArray("expense_records"),
+    ...recordArray("loan_records"),
+    ...recordArray("tax_records"),
+    ...recordArray("risk_records"),
+    ...recordArray("area_records"),
+    ...recordArray("transaction_records"),
+  ];
   return {
     sources:recordArray("sources", "source_registry"),
     knowledgeUnits:recordArray("knowledgeUnits", "knowledge_units"),
@@ -35,7 +48,7 @@ function recordsFromBody(body = {}) {
     policyRules:recordArray("policyRules", "policy_rules"),
     scenarios:recordArray("scenarios"),
     evalCases:recordArray("evalCases", "eval_cases"),
-    japaneseRealEstateRecords:recordArray("japaneseRealEstateRecords", "japanese_real_estate_records"),
+    japaneseRealEstateRecords,
     calculationRuns:recordArray("calculationRuns", "calculation_runs"),
     propertyDossiers:recordArray("propertyDossiers", "property_dossiers"),
     toolValidationRuns:recordArray("toolValidationRuns", "tool_validation_runs"),
