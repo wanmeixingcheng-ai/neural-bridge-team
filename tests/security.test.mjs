@@ -445,6 +445,53 @@ test("knowledge brain api computes runtime gate without provider transit", async
   }
 });
 
+test("knowledge brain api routes runtime gate events into review queue", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  const token = createSessionToken();
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/knowledge-brain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action:"review_queue",
+        records:{
+          runtimeGateEvents:[
+            { id:"rt-api-risk", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-risk"], knowledge_ids:["ku-risk"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
+          ],
+        },
+        targetTypes:["runtime_gate_event"],
+        reasons:["high_risk_external_model_allowed"],
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await knowledgeBrainPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.action, "review_queue");
+    assert.equal(payload.items.length, 1);
+    assert.equal(payload.items[0].target_type, "runtime_gate_event");
+    assert.equal(payload.items[0].target_id, "rt-api-risk");
+    assert.equal(payload.items[0].tool_id, "M4");
+    assert.equal(payload.items[0].reasons.includes("high_risk_external_model_allowed"), true);
+  } finally {
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+  }
+});
+
 test("knowledge brain api exposes authenticated tool registry", async () => {
   const previousSecret = process.env.APP_AUTH_SECRET;
   const previousPassword = process.env.APP_PASSWORD;

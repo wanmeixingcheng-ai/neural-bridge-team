@@ -31,6 +31,7 @@ function recordsFromBody(body = {}) {
     calculationRuns:Array.isArray(records.calculationRuns) ? records.calculationRuns : [],
     propertyDossiers:Array.isArray(records.propertyDossiers) ? records.propertyDossiers : [],
     toolValidationRuns:Array.isArray(records.toolValidationRuns) ? records.toolValidationRuns : [],
+    runtimeGateEvents:Array.isArray(records.runtimeGateEvents) ? records.runtimeGateEvents : [],
   };
 }
 
