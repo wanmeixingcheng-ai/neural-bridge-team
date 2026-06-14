@@ -130,20 +130,24 @@ test("memory conflict predicate only matches conflict metadata", () => {
   assert.equal(memoryHasConflict({}), false);
 });
 
-test("project constraints define knowledge brain cold start and high risk tool gates", () => {
+test("project constraints define restored knowledge brain policy runtime and handoff gates", () => {
   const constraints = readFileSync(new URL("../PROJECT_CONSTRAINTS.md", import.meta.url), "utf8");
 
-  assert.match(constraints, /Knowledge Brain cold-start is a product-critical bottleneck/);
-  assert.match(constraints, /800-1,500 approved knowledge units/);
-  assert.match(constraints, /300-500 eval cases/);
-  assert.match(constraints, /Tier 1 official public sources/);
-  assert.match(constraints, /Tier 3 partner practitioner cases/);
-  assert.match(constraints, /AI-assisted drafts/);
-  assert.match(constraints, /Partner practitioner cases and contributed real-world examples are non-training by default/);
-  assert.match(constraints, /M4 valuation rationale and M5 contract risk check/);
-  assert.match(constraints, /internal employee assistive tools/);
-  assert.match(constraints, /false-negative tests for missing "needs confirmation" flags/);
-  assert.match(constraints, /tool_validation_runs/);
-  assert.match(constraints, /mode=internal_pilot/);
-  assert.match(constraints, /zero false-negative findings/);
+  for (const section of Array.from({ length:15 }, (_, index) => index + 1)) {
+    assert.match(constraints, new RegExp(`## ${section}\\.`));
+  }
+  for (const policyId of Array.from({ length:11 }, (_, index) => `P${`${index + 1}`.padStart(3, "0")}`)) {
+    assert.match(constraints, new RegExp(policyId));
+  }
+  assert.match(constraints, /所有工具（M1–M10）必须通过 Knowledge Brain 调用知识/);
+  assert.match(constraints, /禁止工具 hardcode Prompt 直接调用大模型/);
+  assert.match(constraints, /review_status = "approved"/);
+  assert.match(constraints, /Output Builder 输出规范/);
+  assert.match(constraints, /"knowledge_ids_cited"/);
+  assert.match(constraints, /handoff_packages 数据结构/);
+  assert.match(constraints, /target_agent_or_tool/);
+  assert.match(constraints, /https:\/\/system\.reins\.jp\/login\/main\/KG\/GKG001200/);
+  assert.match(constraints, /不代理登录 \/ 不自动抓取/);
+  assert.match(constraints, /用户业务数据默认只存本地 IndexedDB/);
+  assert.match(constraints, /M1–M10 Tool Integration/);
 });

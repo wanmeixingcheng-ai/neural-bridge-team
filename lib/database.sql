@@ -285,6 +285,50 @@ create table if not exists nb_calculation_runs (
   )
 );
 
+create table if not exists nb_property_dossiers (
+  id text primary key,
+  property_id text not null,
+  dossier_type text not null default 'workspace_snapshot',
+  title text not null,
+  source_ids jsonb not null default '[]'::jsonb,
+  evidence_ref_ids jsonb not null default '[]'::jsonb,
+  jre_record_ids jsonb not null default '{}'::jsonb,
+  calculation_run_ids jsonb not null default '[]'::jsonb,
+  summary_snapshot jsonb not null default '{}'::jsonb,
+  unresolved_risk_ids jsonb not null default '[]'::jsonb,
+  review_status text not null default 'candidate',
+  risk_level text not null default 'medium',
+  version integer not null default 1,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint nb_property_dossiers_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
+  constraint nb_property_dossiers_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
+  constraint nb_property_dossiers_version_chk check (version >= 1),
+  constraint nb_property_dossiers_core_text_chk check (length(trim(property_id)) > 0 and length(trim(dossier_type)) > 0 and length(trim(title)) > 0),
+  constraint nb_property_dossiers_payload_chk check (
+    jsonb_typeof(source_ids) = 'array' and
+    jsonb_typeof(evidence_ref_ids) = 'array' and
+    jsonb_typeof(jre_record_ids) = 'object' and
+    jsonb_typeof(calculation_run_ids) = 'array' and
+    jsonb_typeof(summary_snapshot) = 'object' and
+    jsonb_typeof(unresolved_risk_ids) = 'array' and
+    jsonb_typeof(metadata) = 'object' and
+    jsonb_array_length(source_ids) > 0 and
+    jsonb_array_length(evidence_ref_ids) > 0
+  ),
+  constraint nb_property_dossiers_high_risk_review_metadata_chk check (
+    review_status <> 'approved' or risk_level not in ('high', 'restricted') or (
+      length(trim(metadata->>'reviewed_by')) > 0 and length(trim(metadata->>'reviewed_at')) > 0
+    )
+  ),
+  constraint nb_property_dossiers_approved_review_metadata_chk check (
+    review_status <> 'approved' or (
+      length(trim(metadata->>'reviewed_by')) > 0 and length(trim(metadata->>'reviewed_at')) > 0
+    )
+  )
+);
+
 create table if not exists nb_tool_validation_runs (
   id text primary key,
   tool_id text not null,
@@ -373,6 +417,15 @@ create index if not exists nb_calculation_runs_risk_idx on nb_calculation_runs (
 create index if not exists nb_calculation_runs_property_type_idx on nb_calculation_runs (property_id, calculation_type);
 create index if not exists nb_calculation_runs_source_ids_idx on nb_calculation_runs using gin (source_ids);
 create index if not exists nb_calculation_runs_evidence_ref_ids_idx on nb_calculation_runs using gin (evidence_ref_ids);
+create index if not exists nb_property_dossiers_property_idx on nb_property_dossiers (property_id);
+create index if not exists nb_property_dossiers_type_idx on nb_property_dossiers (dossier_type);
+create index if not exists nb_property_dossiers_review_idx on nb_property_dossiers (review_status);
+create index if not exists nb_property_dossiers_risk_idx on nb_property_dossiers (risk_level);
+create index if not exists nb_property_dossiers_property_review_idx on nb_property_dossiers (property_id, review_status);
+create index if not exists nb_property_dossiers_source_ids_idx on nb_property_dossiers using gin (source_ids);
+create index if not exists nb_property_dossiers_evidence_ref_ids_idx on nb_property_dossiers using gin (evidence_ref_ids);
+create index if not exists nb_property_dossiers_jre_record_ids_idx on nb_property_dossiers using gin (jre_record_ids);
+create index if not exists nb_property_dossiers_calculation_run_ids_idx on nb_property_dossiers using gin (calculation_run_ids);
 create index if not exists nb_tool_validation_runs_tool_idx on nb_tool_validation_runs (tool_id);
 create index if not exists nb_tool_validation_runs_mode_idx on nb_tool_validation_runs (mode);
 create index if not exists nb_tool_validation_runs_status_idx on nb_tool_validation_runs (status);

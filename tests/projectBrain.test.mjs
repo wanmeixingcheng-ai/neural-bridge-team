@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildToolValidationRunUpdatePayload, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseFalseNegativeCoverage, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceReferenceSearchEligibilityReport, filterSourceRegistryRecords, filterSourceTrainingEligibilityReport, filterSourceUsagePermissionReport, filterToolValidationRunQualityActions, filterToolValidationRunRecords, highRiskToolValidationReadiness, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainExportManifest, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, knowledgePanelSearchResults, listToolValidationRuns, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, putToolValidationRun, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceDeletionImpactSummary, sourceReferenceSearchEligibilityActions, sourceReferenceSearchEligibilityReport, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, toolValidationRunQualityActions, trainingEligibleSources, updateToolValidationRun, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildPropertyDossierRecordFromWorkspace, buildPropertyDossierUpdatePayload, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildToolValidationRunUpdatePayload, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseFalseNegativeCoverage, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterPropertyDossierRecords, filterSourceReferenceSearchEligibilityReport, filterSourceRegistryRecords, filterSourceTrainingEligibilityReport, filterSourceUsagePermissionReport, filterToolValidationRunQualityActions, filterToolValidationRunRecords, highRiskToolValidationReadiness, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainExportManifest, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, knowledgePanelSearchResults, listPropertyDossiers, listToolValidationRuns, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putPropertyDossier, putSourceRegistryRecord, putToolValidationRun, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceDeletionImpactSummary, sourceReferenceSearchEligibilityActions, sourceReferenceSearchEligibilityReport, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, toolValidationRunQualityActions, trainingEligibleSources, updatePropertyDossier, updateToolValidationRun, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -18,7 +18,7 @@ test("project brain ignores empty chunk content", () => {
 test("knowledge database upgrades create missing indexes on existing stores", () => {
   const source = readFileSync(new URL("../lib/projectBrain.mjs", import.meta.url), "utf8");
 
-  assert.match(source, /const KB_DB_VERSION = 6;/);
+  assert.match(source, /const KB_DB_VERSION = 7;/);
   assert.match(source, /function ensureKnowledgeBrainIndexes/);
   assert.match(source, /store\.indexNames\.contains\(indexName\)/);
   assert.match(source, /createKnowledgeBrainStores\(db, transaction\)/);
@@ -240,6 +240,10 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
     calculation_runs:[
       { id:"calc-1", source_ids:[], review_status:"candidate", risk_level:"medium", version:1 },
     ],
+    property_dossiers:[
+      { id:"dossier-1", property_id:"prop-1", dossier_type:"due_diligence", title:"Dossier", source_ids:["src-1"], evidence_ref_ids:["ev-1"], calculation_run_ids:["calc-1"], jre_record_ids:{}, summary_snapshot:{}, unresolved_risk_ids:[], review_status:"approved", risk_level:"high", version:1, metadata:{ reviewed_by:"analyst", reviewed_at:"2026-06-12T00:00:00.000Z", reviewer_role:"investment_analyst" } },
+      { id:"dossier-missing-source", property_id:"prop-1", dossier_type:"due_diligence", title:"Missing source dossier", source_ids:[], evidence_ref_ids:[], calculation_run_ids:[], jre_record_ids:{}, summary_snapshot:{}, unresolved_risk_ids:[], review_status:"candidate", risk_level:"restricted", version:1 },
+    ],
     tool_validation_runs:[
       { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-fn-m5"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
       { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-fn-m5"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
@@ -247,24 +251,26 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
     ],
   });
 
-  assert.equal(manifest.schemaVersion, 6);
-  assert.equal(manifest.total, 9);
-  assert.equal(manifest.approvedRecords, 7);
-  assert.equal(manifest.highRiskRecords, 6);
-  assert.equal(manifest.approvedHighRiskRecords, 5);
-  assert.equal(manifest.missingSourceId, 2);
+  assert.equal(manifest.schemaVersion, 7);
+  assert.equal(manifest.total, 11);
+  assert.equal(manifest.approvedRecords, 8);
+  assert.equal(manifest.highRiskRecords, 8);
+  assert.equal(manifest.approvedHighRiskRecords, 6);
+  assert.equal(manifest.missingSourceId, 3);
   assert.equal(manifest.missingVersion, 1);
-  assert.equal(manifest.highRiskMissingEvidence, 2);
+  assert.equal(manifest.highRiskMissingEvidence, 3);
   assert.equal(manifest.stores.source_registry.total, 1);
   assert.equal(manifest.stores.knowledge_units.highRiskRecords, 2);
   assert.equal(manifest.stores.knowledge_units.approvedHighRiskRecords, 1);
   assert.deepEqual(manifest.stores.knowledge_units.reviewStatuses, { approved:1, candidate:1 });
   assert.deepEqual(manifest.stores.knowledge_units.riskLevels, { high:1, restricted:1 });
   assert.equal(manifest.stores.calculation_runs.missingSourceId, 1);
+  assert.equal(manifest.stores.property_dossiers.missingSourceId, 1);
+  assert.equal(manifest.stores.property_dossiers.highRiskMissingEvidence, 1);
   assert.equal(manifest.stores.tool_validation_runs.total, 3);
-  assert.equal(manifest.reviewQueue.total, 2);
-  assert.equal(manifest.reviewQueue.highRiskExpertReview, 1);
-  assert.equal(manifest.referenceIntegrityIssues, 3);
+  assert.equal(manifest.reviewQueue.total, 3);
+  assert.equal(manifest.reviewQueue.highRiskExpertReview, 2);
+  assert.equal(manifest.referenceIntegrityIssues, 4);
   assert.equal(manifest.highRiskToolValidationReadiness.M5.ready, true);
   assert.equal(manifest.highRiskToolValidationReadiness.M4.ready, false);
   assert.equal(manifest.highRiskToolFalseNegativeCoverage.M5.ready, true);
@@ -694,6 +700,41 @@ test("property dossier reference context exposes source and evidence repair work
   assert.equal(dossier.reviewQueueActionSummary.some(item => item.action === "attach_evidence_or_downgrade_record"), true);
 });
 
+test("property dossier workspace payload becomes a persistent knowledge brain record", () => {
+  const payload = buildPropertyDossierRecordFromWorkspace({
+    propertyId:"prop-1",
+    title:"Prop 1 due diligence dossier",
+    dossierType:"investment_due_diligence",
+    records:[
+      { id:"prop-1", entity_type:"property", source_id:"src-property", property_id:"prop-1", title:"Property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-property"] },
+      { id:"lease-1", entity_type:"lease", source_id:"src-lease", property_id:"prop-1", title:"Lease", review_status:"approved", risk_level:"medium", version:1, rent_amount:150000, period:"monthly", calculation_method:"source_reported", evidence_ref_ids:["ev-lease"] },
+      { id:"risk-1", entity_type:"risk", source_id:"src-risk", property_id:"prop-1", title:"Unresolved risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-risk"], requires_expert_confirmation:false },
+      { id:"prop-2", entity_type:"property", source_id:"src-other", property_id:"prop-2", title:"Other property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-other"] },
+    ],
+    calculationRuns:[
+      { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", source_ids:["src-lease"], evidence_ref_ids:["ev-lease"], outputs:{ netYieldPercent:4.05 }, review_status:"candidate", risk_level:"medium" },
+      { id:"calc-other", property_id:"prop-2", calculation_type:"investment_metrics", source_ids:["src-other"], evidence_ref_ids:["ev-other"], outputs:{}, review_status:"candidate", risk_level:"medium" },
+    ],
+    reviewStatus:"candidate",
+    riskLevel:"medium",
+  });
+
+  assert.equal(payload.quality.ok, true);
+  assert.equal(payload.record.property_id, "prop-1");
+  assert.equal(payload.record.dossier_type, "investment_due_diligence");
+  assert.deepEqual(payload.record.source_ids, ["src-property", "src-lease", "src-risk"]);
+  assert.deepEqual(payload.record.evidence_ref_ids, ["ev-property", "ev-lease", "ev-risk"]);
+  assert.deepEqual(payload.record.jre_record_ids, {
+    property:["prop-1"],
+    lease:["lease-1"],
+    risk:["risk-1"],
+  });
+  assert.deepEqual(payload.record.calculation_run_ids, ["calc-1"]);
+  assert.deepEqual(payload.record.unresolved_risk_ids, ["risk-1"]);
+  assert.equal(payload.record.summary_snapshot.records, 3);
+  assert.equal(payload.record.summary_snapshot.calculationOutputs.investment_metrics.netYieldPercent, 4.05);
+});
+
 test("property dossier investment metrics use deterministic code and transaction price", () => {
   const metrics = buildPropertyDossierInvestmentMetrics({
     propertyId:"prop-1",
@@ -771,6 +812,61 @@ test("calculation run update payload versions deterministic outputs", () => {
   assert.equal(update.quality.ok, true);
   assert.equal(update.reviewQueueItems.some(item => item.target_type === "calculation_run" && item.target_id === "calc-1" && item.reasons.includes("needs_review")), true);
   assert.equal(update.reviewQueueActionSummary.some(item => item.action === "complete_record_review"), true);
+});
+
+test("property dossier update payload versions reviewable records", () => {
+  const update = buildPropertyDossierUpdatePayload({
+    id:"dossier-1",
+    property_id:"prop-1",
+    dossier_type:"workspace_snapshot",
+    title:"Prop 1 dossier",
+    source_ids:["src-1"],
+    evidence_ref_ids:["ev-1"],
+    jre_record_ids:{ property:["prop-1"] },
+    calculation_run_ids:["calc-1"],
+    summary_snapshot:{ records:1 },
+    unresolved_risk_ids:[],
+    review_status:"candidate",
+    risk_level:"medium",
+    version:2,
+    metadata:{ owner:"analyst" },
+  }, {
+    title:"Prop 1 reviewed dossier",
+  }, {
+    changedBy:"reviewer",
+    reason:"dossier_review",
+    reviewStatus:"approved",
+    now:"2026-06-14T00:00:00.000Z",
+  });
+
+  assert.equal(update.record.version, 3);
+  assert.equal(update.record.title, "Prop 1 reviewed dossier");
+  assert.equal(update.record.review_status, "approved");
+  assert.equal(update.record.metadata.reviewed_by, "reviewer");
+  assert.equal(update.record.metadata.reviewed_at, "2026-06-14T00:00:00.000Z");
+  assert.equal(update.quality.ok, true);
+});
+
+test("property dossier filters support property source review risk and query", () => {
+  const filtered = filterPropertyDossierRecords([
+    { id:"old", property_id:"prop-1", dossier_type:"workspace_snapshot", title:"Old", source_ids:["src-1"], evidence_ref_ids:["ev-old"], calculation_run_ids:["calc-old"], review_status:"candidate", risk_level:"medium", version:1, updated_at:"2026-06-12T01:00:00.000Z" },
+    { id:"new", property_id:"prop-1", dossier_type:"investment_due_diligence", title:"Net yield dossier", source_ids:["src-1"], evidence_ref_ids:["ev-new"], calculation_run_ids:["calc-new"], review_status:"candidate", risk_level:"medium", version:2, updated_at:"2026-06-12T02:00:00.000Z" },
+    { id:"approved", property_id:"prop-1", dossier_type:"investment_due_diligence", title:"Approved", source_ids:["src-1"], evidence_ref_ids:["ev-approved"], calculation_run_ids:["calc-approved"], review_status:"approved", risk_level:"medium", version:1, updated_at:"2026-06-12T03:00:00.000Z" },
+    { id:"other-property", property_id:"prop-2", dossier_type:"investment_due_diligence", title:"Other", source_ids:["src-1"], evidence_ref_ids:["ev-other"], calculation_run_ids:["calc-other"], review_status:"candidate", risk_level:"medium", version:1, updated_at:"2026-06-12T04:00:00.000Z" },
+    { id:"archived", property_id:"prop-1", dossier_type:"investment_due_diligence", title:"Archived", source_ids:["src-1"], evidence_ref_ids:["ev-archived"], calculation_run_ids:["calc-archived"], review_status:"archived", risk_level:"medium", version:1, updated_at:"2026-06-12T05:00:00.000Z" },
+  ], {
+    propertyId:"prop-1",
+    sourceIds:["src-1"],
+    reviewStatuses:["candidate"],
+    riskLevels:["medium"],
+    query:"yield",
+  });
+
+  assert.deepEqual(filtered.map(record => record.id), ["new"]);
+  assert.deepEqual(filterPropertyDossierRecords(filtered, { query:"calc-new" }).map(record => record.id), ["new"]);
+  assert.equal(typeof putPropertyDossier, "function");
+  assert.equal(typeof listPropertyDossiers, "function");
+  assert.equal(typeof updatePropertyDossier, "function");
 });
 
 test("calculation run filters property type source review risk query and archived records", () => {
@@ -1029,9 +1125,15 @@ test("knowledge brain search only returns approved source-backed phase 1 records
       { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"approved", source_ids:["src-approved"], evidence_ref_ids:["ev-calc"], inputs:{}, formulas:{}, outputs:{ hazardAdjustedYield:"hazard adjustment" } },
       { id:"calc-source-missing", property_id:"prop-1", calculation_type:"investment_metrics", review_status:"approved", source_ids:[], evidence_ref_ids:["ev-calc"], outputs:{ hazard:"hazard" } },
     ],
+    propertyDossiers:[
+      { id:"dossier-1", property_id:"prop-1", dossier_type:"due_diligence", title:"Hazard due diligence dossier", review_status:"approved", risk_level:"medium", source_ids:["src-approved"], evidence_ref_ids:["ev-dossier"], jre_record_ids:{ risk:["risk-1"] }, calculation_run_ids:["calc-1"], summary_snapshot:{ hazardFinding:"hazard source backed" }, unresolved_risk_ids:[], version:1, metadata:{ reviewed_by:"analyst", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"dossier-unreviewed", property_id:"prop-1", dossier_type:"due_diligence", title:"Hazard unreviewed dossier", review_status:"approved", risk_level:"medium", source_ids:["src-approved"], evidence_ref_ids:["ev-dossier"], jre_record_ids:{}, calculation_run_ids:["calc-1"], summary_snapshot:{ hazard:"hazard" }, unresolved_risk_ids:[], version:1, metadata:{} },
+      { id:"dossier-candidate-source", property_id:"prop-1", dossier_type:"due_diligence", title:"Hazard candidate source dossier", review_status:"approved", risk_level:"medium", source_ids:["src-candidate"], evidence_ref_ids:["ev-dossier"], jre_record_ids:{}, calculation_run_ids:["calc-1"], summary_snapshot:{ hazard:"hazard" }, unresolved_risk_ids:[], version:1, metadata:{ reviewed_by:"analyst", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"dossier-missing-calc", property_id:"prop-1", dossier_type:"due_diligence", title:"Hazard missing calculation dossier", review_status:"approved", risk_level:"medium", source_ids:["src-approved"], evidence_ref_ids:["ev-dossier"], jre_record_ids:{}, calculation_run_ids:["calc-missing"], summary_snapshot:{ hazard:"hazard" }, unresolved_risk_ids:[], version:1, metadata:{ reviewed_by:"analyst", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+    ],
   });
 
-  assert.deepEqual(hits.map(hit => hit.id).sort(), ["calc-1", "ev-direct", "eval-1", "risk-1", "rule-1", "scenario-1"].sort());
+  assert.deepEqual(hits.map(hit => hit.id).sort(), ["calc-1", "dossier-1", "ev-direct", "eval-1", "risk-1", "rule-1", "scenario-1"].sort());
   assert.equal(hits.find(hit => hit.id === "ev-direct").type, "evidence_ref");
   assert.deepEqual(hits.find(hit => hit.id === "ev-direct").evidenceRefIds, ["ev-direct"]);
   assert.deepEqual(hits.find(hit => hit.id === "ev-direct").sourceIds, ["src-approved"]);
@@ -1041,6 +1143,8 @@ test("knowledge brain search only returns approved source-backed phase 1 records
   assert.deepEqual(hits.find(hit => hit.id === "risk-1").sourceIds, ["src-approved"]);
   assert.deepEqual(hits.find(hit => hit.id === "calc-1").sourceIds, ["src-approved"]);
   assert.equal(hits.find(hit => hit.id === "calc-1").reviewStatus, "approved");
+  assert.equal(hits.find(hit => hit.id === "dossier-1").type, "property_dossier");
+  assert.deepEqual(hits.find(hit => hit.id === "dossier-1").sourceIds, ["src-approved"]);
   assert.deepEqual(hits.find(hit => hit.id === "rule-1").evidenceRefIds, ["ev-rule"]);
   assert.equal(hits.find(hit => hit.id === "rule-1").riskLevel, "");
   assert.equal(hits.find(hit => hit.id === "rule-1").version, 1);
@@ -1367,17 +1471,22 @@ test("reviewer role summary exposes takken reviewer gaps for partner case domain
     policyRules:[
       { id:"rule-high-missing", review_status:"approved", risk_level:"restricted", metadata:{ reviewed_by:"expert" } },
     ],
+    propertyDossiers:[
+      { id:"dossier-high-missing", review_status:"approved", risk_level:"high", metadata:{ reviewed_by:"analyst", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"dossier-reviewed", review_status:"approved", risk_level:"medium", metadata:{ reviewer_role:"investment_analyst" } },
+    ],
   });
 
-  assert.equal(summary.approvedRecords, 4);
-  assert.equal(summary.highRiskApprovedRecords, 2);
-  assert.equal(summary.missingReviewerRole, 2);
-  assert.equal(summary.highRiskMissingReviewerRole, 1);
+  assert.equal(summary.approvedRecords, 6);
+  assert.equal(summary.highRiskApprovedRecords, 3);
+  assert.equal(summary.missingReviewerRole, 3);
+  assert.equal(summary.highRiskMissingReviewerRole, 2);
   assert.equal(summary.takkenReviewedRecords, 1);
   assert.equal(summary.partnerCaseApprovedKnowledgeUnits, 2);
   assert.equal(summary.partnerCaseKnowledgeUnitsMissingTakkenRole, 1);
   assert.equal(summary.byRole.takken_shi, 1);
-  assert.equal(summary.byRole.unspecified, 2);
+  assert.equal(summary.byRole.investment_analyst, 1);
+  assert.equal(summary.byRole.unspecified, 3);
 });
 
 test("reviewer role actions expose reviewer capacity repair tasks", () => {
@@ -2304,6 +2413,9 @@ test("source deletion impact summary previews downstream archive and relink work
     calculationRuns:[
       { id:"calc-1", source_ids:["src-free-tier"], review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-1"] },
     ],
+    propertyDossiers:[
+      { id:"dossier-1", source_ids:["src-free-tier"], review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-1"] },
+    ],
     toolValidationRuns:[
       { id:"run-1", tool_id:"M4", source_ids:["src-free-tier"], review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-1"], eval_case_ids:["eval-1"] },
     ],
@@ -2311,20 +2423,21 @@ test("source deletion impact summary previews downstream archive and relink work
 
   assert.equal(impact.sourceFound, true);
   assert.equal(impact.wouldDisableTraining, true);
-  assert.equal(impact.linkedRecords, 5);
+  assert.equal(impact.linkedRecords, 6);
   assert.equal(impact.byStore.knowledgeUnits, 1);
   assert.equal(impact.byStore.evidenceRefs, 1);
   assert.equal(impact.byStore.japaneseRealEstateRecords, 1);
   assert.equal(impact.byStore.calculationRuns, 1);
+  assert.equal(impact.byStore.propertyDossiers, 1);
   assert.equal(impact.byStore.toolValidationRuns, 1);
-  assert.equal(impact.approvedLinkedRecords, 4);
+  assert.equal(impact.approvedLinkedRecords, 5);
   assert.equal(impact.highRiskLinkedRecords, 1);
-  assert.equal(impact.recordsUsingLinkedEvidence, 5);
+  assert.equal(impact.recordsUsingLinkedEvidence, 6);
   assert.deepEqual(impact.linkedRecordIds.knowledgeUnits, ["ku-1"]);
   assert.ok(impact.actions.some(item => item.action === "disable_training_and_record_withdrawal_audit"));
-  assert.ok(impact.actions.some(item => item.action === "archive_or_relink_approved_source_backed_records" && item.current === 4));
+  assert.ok(impact.actions.some(item => item.action === "archive_or_relink_approved_source_backed_records" && item.current === 5));
   assert.ok(impact.actions.some(item => item.action === "route_high_risk_deletion_impact_to_expert_review" && item.current === 1));
-  assert.ok(impact.actions.some(item => item.action === "relink_or_downgrade_records_using_deleted_evidence" && item.current === 5));
+  assert.ok(impact.actions.some(item => item.action === "relink_or_downgrade_records_using_deleted_evidence" && item.current === 6));
 });
 
 test("versioned knowledge patch increments version and resets review metadata", () => {
@@ -2407,6 +2520,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
     calculationRuns:[
       { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{ acquisitionPrice:60000000 }, formulas:{ grossYieldPercent:"annualPotentialRent / acquisitionPrice * 100" }, outputs:{ grossYieldPercent:3 }, source_ids:["src-1"], evidence_ref_ids:["ev-1"], review_status:"candidate", risk_level:"medium", version:1 },
       { id:"calc-bad", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"llm", inputs:{}, formulas:{}, outputs:{}, source_ids:[], evidence_ref_ids:[], review_status:"approved", risk_level:"medium", version:1 },
+    ],
+    propertyDossiers:[
+      { id:"dossier-1", property_id:"prop-1", dossier_type:"workspace_snapshot", title:"Candidate dossier", source_ids:["src-1"], evidence_ref_ids:["ev-1"], jre_record_ids:{ property:["prop-1"] }, calculation_run_ids:["calc-1"], summary_snapshot:{ records:1 }, unresolved_risk_ids:[], review_status:"candidate", risk_level:"medium", version:1 },
+      { id:"dossier-bad", property_id:"prop-1", dossier_type:"workspace_snapshot", title:"Broken dossier", source_ids:[], evidence_ref_ids:[], jre_record_ids:{}, calculation_run_ids:["calc-missing"], summary_snapshot:{}, unresolved_risk_ids:[], review_status:"approved", risk_level:"medium", version:1, metadata:{} },
     ],
     japaneseRealEstateRecords:[
       { id:"prop-1", entity_type:"property", source_id:"src-1", property_id:"prop-1", title:"Approved property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-1"] },
@@ -2501,9 +2618,9 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.evidenceRefQualityIssues.missing_locator, 1);
   assert.equal(stats.evidenceRefQualityIssues.high_risk_evidence_not_approved, 1);
   assert.equal(stats.evidenceRefQualityIssues.missing_quote_or_hash, 1);
-  assert.equal(stats.referenceIntegrityIssues, 0);
-  assert.deepEqual(stats.knowledgeBrainReferenceIntegrityIssues, []);
-  assert.deepEqual(stats.knowledgeBrainReferenceIntegrityActions, []);
+  assert.equal(stats.referenceIntegrityIssues, 1);
+  assert.equal(stats.knowledgeBrainReferenceIntegrityIssues[0].issue, "missing_calculation_run_ref");
+  assert.ok(stats.knowledgeBrainReferenceIntegrityActions.some(item => item.action === "attach_calculation_run_or_archive_dossier"));
   assert.equal(stats.reviewerRoleSummary.approvedRecords > 0, true);
   assert.equal(stats.reviewerRoleSummary.highRiskApprovedRecords, 2);
   assert.equal(stats.reviewerRoleSummary.highRiskMissingReviewerRole, 2);
@@ -2525,13 +2642,17 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.invalidCalculationRuns, 1);
   assert.equal(stats.calculationRunQualityIssues.non_deterministic_calculation, 1);
   assert.equal(stats.calculationRunQualityIssues.missing_inputs, 1);
+  assert.equal(stats.propertyDossiers, 2);
+  assert.equal(stats.propertyDossierReviewStatus.candidate, 1);
+  assert.equal(stats.invalidPropertyDossiers, 1);
+  assert.equal(stats.propertyDossierQualityIssues.missing_source_ids, 1);
   assert.equal(stats.japaneseRealEstateRecords, 2);
   assert.equal(stats.japaneseRealEstateRecordsByType.property, 1);
   assert.equal(stats.japaneseRealEstateRecordsByType.risk, 1);
   assert.equal(stats.invalidJapaneseRealEstateRecords, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.high_risk_missing_evidence, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.risk_record_missing_expert_confirmation, 1);
-  assert.equal(stats.reviewQueue.total, 8);
+  assert.equal(stats.reviewQueue.total, 9);
   assert.equal(stats.reviewQueue.sources, 1);
   assert.equal(stats.reviewQueue.knowledgeUnits, 2);
   assert.equal(stats.reviewQueue.evidenceRefs, 1);
@@ -2540,6 +2661,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.reviewQueue.evalCases, 0);
   assert.equal(stats.reviewQueue.japaneseRealEstateRecords, 1);
   assert.equal(stats.reviewQueue.calculationRuns, 1);
+  assert.equal(stats.reviewQueue.propertyDossiers, 1);
   assert.equal(stats.reviewQueue.highRiskExpertReview, 5);
   assert.deepEqual(stats.reviewQueue.invalidKnowledgeUnitIds, ["ku-2", "ku-4"]);
   assert.deepEqual(stats.reviewQueue.invalidEvidenceRefIds, ["ev-2"]);
@@ -2548,6 +2670,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.deepEqual(stats.reviewQueue.invalidEvalCaseIds, []);
   assert.deepEqual(stats.reviewQueue.invalidJapaneseRealEstateRecordIds, ["risk-1"]);
   assert.deepEqual(stats.reviewQueue.invalidCalculationRunIds, ["calc-bad"]);
+  assert.deepEqual(stats.reviewQueue.invalidPropertyDossierIds, ["dossier-bad"]);
   assert.equal(stats.reviewQueueItems.some(item => item.target_id === "rule-1" && item.reasons.includes("high_risk_missing_evidence")), true);
   assert.equal(stats.reviewQueueItems.some(item => item.target_id === "risk-1" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
   assert.ok(stats.reviewQueueActionSummary.some(item => item.action === "record_expert_reviewer_metadata"));
@@ -2586,9 +2709,14 @@ test("knowledge brain reference integrity detects broken source and evidence gra
     ],
     japaneseRealEstateRecords:[
       { id:"risk-1", entity_type:"risk", source_id:"src-approved", review_status:"approved", risk_level:"high", evidence_ref_ids:["ev-candidate"] },
+      { id:"lease-candidate", entity_type:"lease", source_id:"src-approved", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[] },
     ],
     calculationRuns:[
       { id:"calc-1", source_ids:["src-deleted", "src-missing"], review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-missing-source"] },
+    ],
+    propertyDossiers:[
+      { id:"dossier-1", source_ids:["src-approved"], review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-candidate"], calculation_run_ids:["calc-missing"], jre_record_ids:{ risk:["risk-missing"] }, metadata:{ reviewed_by:"analyst", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"dossier-2", source_ids:["src-approved"], review_status:"approved", risk_level:"medium", evidence_ref_ids:[], calculation_run_ids:["calc-1"], jre_record_ids:{ lease:["lease-candidate"] }, metadata:{ reviewed_by:"analyst", reviewed_at:"2026-06-12T00:00:00.000Z" } },
     ],
     toolValidationRuns:[
       { id:"run-1", tool_id:"M4", source_ids:["src-approved"], review_status:"approved", risk_level:"medium", evidence_ref_ids:["ev-candidate"], eval_case_ids:["eval-candidate", "eval-missing-tool"] },
@@ -2599,10 +2727,12 @@ test("knowledge brain reference integrity detects broken source and evidence gra
   assert.deepEqual(integrity.issues.map(issue => issue.issue).sort(), [
     "approved_record_unapproved_evidence",
     "approved_record_unapproved_evidence",
+    "approved_record_unapproved_evidence",
     "approved_evidence_unapproved_source",
     "approved_validation_unapproved_eval_case",
     "approved_record_unapproved_source",
     "approved_record_unapproved_source",
+    "approved_dossier_unapproved_jre_record",
     "deleted_source_ref",
     "evidence_deleted_source_ref",
     "evidence_missing_source_ref",
@@ -2611,6 +2741,8 @@ test("knowledge brain reference integrity detects broken source and evidence gra
     "missing_evidence_ref",
     "missing_evidence_ref",
     "missing_eval_case_ref",
+    "missing_calculation_run_ref",
+    "missing_jre_record_ref",
     "missing_reviewed_at",
     "missing_reviewed_by",
     "missing_source_ref",
@@ -2623,6 +2755,8 @@ test("knowledge brain reference integrity detects broken source and evidence gra
   assert.equal(integrity.issues.find(issue => issue.target_id === "eval-missing-evidence").issue, "missing_evidence_ref");
   assert.equal(integrity.issues.find(issue => issue.target_id === "scenario-deleted-evidence-source").issue, "evidence_deleted_source_ref");
   assert.equal(integrity.issues.find(issue => issue.target_id === "eval-unapproved-evidence-source").issue, "approved_evidence_unapproved_source");
+  assert.equal(integrity.issues.find(issue => issue.target_id === "dossier-1" && issue.issue === "missing_jre_record_ref").jre_record_id, "risk-missing");
+  assert.equal(integrity.issues.find(issue => issue.target_id === "dossier-2" && issue.issue === "approved_dossier_unapproved_jre_record").jre_record_review_status, "candidate");
   assert.equal(integrity.issues.some(issue => issue.target_id === "run-1" && issue.issue === "approved_validation_unapproved_eval_case"), true);
   assert.equal(integrity.issues.some(issue => issue.target_id === "run-1" && issue.issue === "missing_eval_case_ref"), true);
   assert.equal(integrity.issues.some(issue => issue.target_id === "risk-1" && issue.issue === "missing_reviewed_by"), true);
@@ -2637,6 +2771,8 @@ test("knowledge brain reference integrity actions map issues to repair guidance"
       { target_type:"policy_rule", target_id:"rule-1", issue:"missing_reviewed_by" },
       { target_type:"scenario", target_id:"scenario-1", issue:"approved_evidence_unapproved_source", evidence_ref_id:"ev-3", source_id:"src-candidate" },
       { target_type:"tool_validation_run", target_id:"run-1", issue:"missing_eval_case_ref", eval_case_id:"eval-missing" },
+      { target_type:"property_dossier", target_id:"dossier-1", issue:"missing_jre_record_ref", jre_record_id:"risk-missing" },
+      { target_type:"property_dossier", target_id:"dossier-2", issue:"approved_dossier_unapproved_jre_record", jre_record_id:"lease-candidate" },
       { target_type:"calculation_run", target_id:"calc-1", issue:"unknown_issue" },
     ],
   });
@@ -2648,13 +2784,17 @@ test("knowledge brain reference integrity actions map issues to repair guidance"
     "record_expert_reviewer_metadata",
     "approve_evidence_source_before_record",
     "attach_eval_case_or_archive_validation_run",
+    "attach_jre_record_or_archive_dossier",
+    "approve_jre_record_before_dossier",
     "manual_review_required",
   ]);
   assert.equal(actions[0].blocks_approval, true);
   assert.equal(actions[3].blocks_approval, true);
   assert.equal(actions[4].blocks_approval, true);
   assert.equal(actions[5].blocks_approval, true);
-  assert.equal(actions[6].blocks_approval, false);
+  assert.equal(actions[6].blocks_approval, true);
+  assert.equal(actions[7].blocks_approval, true);
+  assert.equal(actions[8].blocks_approval, false);
 });
 
 test("knowledge brain reference integrity actions filter blockers target source issue action and query", () => {
