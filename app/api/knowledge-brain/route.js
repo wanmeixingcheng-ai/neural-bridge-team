@@ -85,6 +85,12 @@ function sensitiveRuntimeText(body = {}) {
 
 function knowledgeBrainResponse(action, body = {}) {
   const records = recordsFromBody(body);
+  const bodyArray = (...names) => {
+    for (const name of names) {
+      if (Array.isArray(body[name])) return body[name];
+    }
+    return [];
+  };
   if (action === "tool_registry") {
     return { ok:true, action, tools:knowledgeBrainToolRegistry() };
   }
@@ -123,10 +129,10 @@ function knowledgeBrainResponse(action, body = {}) {
     const items = knowledgeBrainReviewQueueItems({
       ...records,
       limit:Number.isFinite(body.limit) ? Math.min(Math.max(Math.floor(body.limit), 1), 100) : 50,
-      targetTypes:Array.isArray(body.targetTypes) ? body.targetTypes : [],
-      sourceIds:Array.isArray(body.sourceIds) ? body.sourceIds : [],
-      reviewStatuses:Array.isArray(body.reviewStatuses) ? body.reviewStatuses : [],
-      riskLevels:Array.isArray(body.riskLevels) ? body.riskLevels : [],
+      targetTypes:bodyArray("targetTypes", "target_types"),
+      sourceIds:bodyArray("sourceIds", "source_ids"),
+      reviewStatuses:bodyArray("reviewStatuses", "review_statuses"),
+      riskLevels:bodyArray("riskLevels", "risk_levels"),
       reasons:Array.isArray(body.reasons) ? body.reasons : [],
       query:body.query || "",
     });

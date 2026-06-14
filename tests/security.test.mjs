@@ -467,8 +467,8 @@ test("knowledge brain api routes runtime gate events into review queue", async (
             { id:"risk-api-1", entity_type:"risk", source_id:"src-risk", property_id:"prop-api-1", title:"Contract risk", risk_type:"contract", finding:"Needs expert confirmation.", review_status:"candidate", risk_level:"high", evidence_ref_ids:[], requires_expert_confirmation:false, version:1 },
           ],
         },
-        targetTypes:["runtime_gate_event"],
-        sourceIds:["src-risk"],
+        target_types:["runtime_gate_event"],
+        source_ids:["src-risk"],
         reasons:["high_risk_external_model_allowed"],
       }),
     });
