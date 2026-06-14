@@ -181,6 +181,7 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.governance.referenceIntegrityIssues, 1);
   assert.equal(summary.governance.sourceTrainingEligibilityBlockedReasons.high_risk_source_type, 1);
   assert.equal(summary.governance.highRiskToolValidationReadiness.M4.approvedInternalRuns, 1);
+  assert.equal(summary.governance.highRiskToolValidationReadiness.M4.invalidValidationRuns, 1);
   assert.equal(summary.governance.highRiskToolValidationReadiness.M4.ready, false);
   assert.equal(summary.governance.highRiskToolFalseNegativeCoverage.M4.ready, true);
   assert.equal(summary.governance.invalidToolValidationRuns, 1);
@@ -1884,17 +1885,20 @@ test("high-risk tool validation readiness requires internal runs signoff and zer
   assert.deepEqual(blocked.blockers.map(item => item.gate), [
     "internal_validation_runs",
     "false_negative_findings",
+    "validation_run_quality",
     "expert_validation_signoff",
   ]);
   assert.ok(blocked.actions.some(item => item.action === "repair_false_negative_eval_failures"));
+  assert.ok(blocked.actions.some(item => item.action === "repair_tool_validation_run_evidence"));
 
   const ready = highRiskToolValidationReadiness([
-    { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
-    { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
-    { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
+    { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-1"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+    { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-2"], source_ids:["src-1"], evidence_ref_ids:["ev-2"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
+    { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-3"], source_ids:["src-1"], evidence_ref_ids:["ev-3"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
   ], { toolId:"M5" });
 
   assert.equal(ready.ready, true);
+  assert.equal(ready.invalidValidationRuns, 0);
   assert.deepEqual(ready.blockers, []);
 });
 
@@ -2017,9 +2021,9 @@ test("high-risk tools stay internal until cold start and eval set gates pass", (
       { id:"false-negative", source_id:"src-1", tool_id:"M5", prompt:"Missed contract risk.", expected_behavior:"Flag needs confirmation.", review_status:"approved", risk_level:"high", version:1, metadata:{ eval_type:"false_negative", eval_category:"boundary" } },
     ],
     toolValidationRuns:[
-      { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
-      { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
-      { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
+      { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["false-negative"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["false-negative"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
+      { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["false-negative"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
     ],
   }, {
     toolId:"M5",
