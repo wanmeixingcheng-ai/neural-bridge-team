@@ -4,6 +4,12 @@ import { checkRateLimitAsync, rateLimitResponse } from "../../../lib/rateLimit.m
 import { auditEvent } from "../../../lib/auditLog.mjs";
 import { isQuotaExhaustionMessage } from "../../../lib/modelGateway.mjs";
 import { containsSensitiveSecret, sensitiveContentResponse } from "../../../lib/secretPolicy.mjs";
+import {
+  buildKnowledgeBrainRuntimeResult,
+  knowledgeBrainToolRuntimeGate,
+  validateOutputBuilderPayload,
+} from "../../../lib/projectBrain.mjs";
+import { buildRuntimeGateEventRecord } from "../../../lib/knowledgeBrainSchemas.mjs";
 
 const CHAT_MAX_REQUEST_BYTES = 3 * 1024 * 1024;
 const CHAT_RATE_WINDOW_MS = 60_000;
@@ -271,6 +277,108 @@ function providerError(provider, message, status, modelLabel = "") {
   return `${prefix} 请求失败：${text}`;
 }
 
+function knowledgeBrainRuntimeFromOptions(options = {}, userText = "", lang = "zh") {
+  const config = options?.knowledgeBrain;
+  if (!config || typeof config !== "object") return null;
+  return buildKnowledgeBrainRuntimeResult({
+    toolId:config.toolId || "",
+    taskType:config.taskType || "",
+    prompt:config.prompt || userText,
+    languageMode:config.languageMode || lang,
+    riskLevel:config.riskLevel || "medium",
+    retrievalResults:Array.isArray(config.retrievalResults) ? config.retrievalResults : [],
+    policyRules:Array.isArray(config.policyRules) ? config.policyRules : [],
+    template:config.template || null,
+    templateInputs:config.templateInputs || {},
+    answerBody:config.answerBody || "",
+    localOnly:config.localOnly === true || options.localOnly === true,
+    auditOnly:config.auditOnly === true || options.auditOnly === true,
+  });
+}
+
+function knowledgeBrainToolGateFromOptions(options = {}) {
+  const config = options?.knowledgeBrain;
+  if (!config || typeof config !== "object" || !config.toolId) return null;
+  return knowledgeBrainToolRuntimeGate(config.toolId, {
+    toolValidationRuns:Array.isArray(config.toolValidationRuns) ? config.toolValidationRuns : [],
+    evalCases:Array.isArray(config.evalCases) ? config.evalCases : [],
+    externalRelease:config.externalRelease === true,
+  });
+}
+
+function knowledgeBrainRuntimePrompt(runtime = null) {
+  if (!runtime) return "";
+  return [
+    "",
+    "Knowledge Brain runtime gate:",
+    `- tool_id: ${runtime.tool_id || "-"}`,
+    `- risk_level: ${runtime.risk_level || "medium"}`,
+    `- model_used: ${runtime.route?.model_used || "knowledge_only"}`,
+    `- source_ids: ${(runtime.audit?.source_ids || []).join(", ") || "-"}`,
+    `- knowledge_ids: ${(runtime.audit?.knowledge_ids || []).join(", ") || "-"}`,
+    `- policy_rule_ids: ${(runtime.policy?.policy_rule_ids || []).join(", ") || "-"}`,
+    runtime.output?.disclaimer ? `- disclaimer: ${runtime.output.disclaimer}` : "",
+    runtime.output?.kakunin_items?.length ? `- kakunin_items: ${runtime.output.kakunin_items.join(" / ")}` : "",
+    "The answer must preserve sources, kakunin_items, disclaimer, and must not bypass Knowledge Brain.",
+  ].filter(Boolean).join("\n");
+}
+
+function knowledgeBrainShouldBlockExternal(runtime = null, toolGate = null) {
+  if (!runtime) return false;
+  return toolGate?.ok === false ||
+    runtime.route?.blocked_external_reason ||
+    runtime.policy?.blocks_final_answer ||
+    !validateOutputBuilderPayload(runtime.output || {}).ok;
+}
+
+function knowledgeBrainRuntimeEvent(runtime = null, { action = "chat_runtime_gate", responseStatus = 200, toolGate = null } = {}) {
+  if (!runtime) return null;
+  return buildRuntimeGateEventRecord({
+    tool_id:runtime.tool_id || "unknown",
+    action,
+    task_type:runtime.policy?.task_type || "",
+    risk_level:runtime.risk_level === "critical" ? "restricted" : runtime.risk_level || "medium",
+    route:runtime.route || {},
+    policy:runtime.policy || {},
+    output_quality:runtime.output_quality || {},
+    source_ids:runtime.audit?.source_ids || [],
+    knowledge_ids:runtime.audit?.knowledge_ids || [],
+    response_status:responseStatus,
+    metadata:{
+      runtime_ok:runtime.ok,
+      tool_gate_ok:toolGate?.ok,
+      tool_gate_issues:toolGate?.issues || [],
+      policy_rule_ids:runtime.policy?.policy_rule_ids || [],
+      used_knowledge_brain:runtime.audit?.used_knowledge_brain === true,
+    },
+  });
+}
+
+function knowledgeBrainMetadata(runtime = null, { responseStatus = 200, toolGate = null } = {}) {
+  if (!runtime) return null;
+  return {
+    ok:runtime.ok,
+    toolId:runtime.tool_id,
+    riskLevel:runtime.risk_level,
+    route:runtime.route,
+    policy:runtime.policy,
+    output:runtime.output,
+    audit:runtime.audit,
+    outputQuality:runtime.output_quality,
+    toolGate,
+    event:knowledgeBrainRuntimeEvent(runtime, { responseStatus, toolGate }),
+  };
+}
+
+async function withKnowledgeBrainMetadata(response, runtime = null, toolGate = null) {
+  if (!runtime) return response;
+  const payload = await response.json().catch(() => ({}));
+  return Response.json({
+    ...payload,
+    knowledgeBrain:knowledgeBrainMetadata(runtime, { responseStatus:response.status, toolGate }),
+  }, { status:response.status });
+}
+
 export async function POST(request) {
   if (!await isAuthenticatedAsync(request)) {
     await auditEvent(request, { type:"chat.auth_failed", status:"blocked" });
@@ -291,18 +399,34 @@ export async function POST(request) {
   const userText = lastUserText(messages);
   const lang = detectLanguage(userText, options.language || "zh");
   const effectiveOptions = { ...options, language:lang };
+  const knowledgeBrainRuntime = knowledgeBrainRuntimeFromOptions(effectiveOptions, userText, lang);
+  const knowledgeBrainToolGate = knowledgeBrainToolGateFromOptions(effectiveOptions);
   if (containsSensitiveSecret(chatSecretScanText(systemPrompt, messages))) {
     await auditEvent(request, { type:"chat.secret_blocked", status:"blocked" });
     return sensitiveContentResponse();
   }
+  if (knowledgeBrainShouldBlockExternal(knowledgeBrainRuntime, knowledgeBrainToolGate)) {
+    const knowledgeBrain = knowledgeBrainMetadata(knowledgeBrainRuntime, { responseStatus:200, toolGate:knowledgeBrainToolGate });
+    await auditEvent(request, {
+      type:"chat.knowledge_brain_blocked",
+      status:"blocked",
+      target:knowledgeBrainRuntime?.tool_id || "",
+      metadata:{ runtimeGateEvent:knowledgeBrain?.event || null },
+    });
+    return Response.json({
+      text:knowledgeBrainRuntime?.output?.answer_body || "",
+      knowledgeBrain:{ ...knowledgeBrain, ok:false },
+    });
+  }
+  const runtimeSystemPrompt = `${systemPrompt || ""}${knowledgeBrainRuntimePrompt(knowledgeBrainRuntime)}`;
 
   if (modelKey === "claude") {
     await auditEvent(request, { type:"chat.model_request", status:"ok", target:"claude" });
-    return callAnthropic(systemPrompt, messages, apiKeys?.anthropic, effectiveOptions);
+    return withKnowledgeBrainMetadata(await callAnthropic(runtimeSystemPrompt, messages, apiKeys?.anthropic, effectiveOptions), knowledgeBrainRuntime, knowledgeBrainToolGate);
   }
   if (modelKey === "gemma31" || modelKey === "gemma26" || modelKey === "flash") {
     await auditEvent(request, { type:"chat.model_request", status:"ok", target:modelKey });
-    return callGoogle(modelKey, systemPrompt, messages, apiKeys?.google, effectiveOptions);
+    return withKnowledgeBrainMetadata(await callGoogle(modelKey, runtimeSystemPrompt, messages, apiKeys?.google, effectiveOptions), knowledgeBrainRuntime, knowledgeBrainToolGate);
   }
 
   return Response.json({ error: "Unsupported model" }, { status: 400 });

@@ -372,6 +372,47 @@ create table if not exists nb_tool_validation_runs (
   )
 );
 
+create table if not exists nb_runtime_gate_events (
+  id text primary key,
+  tool_id text not null,
+  action text not null default 'runtime_gate',
+  task_type text not null default '',
+  route_model text not null default 'knowledge_only',
+  external_model_allowed boolean not null default false,
+  blocked_external_reason text not null default '',
+  policy_result jsonb not null default '{}'::jsonb,
+  output_quality jsonb not null default '{}'::jsonb,
+  source_ids jsonb not null default '[]'::jsonb,
+  knowledge_ids jsonb not null default '[]'::jsonb,
+  response_status integer not null default 200,
+  review_status text not null default 'candidate',
+  risk_level text not null default 'medium',
+  version integer not null default 1,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint nb_runtime_gate_events_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
+  constraint nb_runtime_gate_events_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
+  constraint nb_runtime_gate_events_version_chk check (version >= 1),
+  constraint nb_runtime_gate_events_response_status_chk check (response_status between 100 and 599),
+  constraint nb_runtime_gate_events_payload_chk check (
+    length(trim(tool_id)) > 0 and
+    length(trim(action)) > 0 and
+    length(trim(route_model)) > 0 and
+    jsonb_typeof(policy_result) = 'object' and
+    jsonb_typeof(output_quality) = 'object' and
+    jsonb_typeof(source_ids) = 'array' and
+    jsonb_typeof(knowledge_ids) = 'array' and
+    jsonb_typeof(metadata) = 'object'
+  ),
+  constraint nb_runtime_gate_events_external_block_chk check (
+    external_model_allowed = false or blocked_external_reason = ''
+  ),
+  constraint nb_runtime_gate_events_high_risk_external_chk check (
+    risk_level not in ('high', 'restricted') or external_model_allowed = false
+  )
+);
+
 create index if not exists nb_source_registry_type_idx on nb_source_registry (source_type);
 create index if not exists nb_source_registry_review_idx on nb_source_registry (review_status);
 create index if not exists nb_source_registry_risk_idx on nb_source_registry (risk_level);
@@ -435,3 +476,13 @@ create index if not exists nb_tool_validation_runs_tool_review_idx on nb_tool_va
 create index if not exists nb_tool_validation_runs_eval_case_ids_idx on nb_tool_validation_runs using gin (eval_case_ids);
 create index if not exists nb_tool_validation_runs_source_ids_idx on nb_tool_validation_runs using gin (source_ids);
 create index if not exists nb_tool_validation_runs_evidence_ref_ids_idx on nb_tool_validation_runs using gin (evidence_ref_ids);
+create index if not exists nb_runtime_gate_events_tool_idx on nb_runtime_gate_events (tool_id);
+create index if not exists nb_runtime_gate_events_action_idx on nb_runtime_gate_events (action);
+create index if not exists nb_runtime_gate_events_route_model_idx on nb_runtime_gate_events (route_model);
+create index if not exists nb_runtime_gate_events_external_allowed_idx on nb_runtime_gate_events (external_model_allowed);
+create index if not exists nb_runtime_gate_events_blocked_reason_idx on nb_runtime_gate_events (blocked_external_reason);
+create index if not exists nb_runtime_gate_events_review_idx on nb_runtime_gate_events (review_status);
+create index if not exists nb_runtime_gate_events_risk_idx on nb_runtime_gate_events (risk_level);
+create index if not exists nb_runtime_gate_events_tool_review_idx on nb_runtime_gate_events (tool_id, review_status);
+create index if not exists nb_runtime_gate_events_source_ids_idx on nb_runtime_gate_events using gin (source_ids);
+create index if not exists nb_runtime_gate_events_knowledge_ids_idx on nb_runtime_gate_events using gin (knowledge_ids);

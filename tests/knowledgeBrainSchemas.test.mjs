@@ -21,6 +21,7 @@ import {
   buildPropertyDossierRecord,
   buildPropertyRecord,
   buildRiskRecord,
+  buildRuntimeGateEventRecord,
   buildScenarioRecord,
   buildSourceRegistryRecord,
   buildTaxRecord,
@@ -38,6 +39,7 @@ import {
   validateKnowledgeUnitVersionChain,
   validateSourceRegistryRecord,
   validateToolValidationRunRecord,
+  validateRuntimeGateEventRecord,
   validateSourceBackedConclusion,
 } from "../lib/knowledgeBrainSchemas.mjs";
 
@@ -52,6 +54,7 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     "calculation_runs",
     "property_dossiers",
     "tool_validation_runs",
+    "runtime_gate_events",
     "property_records",
     "land_records",
     "building_records",
@@ -70,7 +73,8 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     store.name === "source_registry" ||
     store.name === "calculation_runs" ||
     store.name === "property_dossiers" ||
-    store.name === "tool_validation_runs"
+    store.name === "tool_validation_runs" ||
+    store.name === "runtime_gate_events"
     );
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "review_status"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "risk_level"));
@@ -83,6 +87,7 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.calculationRuns.indexes.find(([name]) => name === "propertyType")?.[1], ["property_id", "calculation_type"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.propertyDossiers.indexes.find(([name]) => name === "propertyReview")?.[1], ["property_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.toolValidationRuns.indexes.find(([name]) => name === "toolReview")?.[1], ["tool_id", "review_status"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_STORES.runtimeGateEvents.indexes.find(([name]) => name === "toolReview")?.[1], ["tool_id", "review_status"]);
 });
 
 test("japanese real estate knowledge domains cover D01 through D16", () => {
@@ -211,6 +216,31 @@ test("tool validation run schema preserves internal high-risk release evidence",
     "non_internal_validation_mode",
     "approved_validation_missing_reviewer_metadata",
   ]);
+});
+
+test("runtime gate event schema preserves model routing and audit evidence", () => {
+  const event = buildRuntimeGateEventRecord({
+    tool_id:"M4",
+    action:"runtime_gate",
+    task_type:"valuation",
+    risk_level:"high",
+    route:{ model_used:"knowledge_only", external_model_allowed:false, blocked_external_reason:"local_only" },
+    policy:{ ok:false, blocks_final_answer:true, policy_rule_ids:["P001", "P002"] },
+    output_quality:{ ok:true, issues:[] },
+    source_ids:["src-1"],
+    knowledge_ids:["ku-1"],
+  });
+
+  assert.equal(event.tool_id, "M4");
+  assert.equal(event.route_model, "knowledge_only");
+  assert.equal(event.external_model_allowed, false);
+  assert.equal(event.blocked_external_reason, "local_only");
+  assert.deepEqual(event.source_ids, ["src-1"]);
+  assert.deepEqual(event.knowledge_ids, ["ku-1"]);
+  assert.equal(validateRuntimeGateEventRecord(event).ok, true);
+
+  const unsafe = { ...event, external_model_allowed:true, blocked_external_reason:"", risk_level:"high" };
+  assert.deepEqual(validateRuntimeGateEventRecord(unsafe).issues, ["high_risk_external_model_allowed"]);
 });
 
 test("property dossier schema preserves workspace data lineage", () => {
@@ -500,6 +530,21 @@ test("database schema enforces tool validation run release evidence boundary", (
   assert.match(sql, /length\(trim\(metadata->>'reviewed_by'\)\) > 0/);
 });
 
+test("database schema enforces runtime gate event routing boundary", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /create table if not exists nb_runtime_gate_events/);
+  assert.match(sql, /nb_runtime_gate_events_payload_chk/);
+  assert.match(sql, /jsonb_typeof\(policy_result\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(output_quality\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(source_ids\) = 'array'/);
+  assert.match(sql, /jsonb_typeof\(knowledge_ids\) = 'array'/);
+  assert.match(sql, /nb_runtime_gate_events_external_block_chk/);
+  assert.match(sql, /external_model_allowed = false or blocked_external_reason = ''/);
+  assert.match(sql, /nb_runtime_gate_events_high_risk_external_chk/);
+  assert.match(sql, /risk_level not in \('high', 'restricted'\) or external_model_allowed = false/);
+});
+
 test("database schema indexes review and source filtering paths", () => {
   const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
 
@@ -533,6 +578,9 @@ test("database schema indexes review and source filtering paths", () => {
     "nb_tool_validation_runs_eval_case_ids_idx",
     "nb_tool_validation_runs_source_ids_idx",
     "nb_tool_validation_runs_evidence_ref_ids_idx",
+    "nb_runtime_gate_events_tool_review_idx",
+    "nb_runtime_gate_events_source_ids_idx",
+    "nb_runtime_gate_events_knowledge_ids_idx",
   ]) {
     assert.match(sql, new RegExp(indexName));
   }
