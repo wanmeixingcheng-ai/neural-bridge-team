@@ -2379,7 +2379,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"scenario-1", source_id:"src-1", scenario_type:"due_diligence", title:"Review", description:"Review uploaded evidence.", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[], version:1 },
       { id:"scenario-2", source_id:"src-1", scenario_type:"reporting", title:"Report", description:"Report approved evidence.", review_status:"approved", risk_level:"medium", evidence_ref_ids:[], version:1 },
     ],
-    evalCases:[{ id:"eval-1", source_id:"src-1", prompt:"Cite evidence.", expected_behavior:"Cite approved evidence.", review_status:"candidate", risk_level:"medium", evidence_ref_ids:[], version:1, metadata:{ eval_category:"retrieval" } }],
+    evalCases:[{ id:"eval-1", source_id:"src-1", prompt:"Cite evidence.", expected_behavior:"Cite approved evidence.", review_status:"approved", risk_level:"medium", evidence_ref_ids:[], version:1, metadata:{ eval_category:"retrieval" } }],
     calculationRuns:[
       { id:"calc-1", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{ acquisitionPrice:60000000 }, formulas:{ grossYieldPercent:"annualPotentialRent / acquisitionPrice * 100" }, outputs:{ grossYieldPercent:3 }, source_ids:["src-1"], evidence_ref_ids:["ev-1"], review_status:"candidate", risk_level:"medium", version:1 },
       { id:"calc-bad", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"llm", inputs:{}, formulas:{}, outputs:{}, source_ids:[], evidence_ref_ids:[], review_status:"approved", risk_level:"medium", version:1 },
@@ -2389,9 +2389,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"risk-1", entity_type:"risk", source_id:"src-2", property_id:"prop-1", title:"Candidate risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:[], requires_expert_confirmation:false },
     ],
     toolValidationRuns:[
-      { id:"run-1", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
-      { id:"run-2", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
-      { id:"run-3", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
+      { id:"run-1", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-1"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"run-2", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-1"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
+      { id:"run-3", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-1"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
+      { id:"run-bad", tool_id:"M5", mode:"external_release", status:"failed", review_status:"candidate", risk_level:"high", version:1, eval_case_ids:[], source_ids:[], evidence_ref_ids:[], false_negative_findings:2, metadata:{} },
     ],
   });
 
@@ -2435,6 +2436,15 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.sourceDeletionImpactSummaries.find(item => item.sourceId === "src-4").wouldDisableTraining, true);
   assert.equal(stats.highRiskToolValidationReadiness.M4.ready, true);
   assert.equal(stats.highRiskToolValidationReadiness.M5.ready, false);
+  assert.equal(stats.toolValidationRuns, 4);
+  assert.equal(stats.toolValidationRunReviewStatus.approved, 3);
+  assert.equal(stats.toolValidationRunReviewStatus.candidate, 1);
+  assert.equal(stats.toolValidationRunRiskLevels.high, 4);
+  assert.deepEqual(stats.toolValidationRunStatuses, { passed:3, failed:1 });
+  assert.equal(stats.invalidToolValidationRuns, 1);
+  assert.equal(stats.toolValidationRunQualityIssues.missing_eval_case_ids, 1);
+  assert.equal(stats.toolValidationRunQualityIssues.false_negative_findings_present, 1);
+  assert.equal(stats.toolValidationRunQualityIssues.non_internal_validation_mode, 1);
   assert.deepEqual(stats.sourceColdStartTierCounts, {
     tier_1_official_public:1,
     tier_3_partner_practitioner_case:2,
@@ -2483,7 +2493,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.scenarioReviewStatus.candidate, 1);
   assert.equal(stats.invalidScenarios, 0);
   assert.equal(stats.evalCases, 1);
-  assert.equal(stats.evalCaseReviewStatus.candidate, 1);
+  assert.equal(stats.evalCaseReviewStatus.approved, 1);
   assert.deepEqual(stats.evalCaseCategoryCounts, { retrieval:1 });
   assert.equal(stats.invalidEvalCases, 0);
   assert.equal(stats.calculationRuns, 2);
@@ -2496,13 +2506,13 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.invalidJapaneseRealEstateRecords, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.high_risk_missing_evidence, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.risk_record_missing_expert_confirmation, 1);
-  assert.equal(stats.reviewQueue.total, 9);
+  assert.equal(stats.reviewQueue.total, 8);
   assert.equal(stats.reviewQueue.sources, 1);
   assert.equal(stats.reviewQueue.knowledgeUnits, 2);
   assert.equal(stats.reviewQueue.evidenceRefs, 1);
   assert.equal(stats.reviewQueue.policyRules, 1);
   assert.equal(stats.reviewQueue.scenarios, 1);
-  assert.equal(stats.reviewQueue.evalCases, 1);
+  assert.equal(stats.reviewQueue.evalCases, 0);
   assert.equal(stats.reviewQueue.japaneseRealEstateRecords, 1);
   assert.equal(stats.reviewQueue.calculationRuns, 1);
   assert.equal(stats.reviewQueue.highRiskExpertReview, 5);
