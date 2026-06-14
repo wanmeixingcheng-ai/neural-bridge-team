@@ -18,6 +18,7 @@ import {
   buildLeaseRecord,
   buildLoanRecord,
   buildPolicyRuleRecord,
+  buildPropertyDossierRecord,
   buildPropertyRecord,
   buildRiskRecord,
   buildScenarioRecord,
@@ -31,6 +32,7 @@ import {
   normalizeVersion,
   validateEvidenceRefQuality,
   validateCalculationRunRecord,
+  validatePropertyDossierRecord,
   validateJapaneseRealEstateRecord,
   validateKnowledgeUnitQuality,
   validateKnowledgeUnitVersionChain,
@@ -48,6 +50,7 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     "eval_cases",
     "evidence_refs",
     "calculation_runs",
+    "property_dossiers",
     "tool_validation_runs",
     "property_records",
     "land_records",
@@ -64,9 +67,10 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
   for (const store of Object.values(KNOWLEDGE_BRAIN_STORES)) {
     assert.ok(
       store.indexes.some(([, keyPath]) => keyPath === "source_id") ||
-      store.name === "source_registry" ||
-      store.name === "calculation_runs" ||
-      store.name === "tool_validation_runs"
+    store.name === "source_registry" ||
+    store.name === "calculation_runs" ||
+    store.name === "property_dossiers" ||
+    store.name === "tool_validation_runs"
     );
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "review_status"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "risk_level"));
@@ -77,6 +81,7 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.knowledgeUnits.indexes.find(([name]) => name === "sourceReview")?.[1], ["source_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.evidenceRefs.indexes.find(([name]) => name === "targetReview")?.[1], ["target_type", "target_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.calculationRuns.indexes.find(([name]) => name === "propertyType")?.[1], ["property_id", "calculation_type"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_STORES.propertyDossiers.indexes.find(([name]) => name === "propertyReview")?.[1], ["property_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.toolValidationRuns.indexes.find(([name]) => name === "toolReview")?.[1], ["tool_id", "review_status"]);
 });
 
@@ -205,6 +210,64 @@ test("tool validation run schema preserves internal high-risk release evidence",
     "false_negative_findings_present",
     "non_internal_validation_mode",
     "approved_validation_missing_reviewer_metadata",
+  ]);
+});
+
+test("property dossier schema preserves workspace data lineage", () => {
+  const dossier = buildPropertyDossierRecord({
+    property_id:"prop-1",
+    dossier_type:"investment_due_diligence",
+    title:"渋谷区サンプル物件 dossier",
+    source_ids:["src-property", "src-lease", "src-tax"],
+    evidence_ref_ids:["ev-property", "ev-lease", "ev-tax"],
+    jre_record_ids:{
+      property:["prop-1"],
+      lease:["lease-1"],
+      tax:["tax-1"],
+      risk:["risk-1"],
+    },
+    calculation_run_ids:["calc-investment-1"],
+    summary_snapshot:{
+      acquisitionPrice:60000000,
+      netYieldPercent:4.05,
+      unresolvedRiskCount:1,
+    },
+    unresolved_risk_ids:["risk-1"],
+    review_status:"candidate",
+    risk_level:"medium",
+  });
+  const invalid = validatePropertyDossierRecord({
+    id:"dossier-bad",
+    property_id:"",
+    dossier_type:"",
+    title:"",
+    source_ids:[],
+    evidence_ref_ids:[],
+    jre_record_ids:[],
+    calculation_run_ids:{},
+    summary_snapshot:[],
+    unresolved_risk_ids:{},
+    review_status:"approved",
+    risk_level:"high",
+    version:1,
+    metadata:{},
+  });
+
+  assert.equal(dossier.property_id, "prop-1");
+  assert.equal(dossier.dossier_type, "investment_due_diligence");
+  assert.equal(dossier.version, 1);
+  assert.equal(validatePropertyDossierRecord(dossier).ok, true);
+  assert.deepEqual(invalid.issues, [
+    "missing_property_id",
+    "missing_dossier_type",
+    "missing_title",
+    "missing_source_ids",
+    "missing_evidence_ref_ids",
+    "invalid_jre_record_ids",
+    "invalid_summary_snapshot",
+    "invalid_calculation_run_ids",
+    "invalid_unresolved_risk_ids",
+    "approved_dossier_missing_reviewer_metadata",
   ]);
 });
 
@@ -358,6 +421,7 @@ test("database schema requires reviewer metadata for approved high risk records"
     "nb_eval_cases_high_risk_review_metadata_chk",
     "nb_evidence_refs_high_risk_review_metadata_chk",
     "nb_jre_records_high_risk_review_metadata_chk",
+    "nb_property_dossiers_high_risk_review_metadata_chk",
   ]) {
     assert.match(sql, new RegExp(constraintName));
   }
@@ -404,6 +468,22 @@ test("database schema enforces calculation run deterministic payload boundary", 
   assert.match(sql, /jsonb_array_length\(evidence_ref_ids\) > 0/);
 });
 
+test("database schema enforces property dossier lineage boundary", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /create table if not exists nb_property_dossiers/);
+  assert.match(sql, /nb_property_dossiers_core_text_chk/);
+  assert.match(sql, /length\(trim\(property_id\)\) > 0 and length\(trim\(dossier_type\)\) > 0 and length\(trim\(title\)\) > 0/);
+  assert.match(sql, /nb_property_dossiers_payload_chk/);
+  assert.match(sql, /jsonb_typeof\(source_ids\) = 'array'/);
+  assert.match(sql, /jsonb_typeof\(evidence_ref_ids\) = 'array'/);
+  assert.match(sql, /jsonb_typeof\(jre_record_ids\) = 'object'/);
+  assert.match(sql, /jsonb_typeof\(summary_snapshot\) = 'object'/);
+  assert.match(sql, /jsonb_array_length\(source_ids\) > 0/);
+  assert.match(sql, /jsonb_array_length\(evidence_ref_ids\) > 0/);
+  assert.match(sql, /nb_property_dossiers_approved_review_metadata_chk/);
+});
+
 test("database schema enforces tool validation run release evidence boundary", () => {
   const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
 
@@ -444,6 +524,11 @@ test("database schema indexes review and source filtering paths", () => {
     "nb_calculation_runs_property_type_idx",
     "nb_calculation_runs_source_ids_idx",
     "nb_calculation_runs_evidence_ref_ids_idx",
+    "nb_property_dossiers_property_review_idx",
+    "nb_property_dossiers_source_ids_idx",
+    "nb_property_dossiers_evidence_ref_ids_idx",
+    "nb_property_dossiers_jre_record_ids_idx",
+    "nb_property_dossiers_calculation_run_ids_idx",
     "nb_tool_validation_runs_tool_review_idx",
     "nb_tool_validation_runs_eval_case_ids_idx",
     "nb_tool_validation_runs_source_ids_idx",
