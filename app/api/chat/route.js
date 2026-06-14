@@ -4,6 +4,10 @@ import { checkRateLimitAsync, rateLimitResponse } from "../../../lib/rateLimit.m
 import { auditEvent } from "../../../lib/auditLog.mjs";
 import { isQuotaExhaustionMessage } from "../../../lib/modelGateway.mjs";
 import { containsSensitiveSecret, sensitiveContentResponse } from "../../../lib/secretPolicy.mjs";
+import {
+  buildKnowledgeBrainRuntimeResult,
+  validateOutputBuilderPayload,
+} from "../../../lib/projectBrain.mjs";
 
 const CHAT_MAX_REQUEST_BYTES = 3 * 1024 * 1024;
 const CHAT_RATE_WINDOW_MS = 60_000;
@@ -271,6 +275,67 @@ function providerError(provider, message, status, modelLabel = "") {
   return `${prefix} 请求失败：${text}`;
 }
 
+function knowledgeBrainRuntimeFromOptions(options = {}, userText = "", lang = "zh") {
+  const config = options?.knowledgeBrain;
+  if (!config || typeof config !== "object") return null;
+  return buildKnowledgeBrainRuntimeResult({
+    toolId:config.toolId || "",
+    taskType:config.taskType || "",
+    prompt:config.prompt || userText,
+    languageMode:config.languageMode || lang,
+    riskLevel:config.riskLevel || "medium",
+    retrievalResults:Array.isArray(config.retrievalResults) ? config.retrievalResults : [],
+    policyRules:Array.isArray(config.policyRules) ? config.policyRules : [],
+    template:config.template || null,
+    templateInputs:config.templateInputs || {},
+    answerBody:config.answerBody || "",
+    localOnly:config.localOnly === true || options.localOnly === true,
+    auditOnly:config.auditOnly === true || options.auditOnly === true,
+  });
+}
+
+function knowledgeBrainRuntimePrompt(runtime = null) {
+  if (!runtime) return "";
+  return [
+    "",
+    "Knowledge Brain runtime gate:",
+    `- tool_id: ${runtime.tool_id || "-"}`,
+    `- risk_level: ${runtime.risk_level || "medium"}`,
+    `- model_used: ${runtime.route?.model_used || "knowledge_only"}`,
+    `- source_ids: ${(runtime.audit?.source_ids || []).join(", ") || "-"}`,
+    `- knowledge_ids: ${(runtime.audit?.knowledge_ids || []).join(", ") || "-"}`,
+    `- policy_rule_ids: ${(runtime.policy?.policy_rule_ids || []).join(", ") || "-"}`,
+    runtime.output?.disclaimer ? `- disclaimer: ${runtime.output.disclaimer}` : "",
+    runtime.output?.kakunin_items?.length ? `- kakunin_items: ${runtime.output.kakunin_items.join(" / ")}` : "",
+    "The answer must preserve sources, kakunin_items, disclaimer, and must not bypass Knowledge Brain.",
+  ].filter(Boolean).join("\n");
+}
+
+function knowledgeBrainShouldBlockExternal(runtime = null) {
+  if (!runtime) return false;
+  return runtime.route?.blocked_external_reason ||
+    runtime.policy?.blocks_final_answer ||
+    !validateOutputBuilderPayload(runtime.output || {}).ok;
+}
+
+async function withKnowledgeBrainMetadata(response, runtime = null) {
+  if (!runtime) return response;
+  const payload = await response.json().catch(() => ({}));
+  return Response.json({
+    ...payload,
+    knowledgeBrain:{
+      ok:runtime.ok,
+      toolId:runtime.tool_id,
+      riskLevel:runtime.risk_level,
+      route:runtime.route,
+      policy:runtime.policy,
+      output:runtime.output,
+      audit:runtime.audit,
+      outputQuality:runtime.output_quality,
+    },
+  }, { status:response.status });
+}
+
 export async function POST(request) {
   if (!await isAuthenticatedAsync(request)) {
     await auditEvent(request, { type:"chat.auth_failed", status:"blocked" });
@@ -291,18 +356,36 @@ export async function POST(request) {
   const userText = lastUserText(messages);
   const lang = detectLanguage(userText, options.language || "zh");
   const effectiveOptions = { ...options, language:lang };
+  const knowledgeBrainRuntime = knowledgeBrainRuntimeFromOptions(effectiveOptions, userText, lang);
   if (containsSensitiveSecret(chatSecretScanText(systemPrompt, messages))) {
     await auditEvent(request, { type:"chat.secret_blocked", status:"blocked" });
     return sensitiveContentResponse();
   }
+  if (knowledgeBrainShouldBlockExternal(knowledgeBrainRuntime)) {
+    await auditEvent(request, { type:"chat.knowledge_brain_blocked", status:"blocked", target:knowledgeBrainRuntime?.tool_id || "" });
+    return Response.json({
+      text:knowledgeBrainRuntime?.output?.answer_body || "",
+      knowledgeBrain:{
+        ok:false,
+        toolId:knowledgeBrainRuntime?.tool_id || "",
+        riskLevel:knowledgeBrainRuntime?.risk_level || "medium",
+        route:knowledgeBrainRuntime?.route || {},
+        policy:knowledgeBrainRuntime?.policy || {},
+        output:knowledgeBrainRuntime?.output || {},
+        audit:knowledgeBrainRuntime?.audit || {},
+        outputQuality:knowledgeBrainRuntime?.output_quality || {},
+      },
+    });
+  }
+  const runtimeSystemPrompt = `${systemPrompt || ""}${knowledgeBrainRuntimePrompt(knowledgeBrainRuntime)}`;
 
   if (modelKey === "claude") {
     await auditEvent(request, { type:"chat.model_request", status:"ok", target:"claude" });
-    return callAnthropic(systemPrompt, messages, apiKeys?.anthropic, effectiveOptions);
+    return withKnowledgeBrainMetadata(await callAnthropic(runtimeSystemPrompt, messages, apiKeys?.anthropic, effectiveOptions), knowledgeBrainRuntime);
   }
   if (modelKey === "gemma31" || modelKey === "gemma26" || modelKey === "flash") {
     await auditEvent(request, { type:"chat.model_request", status:"ok", target:modelKey });
-    return callGoogle(modelKey, systemPrompt, messages, apiKeys?.google, effectiveOptions);
+    return withKnowledgeBrainMetadata(await callGoogle(modelKey, runtimeSystemPrompt, messages, apiKeys?.google, effectiveOptions), knowledgeBrainRuntime);
   }
 
   return Response.json({ error: "Unsupported model" }, { status: 400 });

@@ -162,6 +162,132 @@ test("chat greetings are not answered by a local canned shortcut", async () => {
   }
 });
 
+test("chat knowledge brain runtime blocks unsafe high risk external model calls", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  process.env.ANTHROPIC_API_KEY = "test-api-key-that-should-not-be-used";
+  const token = createSessionToken();
+  let fetchCalled = false;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("model provider should not be called");
+  };
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        modelKey: "claude",
+        systemPrompt: "You are ARIA.",
+        messages: [{ role: "user", text: "この市場価値は絶対に安全です" }],
+        options:{
+          knowledgeBrain:{
+            toolId:"M4",
+            taskType:"valuation",
+            riskLevel:"high",
+            retrievalResults:[],
+            policyRules:[],
+            localOnly:true,
+          },
+        },
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await chatPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchCalled, false);
+    assert.equal(payload.knowledgeBrain.ok, false);
+    assert.equal(payload.knowledgeBrain.route.blocked_external_reason, "local_only");
+    assert.equal(payload.knowledgeBrain.policy.blocks_final_answer, true);
+    assert.equal(payload.knowledgeBrain.output.risk_level, "high");
+    assert.equal(payload.knowledgeBrain.output.disclaimer.length > 0, true);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+    if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  }
+});
+
+test("chat knowledge brain runtime injects gate metadata for allowed model calls", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  process.env.ANTHROPIC_API_KEY = "test-api-key";
+  const token = createSessionToken();
+  let providerSystemPrompt = "";
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, init = {}) => {
+    const body = JSON.parse(init.body || "{}");
+    providerSystemPrompt = body.system || "";
+    return Response.json({
+      content:[{ type:"text", text:"Source-backed synthetic answer." }],
+    });
+  };
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        modelKey: "claude",
+        systemPrompt: "You are ARIA.",
+        messages: [{ role: "user", text: "Summarize approved source" }],
+        options:{
+          knowledgeBrain:{
+            toolId:"M1",
+            taskType:"property_summary",
+            riskLevel:"medium",
+            retrievalResults:[
+              { id:"ku-1", sourceId:"src-1", title:"Approved fact", content:"Synthetic source-backed fact." },
+            ],
+          },
+        },
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await chatPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.text, "Source-backed synthetic answer.");
+    assert.equal(payload.knowledgeBrain.ok, true);
+    assert.equal(payload.knowledgeBrain.audit.used_knowledge_brain, true);
+    assert.match(providerSystemPrompt, /Knowledge Brain runtime gate/);
+    assert.match(providerSystemPrompt, /knowledge_ids: ku-1/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+    if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  }
+});
+
 test("rate limiter enforces namespace and window limits", () => {
   const request = {
     headers: {
