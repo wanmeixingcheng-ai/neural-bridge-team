@@ -183,6 +183,9 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.governance.highRiskToolValidationReadiness.M4.approvedInternalRuns, 1);
   assert.equal(summary.governance.highRiskToolValidationReadiness.M4.ready, false);
   assert.equal(summary.governance.highRiskToolFalseNegativeCoverage.M4.ready, true);
+  assert.equal(summary.governance.invalidToolValidationRuns, 1);
+  assert.equal(summary.governance.toolValidationRunQualityIssues.missing_eval_case_ids, 1);
+  assert.equal(summary.governance.toolValidationRunQualityIssues.missing_source_ids, 1);
   assert.ok(summary.governance.reviewQueueActionSummary.some(item => item.action === "assign_expert_reviewer"));
   assert.ok(summary.governance.sourceReferenceSearchEligibilityActions.some(item => item.action === "route_source_to_review"));
   assert.ok(summary.governance.sourceReferenceSearchEligibilityActions.some(item => item.action === "record_expert_reviewer_metadata"));
@@ -264,6 +267,8 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
   assert.equal(manifest.highRiskToolValidationReadiness.M4.ready, false);
   assert.equal(manifest.highRiskToolFalseNegativeCoverage.M5.ready, true);
   assert.equal(manifest.highRiskToolFalseNegativeCoverage.M4.ready, false);
+  assert.equal(manifest.invalidToolValidationRuns, 0);
+  assert.deepEqual(manifest.toolValidationRunQualityIssues, {});
   assert.equal(Array.isArray(manifest.sourceReferenceSearchEligibilityActions), true);
   assert.ok(manifest.reviewQueueActionSummary.some(item => item.action === "attach_source_or_archive_record"));
   assert.ok(manifest.referenceIntegrityActions.some(item => item.action === "attach_source_or_archive_record"));
