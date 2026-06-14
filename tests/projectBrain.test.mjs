@@ -2720,7 +2720,7 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.invalidJapaneseRealEstateRecords, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.high_risk_missing_evidence, 1);
   assert.equal(stats.japaneseRealEstateRecordQualityIssues.risk_record_missing_expert_confirmation, 1);
-  assert.equal(stats.reviewQueue.total, 9);
+  assert.equal(stats.reviewQueue.total, 10);
   assert.equal(stats.reviewQueue.sources, 1);
   assert.equal(stats.reviewQueue.knowledgeUnits, 2);
   assert.equal(stats.reviewQueue.evidenceRefs, 1);
@@ -2730,7 +2730,8 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.reviewQueue.japaneseRealEstateRecords, 1);
   assert.equal(stats.reviewQueue.calculationRuns, 1);
   assert.equal(stats.reviewQueue.propertyDossiers, 1);
-  assert.equal(stats.reviewQueue.highRiskExpertReview, 5);
+  assert.equal(stats.reviewQueue.runtimeGateEvents, 1);
+  assert.equal(stats.reviewQueue.highRiskExpertReview, 6);
   assert.deepEqual(stats.reviewQueue.invalidKnowledgeUnitIds, ["ku-2", "ku-4"]);
   assert.deepEqual(stats.reviewQueue.invalidEvidenceRefIds, ["ev-2"]);
   assert.deepEqual(stats.reviewQueue.invalidPolicyRuleIds, ["rule-1"]);
@@ -2739,9 +2740,12 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.deepEqual(stats.reviewQueue.invalidJapaneseRealEstateRecordIds, ["risk-1"]);
   assert.deepEqual(stats.reviewQueue.invalidCalculationRunIds, ["calc-bad"]);
   assert.deepEqual(stats.reviewQueue.invalidPropertyDossierIds, ["dossier-bad"]);
+  assert.deepEqual(stats.reviewQueue.invalidRuntimeGateEventIds, ["rt-bad"]);
   assert.equal(stats.reviewQueueItems.some(item => item.target_id === "rule-1" && item.reasons.includes("high_risk_missing_evidence")), true);
   assert.equal(stats.reviewQueueItems.some(item => item.target_id === "risk-1" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
+  assert.equal(stats.reviewQueueItems.some(item => item.target_id === "rt-bad" && item.reasons.includes("high_risk_external_model_allowed")), true);
   assert.ok(stats.reviewQueueActionSummary.some(item => item.action === "record_expert_reviewer_metadata"));
+  assert.ok(stats.reviewQueueActionSummary.some(item => item.action === "block_high_risk_external_model_route"));
 });
 
 test("knowledge brain reference integrity detects broken source and evidence graph", () => {
@@ -2904,20 +2908,26 @@ test("knowledge brain review queue summarizes pending and expert review work", (
     calculationRuns:[
       { id:"calc-review", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{ acquisitionPrice:1 }, formulas:{ grossYieldPercent:"x" }, outputs:{ grossYieldPercent:1 }, source_ids:["src-high"], evidence_ref_ids:["ev-1"], review_status:"candidate", risk_level:"medium", version:1 },
     ],
+    runtimeGateEvents:[
+      { id:"rt-review", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-high"], knowledge_ids:["ku-bad"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
+    ],
   });
 
-  assert.equal(summary.total, 6);
+  assert.equal(summary.total, 7);
   assert.equal(summary.sources, 2);
   assert.equal(summary.knowledgeUnits, 1);
   assert.equal(summary.policyRules, 1);
   assert.equal(summary.japaneseRealEstateRecords, 1);
   assert.equal(summary.calculationRuns, 1);
-  assert.equal(summary.highRiskExpertReview, 4);
+  assert.equal(summary.runtimeGateEvents, 1);
+  assert.equal(summary.highRiskExpertReview, 5);
   assert.equal(summary.invalidKnowledgeUnits, 1);
   assert.deepEqual(summary.invalidKnowledgeUnitIds, ["ku-bad"]);
   assert.equal(summary.invalidJapaneseRealEstateRecords, 1);
   assert.deepEqual(summary.invalidJapaneseRealEstateRecordIds, ["risk-review"]);
   assert.equal(summary.invalidCalculationRuns, 0);
+  assert.equal(summary.invalidRuntimeGateEvents, 1);
+  assert.deepEqual(summary.invalidRuntimeGateEventIds, ["rt-review"]);
 });
 
 test("knowledge brain review queue items expose actionable reasons across stores", () => {
@@ -2947,6 +2957,9 @@ test("knowledge brain review queue items expose actionable reasons across stores
     calculationRuns:[
       { id:"calc-review", property_id:"prop-1", calculation_type:"investment_metrics", calculation_method:"deterministic_code", inputs:{}, formulas:{}, outputs:{}, source_ids:[], evidence_ref_ids:[], review_status:"candidate", risk_level:"medium", version:1 },
     ],
+    runtimeGateEvents:[
+      { id:"rt-risk", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-review"], knowledge_ids:["ku-risk"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
+    ],
   });
 
   assert.equal(items[0].risk_level, "high");
@@ -2964,6 +2977,11 @@ test("knowledge brain review queue items expose actionable reasons across stores
   assert.equal(items.some(item => item.target_id === "rule-approved-missing-reviewer" && item.reasons.includes("approved_record_unapproved_source")), true);
   assert.equal(items.some(item => item.target_id === "risk-review" && item.reasons.includes("risk_record_missing_expert_confirmation")), true);
   assert.equal(items.some(item => item.target_id === "calc-review" && item.reasons.includes("missing_source_ids")), true);
+  const runtimeGateEvent = items.find(item => item.target_type === "runtime_gate_event" && item.target_id === "rt-risk");
+  assert.equal(runtimeGateEvent.tool_id, "M4");
+  assert.equal(runtimeGateEvent.action, "chat_runtime_gate");
+  assert.equal(runtimeGateEvent.route_model, "small_model");
+  assert.equal(runtimeGateEvent.reasons.includes("high_risk_external_model_allowed"), true);
 });
 
 test("knowledge brain review queue action summary groups reviewer work", () => {
@@ -2971,6 +2989,7 @@ test("knowledge brain review queue action summary groups reviewer work", () => {
     { target_type:"knowledge_unit", target_id:"ku-1", risk_level:"high", reasons:["high_risk_expert_review", "high_risk_missing_evidence"] },
     { target_type:"policy_rule", target_id:"rule-1", risk_level:"high", reasons:["missing_reviewed_by", "missing_reviewed_at"] },
     { target_type:"calculation_run", target_id:"calc-1", risk_level:"medium", reasons:["missing_source_ids", "missing_evidence_ref_ids"] },
+    { target_type:"runtime_gate_event", target_id:"rt-1", risk_level:"high", reasons:["high_risk_external_model_allowed"] },
     { target_type:"source_registry", target_id:"src-1", risk_level:"medium", reasons:["needs_review"] },
   ]);
 
@@ -2978,6 +2997,7 @@ test("knowledge brain review queue action summary groups reviewer work", () => {
   assert.ok(summary.some(item => item.action === "attach_approved_evidence" && item.targetIds.includes("knowledge_unit:ku-1")));
   assert.ok(summary.some(item => item.action === "record_expert_reviewer_metadata" && item.current === 1 && item.reasons.missing_reviewed_by === 1 && item.reasons.missing_reviewed_at === 1));
   assert.ok(summary.some(item => item.action === "attach_calculation_sources" && item.targetIds.includes("calculation_run:calc-1")));
+  assert.ok(summary.some(item => item.action === "block_high_risk_external_model_route" && item.targetIds.includes("runtime_gate_event:rt-1")));
   assert.deepEqual(summary.find(item => item.action === "assign_expert_reviewer").targetTypes, { knowledge_unit:1 });
   assert.equal(summary.find(item => item.action === "attach_approved_evidence").highRiskTargets, 1);
   assert.deepEqual(summary.find(item => item.action === "attach_calculation_sources").riskLevels, { medium:1 });
