@@ -502,6 +502,50 @@ test("knowledge brain api routes runtime gate events into review queue", async (
   }
 });
 
+test("knowledge brain api accepts snake case high risk readiness payloads", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  const token = createSessionToken();
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/knowledge-brain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action:"high_risk_readiness",
+        tool_id:"M4",
+        external_release:true,
+        records:{
+          tool_validation_runs:[],
+          eval_cases:[],
+        },
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await knowledgeBrainPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.action, "high_risk_readiness");
+    assert.equal(payload.readiness.toolId, "M4");
+    assert.equal(payload.readiness.externalReleaseAllowed, false);
+    assert.equal(payload.readiness.blockers.some(item => item.gate === "internal_validation"), true);
+  } finally {
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+  }
+});
+
 test("knowledge brain api exposes authenticated tool registry", async () => {
   const previousSecret = process.env.APP_AUTH_SECRET;
   const previousPassword = process.env.APP_PASSWORD;

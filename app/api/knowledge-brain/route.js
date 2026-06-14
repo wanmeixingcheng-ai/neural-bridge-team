@@ -157,8 +157,8 @@ function knowledgeBrainResponse(action, body = {}) {
       ok:true,
       action,
       readiness:knowledgeBrainHighRiskToolReadiness(records, {
-        toolId:body.toolId || "M4",
-        externalRelease:body.externalRelease === true,
+        toolId:body.toolId || body.tool_id || "M4",
+        externalRelease:body.externalRelease === true || body.external_release === true,
         ...(body.options || {}),
       }),
     };
