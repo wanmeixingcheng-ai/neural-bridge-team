@@ -2590,6 +2590,10 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"run-3", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-1"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
       { id:"run-bad", tool_id:"M5", mode:"external_release", status:"failed", review_status:"candidate", risk_level:"high", version:1, eval_case_ids:[], source_ids:[], evidence_ref_ids:[], false_negative_findings:2, metadata:{} },
     ],
+    runtimeGateEvents:[
+      { id:"rt-1", tool_id:"M4", action:"chat_runtime_gate", route_model:"knowledge_only", external_model_allowed:false, blocked_external_reason:"local_only", policy_result:{ blocks_final_answer:true }, output_quality:{ ok:true }, source_ids:["src-1"], knowledge_ids:["ku-1"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
+      { id:"rt-bad", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ blocks_final_answer:false }, output_quality:{ ok:true }, source_ids:["src-1"], knowledge_ids:["ku-1"], response_status:200, review_status:"approved", risk_level:"high", version:1 },
+    ],
   });
 
   assert.equal(stats.sourceRegistry, 2);
@@ -2642,6 +2646,15 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.toolValidationRunQualityIssues.false_negative_findings_present, 1);
   assert.equal(stats.toolValidationRunQualityIssues.non_internal_validation_mode, 1);
   assert.ok(stats.toolValidationRunQualityActions.some(item => item.action === "repair_false_negative_eval_failures" && item.runIds.includes("run-bad")));
+  assert.equal(stats.runtimeGateEvents, 2);
+  assert.equal(stats.runtimeGateEventReviewStatus.candidate, 1);
+  assert.equal(stats.runtimeGateEventReviewStatus.approved, 1);
+  assert.equal(stats.runtimeGateEventRiskLevels.high, 2);
+  assert.deepEqual(stats.runtimeGateEventRouteModels, { knowledge_only:1, small_model:1 });
+  assert.deepEqual(stats.runtimeGateEventBlockedReasons, { local_only:1, allowed:1 });
+  assert.equal(stats.runtimeGateExternalAllowed, 1);
+  assert.equal(stats.invalidRuntimeGateEvents, 1);
+  assert.equal(stats.runtimeGateEventQualityIssues.high_risk_external_model_allowed, 1);
   assert.deepEqual(stats.sourceColdStartTierCounts, {
     tier_1_official_public:1,
     tier_3_partner_practitioner_case:2,
