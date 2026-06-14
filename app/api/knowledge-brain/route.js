@@ -12,6 +12,7 @@ import {
   knowledgeBrainToolRegistry,
   knowledgeBrainToolRuntimeGate,
 } from "../../../lib/projectBrain.mjs";
+import { buildRuntimeGateEventRecord } from "../../../lib/knowledgeBrainSchemas.mjs";
 
 const KNOWLEDGE_BRAIN_MAX_REQUEST_BYTES = 512 * 1024;
 const KNOWLEDGE_BRAIN_RATE_WINDOW_MS = 60_000;
@@ -66,14 +67,33 @@ function knowledgeBrainResponse(action, body = {}) {
     return { ok:true, action, tools:knowledgeBrainToolRegistry() };
   }
   if (action === "runtime_gate") {
+    const runtime = buildKnowledgeBrainRuntimeResult(runtimeConfigFromBody(body));
+    const toolGate = knowledgeBrainToolRuntimeGate(body.toolId || body.runtime?.toolId || "", {
+      toolValidationRuns:records.toolValidationRuns,
+      evalCases:records.evalCases,
+      externalRelease:body.externalRelease === true,
+    });
     return {
       ok:true,
       action,
-      runtime:buildKnowledgeBrainRuntimeResult(runtimeConfigFromBody(body)),
-      toolGate:knowledgeBrainToolRuntimeGate(body.toolId || body.runtime?.toolId || "", {
-        toolValidationRuns:records.toolValidationRuns,
-        evalCases:records.evalCases,
-        externalRelease:body.externalRelease === true,
+      runtime,
+      toolGate,
+      event:buildRuntimeGateEventRecord({
+        tool_id:runtime.tool_id,
+        action,
+        task_type:body.runtime?.taskType || body.taskType || "",
+        risk_level:runtime.risk_level === "critical" ? "restricted" : runtime.risk_level,
+        route:runtime.route,
+        policy:runtime.policy,
+        output_quality:runtime.output_quality,
+        source_ids:runtime.audit?.source_ids || [],
+        knowledge_ids:runtime.audit?.knowledge_ids || [],
+        response_status:runtime.route?.blocked_external_reason || runtime.policy?.blocks_final_answer ? 200 : 200,
+        metadata:{
+          runtime_ok:runtime.ok,
+          tool_gate_ok:toolGate.ok,
+          policy_rule_ids:runtime.policy?.policy_rule_ids || [],
+        },
       }),
     };
   }

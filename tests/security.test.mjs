@@ -358,6 +358,10 @@ test("knowledge brain api computes runtime gate without provider transit", async
     assert.deepEqual(payload.runtime.audit.source_ids, ["src-official-1"]);
     assert.equal(payload.toolGate.tool_id, "M4");
     assert.equal(payload.toolGate.ok, false);
+    assert.equal(payload.event.tool_id, "M4");
+    assert.equal(payload.event.route_model, "knowledge_only");
+    assert.equal(payload.event.external_model_allowed, false);
+    assert.deepEqual(payload.event.source_ids, ["src-official-1"]);
   } finally {
     globalThis.fetch = previousFetch;
     if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
