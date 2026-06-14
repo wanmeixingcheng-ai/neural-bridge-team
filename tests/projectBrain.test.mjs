@@ -152,6 +152,9 @@ test("knowledge import audit summary previews safety rewrites", () => {
         metadata:{},
       },
     ],
+    tool_validation_runs:[
+      { id:"run-1", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+    ],
   };
   const summary = knowledgeBrainImportAuditSummary(payload);
   const size = knowledgeBrainImportSizeSummary(payload);
@@ -173,6 +176,8 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.governance.reviewQueue.highRiskExpertReview, 2);
   assert.equal(summary.governance.referenceIntegrityIssues, 0);
   assert.equal(summary.governance.sourceTrainingEligibilityBlockedReasons.high_risk_source_type, 1);
+  assert.equal(summary.governance.highRiskToolValidationReadiness.M4.approvedInternalRuns, 1);
+  assert.equal(summary.governance.highRiskToolValidationReadiness.M4.ready, false);
   assert.ok(summary.governance.reviewQueueActionSummary.some(item => item.action === "assign_expert_reviewer"));
   assert.ok(summary.actions.some(item => item.action === "review_training_consent_and_high_risk_sources" && item.current === 1));
   assert.ok(summary.actions.some(item => item.action === "route_imported_high_risk_records_to_review" && item.current === 2));
@@ -220,6 +225,11 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
     calculation_runs:[
       { id:"calc-1", source_ids:[], review_status:"candidate", risk_level:"medium", version:1 },
     ],
+    tool_validation_runs:[
+      { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
+      { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
+    ],
   });
 
   assert.equal(manifest.schemaVersion, 5);
@@ -239,6 +249,8 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
   assert.equal(manifest.reviewQueue.total, 2);
   assert.equal(manifest.reviewQueue.highRiskExpertReview, 1);
   assert.equal(manifest.referenceIntegrityIssues, 3);
+  assert.equal(manifest.highRiskToolValidationReadiness.M5.ready, true);
+  assert.equal(manifest.highRiskToolValidationReadiness.M4.ready, false);
   assert.ok(manifest.reviewQueueActionSummary.some(item => item.action === "attach_source_or_archive_record"));
   assert.ok(manifest.referenceIntegrityActions.some(item => item.action === "attach_source_or_archive_record"));
 });
@@ -2239,6 +2251,11 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
       { id:"prop-1", entity_type:"property", source_id:"src-1", property_id:"prop-1", title:"Approved property", review_status:"approved", risk_level:"medium", version:1, calculation_method:"source_reported", evidence_ref_ids:["ev-1"] },
       { id:"risk-1", entity_type:"risk", source_id:"src-2", property_id:"prop-1", title:"Candidate risk", review_status:"candidate", risk_level:"high", version:1, calculation_method:"source_reported", evidence_ref_ids:[], requires_expert_confirmation:false },
     ],
+    toolValidationRuns:[
+      { id:"run-1", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"run-2", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
+      { id:"run-3", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
+    ],
   });
 
   assert.equal(stats.sourceRegistry, 2);
@@ -2275,6 +2292,8 @@ test("knowledge brain inventory stats expose review, risk, evidence, and trainin
   assert.equal(stats.sourceDeletionImpactSummaries.length, 2);
   assert.deepEqual(stats.sourceDeletionImpactSummaries.map(item => item.sourceId), ["src-3", "src-4"]);
   assert.equal(stats.sourceDeletionImpactSummaries.find(item => item.sourceId === "src-4").wouldDisableTraining, true);
+  assert.equal(stats.highRiskToolValidationReadiness.M4.ready, true);
+  assert.equal(stats.highRiskToolValidationReadiness.M5.ready, false);
   assert.deepEqual(stats.sourceColdStartTierCounts, {
     tier_1_official_public:1,
     tier_3_partner_practitioner_case:2,
