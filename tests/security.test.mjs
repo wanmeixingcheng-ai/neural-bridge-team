@@ -229,6 +229,71 @@ test("chat knowledge brain runtime blocks unsafe high risk external model calls"
   }
 });
 
+test("chat knowledge brain runtime blocks high risk tools without validation readiness", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  process.env.ANTHROPIC_API_KEY = "test-api-key-that-should-not-be-used";
+  const token = createSessionToken();
+  let fetchCalled = false;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("model provider should not be called");
+  };
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        modelKey: "claude",
+        systemPrompt: "You are ARIA.",
+        messages: [{ role: "user", text: "賃料査定の根拠を整理してください" }],
+        options:{
+          knowledgeBrain:{
+            toolId:"M4",
+            taskType:"valuation",
+            riskLevel:"high",
+            retrievalResults:[
+              { id:"ku-valuation-1", sourceId:"src-valuation-1", title:"Approved valuation source", content:"Approved source-backed valuation note." },
+            ],
+            policyRules:[],
+            toolValidationRuns:[],
+            evalCases:[],
+          },
+        },
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await chatPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchCalled, false);
+    assert.equal(payload.knowledgeBrain.ok, false);
+    assert.equal(payload.knowledgeBrain.toolGate.ok, false);
+    assert.equal(payload.knowledgeBrain.toolGate.issues.includes("high_risk_validation_not_ready"), true);
+    assert.equal(payload.knowledgeBrain.toolGate.issues.includes("false_negative_eval_coverage_not_ready"), true);
+    assert.equal(payload.knowledgeBrain.event.metadata.tool_gate_ok, false);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+    if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  }
+});
+
 test("chat knowledge brain runtime injects gate metadata for allowed model calls", async () => {
   const previousSecret = process.env.APP_AUTH_SECRET;
   const previousPassword = process.env.APP_PASSWORD;
@@ -280,6 +345,7 @@ test("chat knowledge brain runtime injects gate metadata for allowed model calls
     assert.equal(payload.text, "Source-backed synthetic answer.");
     assert.equal(payload.knowledgeBrain.ok, true);
     assert.equal(payload.knowledgeBrain.audit.used_knowledge_brain, true);
+    assert.equal(payload.knowledgeBrain.toolGate.ok, true);
     assert.equal(payload.knowledgeBrain.event.tool_id, "M1");
     assert.equal(payload.knowledgeBrain.event.response_status, 200);
     assert.deepEqual(payload.knowledgeBrain.event.source_ids, ["src-1"]);

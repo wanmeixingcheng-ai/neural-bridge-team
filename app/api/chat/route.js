@@ -6,6 +6,7 @@ import { isQuotaExhaustionMessage } from "../../../lib/modelGateway.mjs";
 import { containsSensitiveSecret, sensitiveContentResponse } from "../../../lib/secretPolicy.mjs";
 import {
   buildKnowledgeBrainRuntimeResult,
+  knowledgeBrainToolRuntimeGate,
   validateOutputBuilderPayload,
 } from "../../../lib/projectBrain.mjs";
 import { buildRuntimeGateEventRecord } from "../../../lib/knowledgeBrainSchemas.mjs";
@@ -295,6 +296,16 @@ function knowledgeBrainRuntimeFromOptions(options = {}, userText = "", lang = "z
   });
 }
 
+function knowledgeBrainToolGateFromOptions(options = {}) {
+  const config = options?.knowledgeBrain;
+  if (!config || typeof config !== "object" || !config.toolId) return null;
+  return knowledgeBrainToolRuntimeGate(config.toolId, {
+    toolValidationRuns:Array.isArray(config.toolValidationRuns) ? config.toolValidationRuns : [],
+    evalCases:Array.isArray(config.evalCases) ? config.evalCases : [],
+    externalRelease:config.externalRelease === true,
+  });
+}
+
 function knowledgeBrainRuntimePrompt(runtime = null) {
   if (!runtime) return "";
   return [
@@ -312,14 +323,15 @@ function knowledgeBrainRuntimePrompt(runtime = null) {
   ].filter(Boolean).join("\n");
 }
 
-function knowledgeBrainShouldBlockExternal(runtime = null) {
+function knowledgeBrainShouldBlockExternal(runtime = null, toolGate = null) {
   if (!runtime) return false;
-  return runtime.route?.blocked_external_reason ||
+  return toolGate?.ok === false ||
+    runtime.route?.blocked_external_reason ||
     runtime.policy?.blocks_final_answer ||
     !validateOutputBuilderPayload(runtime.output || {}).ok;
 }
 
-function knowledgeBrainRuntimeEvent(runtime = null, { action = "chat_runtime_gate", responseStatus = 200 } = {}) {
+function knowledgeBrainRuntimeEvent(runtime = null, { action = "chat_runtime_gate", responseStatus = 200, toolGate = null } = {}) {
   if (!runtime) return null;
   return buildRuntimeGateEventRecord({
     tool_id:runtime.tool_id || "unknown",
@@ -334,13 +346,15 @@ function knowledgeBrainRuntimeEvent(runtime = null, { action = "chat_runtime_gat
     response_status:responseStatus,
     metadata:{
       runtime_ok:runtime.ok,
+      tool_gate_ok:toolGate?.ok,
+      tool_gate_issues:toolGate?.issues || [],
       policy_rule_ids:runtime.policy?.policy_rule_ids || [],
       used_knowledge_brain:runtime.audit?.used_knowledge_brain === true,
     },
   });
 }
 
-function knowledgeBrainMetadata(runtime = null, { responseStatus = 200 } = {}) {
+function knowledgeBrainMetadata(runtime = null, { responseStatus = 200, toolGate = null } = {}) {
   if (!runtime) return null;
   return {
     ok:runtime.ok,
@@ -351,16 +365,17 @@ function knowledgeBrainMetadata(runtime = null, { responseStatus = 200 } = {}) {
     output:runtime.output,
     audit:runtime.audit,
     outputQuality:runtime.output_quality,
-    event:knowledgeBrainRuntimeEvent(runtime, { responseStatus }),
+    toolGate,
+    event:knowledgeBrainRuntimeEvent(runtime, { responseStatus, toolGate }),
   };
 }
 
-async function withKnowledgeBrainMetadata(response, runtime = null) {
+async function withKnowledgeBrainMetadata(response, runtime = null, toolGate = null) {
   if (!runtime) return response;
   const payload = await response.json().catch(() => ({}));
   return Response.json({
     ...payload,
-    knowledgeBrain:knowledgeBrainMetadata(runtime, { responseStatus:response.status }),
+    knowledgeBrain:knowledgeBrainMetadata(runtime, { responseStatus:response.status, toolGate }),
   }, { status:response.status });
 }
 
@@ -385,12 +400,13 @@ export async function POST(request) {
   const lang = detectLanguage(userText, options.language || "zh");
   const effectiveOptions = { ...options, language:lang };
   const knowledgeBrainRuntime = knowledgeBrainRuntimeFromOptions(effectiveOptions, userText, lang);
+  const knowledgeBrainToolGate = knowledgeBrainToolGateFromOptions(effectiveOptions);
   if (containsSensitiveSecret(chatSecretScanText(systemPrompt, messages))) {
     await auditEvent(request, { type:"chat.secret_blocked", status:"blocked" });
     return sensitiveContentResponse();
   }
-  if (knowledgeBrainShouldBlockExternal(knowledgeBrainRuntime)) {
-    const knowledgeBrain = knowledgeBrainMetadata(knowledgeBrainRuntime, { responseStatus:200 });
+  if (knowledgeBrainShouldBlockExternal(knowledgeBrainRuntime, knowledgeBrainToolGate)) {
+    const knowledgeBrain = knowledgeBrainMetadata(knowledgeBrainRuntime, { responseStatus:200, toolGate:knowledgeBrainToolGate });
     await auditEvent(request, {
       type:"chat.knowledge_brain_blocked",
       status:"blocked",
@@ -406,11 +422,11 @@ export async function POST(request) {
 
   if (modelKey === "claude") {
     await auditEvent(request, { type:"chat.model_request", status:"ok", target:"claude" });
-    return withKnowledgeBrainMetadata(await callAnthropic(runtimeSystemPrompt, messages, apiKeys?.anthropic, effectiveOptions), knowledgeBrainRuntime);
+    return withKnowledgeBrainMetadata(await callAnthropic(runtimeSystemPrompt, messages, apiKeys?.anthropic, effectiveOptions), knowledgeBrainRuntime, knowledgeBrainToolGate);
   }
   if (modelKey === "gemma31" || modelKey === "gemma26" || modelKey === "flash") {
     await auditEvent(request, { type:"chat.model_request", status:"ok", target:modelKey });
-    return withKnowledgeBrainMetadata(await callGoogle(modelKey, runtimeSystemPrompt, messages, apiKeys?.google, effectiveOptions), knowledgeBrainRuntime);
+    return withKnowledgeBrainMetadata(await callGoogle(modelKey, runtimeSystemPrompt, messages, apiKeys?.google, effectiveOptions), knowledgeBrainRuntime, knowledgeBrainToolGate);
   }
 
   return Response.json({ error: "Unsupported model" }, { status: 400 });
