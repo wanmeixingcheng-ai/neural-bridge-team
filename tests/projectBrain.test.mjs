@@ -258,13 +258,16 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
       { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-fn-m5"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
       { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-fn-m5"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
     ],
+    runtime_gate_events:[
+      { id:"rt-export-ok", tool_id:"M5", action:"chat_runtime_gate", route_model:"knowledge_only", external_model_allowed:false, blocked_external_reason:"local_only_mode", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-1"], knowledge_ids:["ku-ok"], response_status:200, review_status:"approved", risk_level:"high", version:1 },
+    ],
   });
 
   assert.equal(manifest.schemaVersion, 7);
-  assert.equal(manifest.total, 11);
-  assert.equal(manifest.approvedRecords, 8);
-  assert.equal(manifest.highRiskRecords, 8);
-  assert.equal(manifest.approvedHighRiskRecords, 6);
+  assert.equal(manifest.total, 12);
+  assert.equal(manifest.approvedRecords, 9);
+  assert.equal(manifest.highRiskRecords, 9);
+  assert.equal(manifest.approvedHighRiskRecords, 7);
   assert.equal(manifest.missingSourceId, 3);
   assert.equal(manifest.missingVersion, 1);
   assert.equal(manifest.highRiskMissingEvidence, 3);
@@ -277,6 +280,9 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
   assert.equal(manifest.stores.property_dossiers.missingSourceId, 1);
   assert.equal(manifest.stores.property_dossiers.highRiskMissingEvidence, 1);
   assert.equal(manifest.stores.tool_validation_runs.total, 3);
+  assert.equal(manifest.stores.runtime_gate_events.total, 1);
+  assert.equal(manifest.stores.runtime_gate_events.missingSourceId, 0);
+  assert.equal(manifest.stores.runtime_gate_events.highRiskMissingEvidence, 0);
   assert.equal(manifest.reviewQueue.total, 3);
   assert.equal(manifest.reviewQueue.highRiskExpertReview, 2);
   assert.equal(manifest.referenceIntegrityIssues, 4);
