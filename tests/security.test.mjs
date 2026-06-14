@@ -7,6 +7,7 @@ import {
   SESSION_COOKIE,
 } from "../app/api/auth/session.js";
 import { POST as chatPost, sanitizeModelText } from "../app/api/chat/route.js";
+import { GET as knowledgeBrainGet, POST as knowledgeBrainPost } from "../app/api/knowledge-brain/route.js";
 import { checkRateLimit } from "../lib/rateLimit.mjs";
 import { containsSensitiveSecret } from "../lib/secretPolicy.mjs";
 
@@ -285,6 +286,116 @@ test("chat knowledge brain runtime injects gate metadata for allowed model calls
     else process.env.APP_PASSWORD = previousPassword;
     if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  }
+});
+
+test("knowledge brain api requires authentication", async () => {
+  const request = new Request("https://neural-bridge.local/api/knowledge-brain", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action:"inventory" }),
+  });
+  request.cookies = { get() { return undefined; } };
+
+  const response = await knowledgeBrainPost(request);
+  const payload = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.equal(payload.ok, false);
+});
+
+test("knowledge brain api computes runtime gate without provider transit", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  const token = createSessionToken();
+  let fetchCalled = false;
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("knowledge brain api must not call providers");
+  };
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/knowledge-brain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action:"runtime_gate",
+        runtime:{
+          toolId:"M4",
+          taskType:"valuation",
+          prompt:"賃料査定の根拠を確認する",
+          riskLevel:"high",
+          retrievalResults:[
+            { id:"ku-approved-1", sourceId:"src-official-1", title:"Approved source", content:"Official approved valuation note." },
+          ],
+          localOnly:true,
+        },
+        records:{
+          toolValidationRuns:[],
+          evalCases:[],
+        },
+      }),
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await knowledgeBrainPost(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchCalled, false);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.action, "runtime_gate");
+    assert.equal(payload.runtime.tool_id, "M4");
+    assert.equal(payload.runtime.route.external_model_allowed, false);
+    assert.equal(payload.runtime.route.blocked_external_reason, "local_only");
+    assert.deepEqual(payload.runtime.audit.source_ids, ["src-official-1"]);
+    assert.equal(payload.toolGate.tool_id, "M4");
+    assert.equal(payload.toolGate.ok, false);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
+  }
+});
+
+test("knowledge brain api exposes authenticated tool registry", async () => {
+  const previousSecret = process.env.APP_AUTH_SECRET;
+  const previousPassword = process.env.APP_PASSWORD;
+  process.env.APP_AUTH_SECRET = "test-auth-secret-at-least-32-bytes";
+  process.env.APP_PASSWORD = "owner-password";
+  const token = createSessionToken();
+
+  try {
+    const request = new Request("https://neural-bridge.local/api/knowledge-brain", {
+      method: "GET",
+    });
+    request.cookies = {
+      get(name) {
+        return name === SESSION_COOKIE ? { value: token } : undefined;
+      },
+    };
+
+    const response = await knowledgeBrainGet(request);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.action, "tool_registry");
+    assert.equal(payload.tools.some(tool => tool.tool_id === "M4"), true);
+  } finally {
+    if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
+    else process.env.APP_AUTH_SECRET = previousSecret;
+    if (previousPassword === undefined) delete process.env.APP_PASSWORD;
+    else process.env.APP_PASSWORD = previousPassword;
   }
 });
 
