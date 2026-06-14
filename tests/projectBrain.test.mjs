@@ -152,6 +152,9 @@ test("knowledge import audit summary previews safety rewrites", () => {
         metadata:{},
       },
     ],
+    eval_cases:[
+      { id:"eval-fn-m4", source_id:"src-reins", tool_id:"M4", prompt:"Missed risk.", expected_behavior:"Flag needs confirmation.", review_status:"approved", risk_level:"high", version:1, metadata:{ eval_type:"false_negative", reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+    ],
     tool_validation_runs:[
       { id:"run-1", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
     ],
@@ -159,10 +162,10 @@ test("knowledge import audit summary previews safety rewrites", () => {
   const summary = knowledgeBrainImportAuditSummary(payload);
   const size = knowledgeBrainImportSizeSummary(payload);
 
-  assert.equal(summary.total, 2);
-  assert.equal(size.totalItems, 2);
+  assert.equal(summary.total, 3);
+  assert.equal(size.totalItems, 3);
   assert.equal(size.tooLarge, false);
-  assert.equal(summary.size.totalItems, 2);
+  assert.equal(summary.size.totalItems, 3);
   assert.equal(summary.size.tooLarge, false);
   assert.equal(summary.blocked, false);
   assert.equal(summary.trainingDisabled, 1);
@@ -174,10 +177,11 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.stores.knowledge_units.reviewDowngraded, 1);
   assert.equal(summary.governance.reviewQueue.total, 2);
   assert.equal(summary.governance.reviewQueue.highRiskExpertReview, 2);
-  assert.equal(summary.governance.referenceIntegrityIssues, 0);
+  assert.equal(summary.governance.referenceIntegrityIssues, 1);
   assert.equal(summary.governance.sourceTrainingEligibilityBlockedReasons.high_risk_source_type, 1);
   assert.equal(summary.governance.highRiskToolValidationReadiness.M4.approvedInternalRuns, 1);
   assert.equal(summary.governance.highRiskToolValidationReadiness.M4.ready, false);
+  assert.equal(summary.governance.highRiskToolFalseNegativeCoverage.M4.ready, true);
   assert.ok(summary.governance.reviewQueueActionSummary.some(item => item.action === "assign_expert_reviewer"));
   assert.ok(summary.actions.some(item => item.action === "review_training_consent_and_high_risk_sources" && item.current === 1));
   assert.ok(summary.actions.some(item => item.action === "route_imported_high_risk_records_to_review" && item.current === 2));
@@ -222,6 +226,9 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
     evidence_refs:[
       { id:"ev-1", source_id:"src-1", target_type:"knowledge_unit", target_id:"ku-ok", review_status:"approved", risk_level:"low", version:1 },
     ],
+    eval_cases:[
+      { id:"eval-fn-m5", source_id:"src-1", tool_id:"M5", prompt:"Missed contract risk.", expected_behavior:"Flag needs confirmation.", review_status:"approved", risk_level:"high", version:1, metadata:{ eval_type:"false_negative", reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+    ],
     calculation_runs:[
       { id:"calc-1", source_ids:[], review_status:"candidate", risk_level:"medium", version:1 },
     ],
@@ -233,13 +240,13 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
   });
 
   assert.equal(manifest.schemaVersion, 5);
-  assert.equal(manifest.total, 5);
-  assert.equal(manifest.approvedRecords, 3);
-  assert.equal(manifest.highRiskRecords, 2);
-  assert.equal(manifest.approvedHighRiskRecords, 1);
+  assert.equal(manifest.total, 6);
+  assert.equal(manifest.approvedRecords, 4);
+  assert.equal(manifest.highRiskRecords, 3);
+  assert.equal(manifest.approvedHighRiskRecords, 2);
   assert.equal(manifest.missingSourceId, 2);
   assert.equal(manifest.missingVersion, 1);
-  assert.equal(manifest.highRiskMissingEvidence, 1);
+  assert.equal(manifest.highRiskMissingEvidence, 2);
   assert.equal(manifest.stores.source_registry.total, 1);
   assert.equal(manifest.stores.knowledge_units.highRiskRecords, 2);
   assert.equal(manifest.stores.knowledge_units.approvedHighRiskRecords, 1);
@@ -251,6 +258,8 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
   assert.equal(manifest.referenceIntegrityIssues, 3);
   assert.equal(manifest.highRiskToolValidationReadiness.M5.ready, true);
   assert.equal(manifest.highRiskToolValidationReadiness.M4.ready, false);
+  assert.equal(manifest.highRiskToolFalseNegativeCoverage.M5.ready, true);
+  assert.equal(manifest.highRiskToolFalseNegativeCoverage.M4.ready, false);
   assert.ok(manifest.reviewQueueActionSummary.some(item => item.action === "attach_source_or_archive_record"));
   assert.ok(manifest.referenceIntegrityActions.some(item => item.action === "attach_source_or_archive_record"));
 });
