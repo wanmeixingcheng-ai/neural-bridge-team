@@ -8,6 +8,7 @@ import {
   buildKnowledgeBrainRuntimeResult,
   validateOutputBuilderPayload,
 } from "../../../lib/projectBrain.mjs";
+import { buildRuntimeGateEventRecord } from "../../../lib/knowledgeBrainSchemas.mjs";
 
 const CHAT_MAX_REQUEST_BYTES = 3 * 1024 * 1024;
 const CHAT_RATE_WINDOW_MS = 60_000;
@@ -318,21 +319,48 @@ function knowledgeBrainShouldBlockExternal(runtime = null) {
     !validateOutputBuilderPayload(runtime.output || {}).ok;
 }
 
+function knowledgeBrainRuntimeEvent(runtime = null, { action = "chat_runtime_gate", responseStatus = 200 } = {}) {
+  if (!runtime) return null;
+  return buildRuntimeGateEventRecord({
+    tool_id:runtime.tool_id || "unknown",
+    action,
+    task_type:runtime.policy?.task_type || "",
+    risk_level:runtime.risk_level === "critical" ? "restricted" : runtime.risk_level || "medium",
+    route:runtime.route || {},
+    policy:runtime.policy || {},
+    output_quality:runtime.output_quality || {},
+    source_ids:runtime.audit?.source_ids || [],
+    knowledge_ids:runtime.audit?.knowledge_ids || [],
+    response_status:responseStatus,
+    metadata:{
+      runtime_ok:runtime.ok,
+      policy_rule_ids:runtime.policy?.policy_rule_ids || [],
+      used_knowledge_brain:runtime.audit?.used_knowledge_brain === true,
+    },
+  });
+}
+
+function knowledgeBrainMetadata(runtime = null, { responseStatus = 200 } = {}) {
+  if (!runtime) return null;
+  return {
+    ok:runtime.ok,
+    toolId:runtime.tool_id,
+    riskLevel:runtime.risk_level,
+    route:runtime.route,
+    policy:runtime.policy,
+    output:runtime.output,
+    audit:runtime.audit,
+    outputQuality:runtime.output_quality,
+    event:knowledgeBrainRuntimeEvent(runtime, { responseStatus }),
+  };
+}
+
 async function withKnowledgeBrainMetadata(response, runtime = null) {
   if (!runtime) return response;
   const payload = await response.json().catch(() => ({}));
   return Response.json({
     ...payload,
-    knowledgeBrain:{
-      ok:runtime.ok,
-      toolId:runtime.tool_id,
-      riskLevel:runtime.risk_level,
-      route:runtime.route,
-      policy:runtime.policy,
-      output:runtime.output,
-      audit:runtime.audit,
-      outputQuality:runtime.output_quality,
-    },
+    knowledgeBrain:knowledgeBrainMetadata(runtime, { responseStatus:response.status }),
   }, { status:response.status });
 }
 
@@ -362,19 +390,16 @@ export async function POST(request) {
     return sensitiveContentResponse();
   }
   if (knowledgeBrainShouldBlockExternal(knowledgeBrainRuntime)) {
-    await auditEvent(request, { type:"chat.knowledge_brain_blocked", status:"blocked", target:knowledgeBrainRuntime?.tool_id || "" });
+    const knowledgeBrain = knowledgeBrainMetadata(knowledgeBrainRuntime, { responseStatus:200 });
+    await auditEvent(request, {
+      type:"chat.knowledge_brain_blocked",
+      status:"blocked",
+      target:knowledgeBrainRuntime?.tool_id || "",
+      metadata:{ runtimeGateEvent:knowledgeBrain?.event || null },
+    });
     return Response.json({
       text:knowledgeBrainRuntime?.output?.answer_body || "",
-      knowledgeBrain:{
-        ok:false,
-        toolId:knowledgeBrainRuntime?.tool_id || "",
-        riskLevel:knowledgeBrainRuntime?.risk_level || "medium",
-        route:knowledgeBrainRuntime?.route || {},
-        policy:knowledgeBrainRuntime?.policy || {},
-        output:knowledgeBrainRuntime?.output || {},
-        audit:knowledgeBrainRuntime?.audit || {},
-        outputQuality:knowledgeBrainRuntime?.output_quality || {},
-      },
+      knowledgeBrain:{ ...knowledgeBrain, ok:false },
     });
   }
   const runtimeSystemPrompt = `${systemPrompt || ""}${knowledgeBrainRuntimePrompt(knowledgeBrainRuntime)}`;

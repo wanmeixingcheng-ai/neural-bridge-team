@@ -214,6 +214,10 @@ test("chat knowledge brain runtime blocks unsafe high risk external model calls"
     assert.equal(payload.knowledgeBrain.policy.blocks_final_answer, true);
     assert.equal(payload.knowledgeBrain.output.risk_level, "high");
     assert.equal(payload.knowledgeBrain.output.disclaimer.length > 0, true);
+    assert.equal(payload.knowledgeBrain.event.tool_id, "M4");
+    assert.equal(payload.knowledgeBrain.event.action, "chat_runtime_gate");
+    assert.equal(payload.knowledgeBrain.event.blocked_external_reason, "local_only");
+    assert.equal(payload.knowledgeBrain.event.external_model_allowed, false);
   } finally {
     globalThis.fetch = previousFetch;
     if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
@@ -276,6 +280,10 @@ test("chat knowledge brain runtime injects gate metadata for allowed model calls
     assert.equal(payload.text, "Source-backed synthetic answer.");
     assert.equal(payload.knowledgeBrain.ok, true);
     assert.equal(payload.knowledgeBrain.audit.used_knowledge_brain, true);
+    assert.equal(payload.knowledgeBrain.event.tool_id, "M1");
+    assert.equal(payload.knowledgeBrain.event.response_status, 200);
+    assert.deepEqual(payload.knowledgeBrain.event.source_ids, ["src-1"]);
+    assert.deepEqual(payload.knowledgeBrain.event.knowledge_ids, ["ku-1"]);
     assert.match(providerSystemPrompt, /Knowledge Brain runtime gate/);
     assert.match(providerSystemPrompt, /knowledge_ids: ku-1/);
   } finally {
