@@ -158,14 +158,17 @@ test("knowledge import audit summary previews safety rewrites", () => {
     tool_validation_runs:[
       { id:"run-1", tool_id:"M4", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
     ],
+    runtime_gate_events:[
+      { id:"rt-import-risk", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-reins"], knowledge_ids:["ku-risk"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
+    ],
   };
   const summary = knowledgeBrainImportAuditSummary(payload);
   const size = knowledgeBrainImportSizeSummary(payload);
 
-  assert.equal(summary.total, 4);
-  assert.equal(size.totalItems, 4);
+  assert.equal(summary.total, 5);
+  assert.equal(size.totalItems, 5);
   assert.equal(size.tooLarge, false);
-  assert.equal(summary.size.totalItems, 4);
+  assert.equal(summary.size.totalItems, 5);
   assert.equal(summary.size.tooLarge, false);
   assert.equal(summary.blocked, false);
   assert.equal(summary.trainingDisabled, 1);
@@ -176,8 +179,10 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.stores.source_registry.reinsCollectionSanitized, 1);
   assert.equal(summary.stores.knowledge_units.reviewDowngraded, 1);
   assert.equal(summary.stores.tool_validation_runs.total, 1);
-  assert.equal(summary.governance.reviewQueue.total, 2);
-  assert.equal(summary.governance.reviewQueue.highRiskExpertReview, 2);
+  assert.equal(summary.stores.runtime_gate_events.total, 1);
+  assert.equal(summary.governance.reviewQueue.total, 3);
+  assert.equal(summary.governance.reviewQueue.runtimeGateEvents, 1);
+  assert.equal(summary.governance.reviewQueue.highRiskExpertReview, 3);
   assert.equal(summary.governance.referenceIntegrityIssues, 1);
   assert.equal(summary.governance.sourceTrainingEligibilityBlockedReasons.high_risk_source_type, 1);
   assert.equal(summary.governance.highRiskToolValidationReadiness.M4.approvedInternalRuns, 1);
@@ -187,13 +192,17 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.governance.invalidToolValidationRuns, 1);
   assert.equal(summary.governance.toolValidationRunQualityIssues.missing_eval_case_ids, 1);
   assert.equal(summary.governance.toolValidationRunQualityIssues.missing_source_ids, 1);
+  assert.equal(summary.governance.invalidRuntimeGateEvents, 1);
+  assert.equal(summary.governance.runtimeGateEventQualityIssues.high_risk_external_model_allowed, 1);
   assert.ok(summary.governance.toolValidationRunQualityActions.some(item => item.action === "attach_eval_cases_to_validation_run"));
   assert.ok(summary.governance.reviewQueueActionSummary.some(item => item.action === "assign_expert_reviewer"));
+  assert.ok(summary.governance.reviewQueueActionSummary.some(item => item.action === "block_high_risk_external_model_route"));
   assert.ok(summary.governance.sourceReferenceSearchEligibilityActions.some(item => item.action === "route_source_to_review"));
   assert.ok(summary.governance.sourceReferenceSearchEligibilityActions.some(item => item.action === "record_expert_reviewer_metadata"));
   assert.ok(summary.actions.some(item => item.action === "review_training_consent_and_high_risk_sources" && item.current === 1));
   assert.ok(summary.actions.some(item => item.action === "route_imported_high_risk_records_to_review" && item.current === 2));
   assert.ok(summary.actions.some(item => item.action === "verify_reins_manual_upload_boundary" && item.current === 1));
+  assert.ok(summary.actions.some(item => item.action === "review_runtime_gate_event_quality" && item.current === 1));
 });
 
 test("knowledge import size summary counts evidence and governance text fields", () => {
