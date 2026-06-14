@@ -461,9 +461,11 @@ test("knowledge brain api routes runtime gate events into review queue", async (
         records:{
           runtimeGateEvents:[
             { id:"rt-api-risk", tool_id:"M4", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:true, blocked_external_reason:"", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-risk"], knowledge_ids:["ku-risk"], response_status:200, review_status:"candidate", risk_level:"high", version:1 },
+            { id:"rt-api-other", tool_id:"M1", action:"chat_runtime_gate", route_model:"small_model", external_model_allowed:false, blocked_external_reason:"local_only", policy_result:{ ok:true }, output_quality:{ ok:true }, source_ids:["src-other"], knowledge_ids:["ku-other"], response_status:200, review_status:"candidate", risk_level:"medium", version:1 },
           ],
         },
         targetTypes:["runtime_gate_event"],
+        sourceIds:["src-risk"],
         reasons:["high_risk_external_model_allowed"],
       }),
     });
@@ -479,11 +481,14 @@ test("knowledge brain api routes runtime gate events into review queue", async (
     assert.equal(response.status, 200);
     assert.equal(payload.ok, true);
     assert.equal(payload.action, "review_queue");
+    assert.equal(payload.summary.runtimeGateEvents, 2);
+    assert.equal(payload.summary.invalidRuntimeGateEvents, 1);
     assert.equal(payload.items.length, 1);
     assert.equal(payload.items[0].target_type, "runtime_gate_event");
     assert.equal(payload.items[0].target_id, "rt-api-risk");
     assert.equal(payload.items[0].tool_id, "M4");
     assert.equal(payload.items[0].reasons.includes("high_risk_external_model_allowed"), true);
+    assert.equal(payload.actionSummary.some(item => item.action === "block_high_risk_external_model_route" && item.sourceIds.includes("src-risk")), true);
   } finally {
     if (previousSecret === undefined) delete process.env.APP_AUTH_SECRET;
     else process.env.APP_AUTH_SECRET = previousSecret;

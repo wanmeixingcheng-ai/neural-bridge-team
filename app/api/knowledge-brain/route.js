@@ -8,7 +8,9 @@ import {
   knowledgeBrainColdStartReadiness,
   knowledgeBrainHighRiskToolReadiness,
   knowledgeBrainInventoryStats,
+  knowledgeBrainReviewQueueActionSummary,
   knowledgeBrainReviewQueueItems,
+  knowledgeBrainReviewQueueSummary,
   knowledgeBrainToolRegistry,
   knowledgeBrainToolRuntimeGate,
 } from "../../../lib/projectBrain.mjs";
@@ -99,18 +101,22 @@ function knowledgeBrainResponse(action, body = {}) {
     };
   }
   if (action === "review_queue") {
+    const items = knowledgeBrainReviewQueueItems({
+      ...records,
+      limit:Number.isFinite(body.limit) ? Math.min(Math.max(Math.floor(body.limit), 1), 100) : 50,
+      targetTypes:Array.isArray(body.targetTypes) ? body.targetTypes : [],
+      sourceIds:Array.isArray(body.sourceIds) ? body.sourceIds : [],
+      reviewStatuses:Array.isArray(body.reviewStatuses) ? body.reviewStatuses : [],
+      riskLevels:Array.isArray(body.riskLevels) ? body.riskLevels : [],
+      reasons:Array.isArray(body.reasons) ? body.reasons : [],
+      query:body.query || "",
+    });
     return {
       ok:true,
       action,
-      items:knowledgeBrainReviewQueueItems({
-        ...records,
-        limit:Number.isFinite(body.limit) ? Math.min(Math.max(Math.floor(body.limit), 1), 100) : 50,
-        targetTypes:Array.isArray(body.targetTypes) ? body.targetTypes : [],
-        reviewStatuses:Array.isArray(body.reviewStatuses) ? body.reviewStatuses : [],
-        riskLevels:Array.isArray(body.riskLevels) ? body.riskLevels : [],
-        reasons:Array.isArray(body.reasons) ? body.reasons : [],
-        query:body.query || "",
-      }),
+      summary:knowledgeBrainReviewQueueSummary(records),
+      items,
+      actionSummary:knowledgeBrainReviewQueueActionSummary(items),
     };
   }
   if (action === "cold_start_readiness") {
