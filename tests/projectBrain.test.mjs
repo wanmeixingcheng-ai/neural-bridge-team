@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JRE_KNOWLEDGE_DOMAINS } from "../lib/knowledgeBrainSchemas.mjs";
-import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseFalseNegativeCoverage, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceReferenceSearchEligibilityReport, filterSourceRegistryRecords, filterSourceTrainingEligibilityReport, filterSourceUsagePermissionReport, highRiskToolValidationReadiness, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainExportManifest, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, knowledgePanelSearchResults, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceDeletionImpactSummary, sourceReferenceSearchEligibilityActions, sourceReferenceSearchEligibilityReport, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
+import { KNOWLEDGE_BRAIN_COLD_START_DOMAIN_GROUPS, approvedKnowledgeBrainSearchResults, approvedKnowledgeUnitSearchResults, approvedMemoryMetadata, buildCalculationRunFromInvestmentMetrics, buildCalculationRunUpdatePayload, buildEvidenceRefUpdatePayload, buildJapaneseRealEstateRecordPayload, buildJapaneseRealEstateSourceIngestRecords, buildKnowledgeDocumentIngestRecords, buildKnowledgeGovernanceRecordPayload, buildKnowledgeGovernanceUpdatePayload, buildKnowledgeUnitUpdatePayload, buildPropertyDossier, buildPropertyDossierInvestmentMetrics, buildSourceRegistryIngestPayload, buildSourceRegistryUpdatePayload, buildSourceWithdrawalPatch, buildToolValidationRunUpdatePayload, buildVersionedKnowledgePatch, chunkText, evalCaseCategory, evalCaseCategoryCounts, evalCaseFalseNegativeCoverage, evalCaseMixReadiness, evalCaseMixReadinessActions, filterCalculationRunRecords, filterEvidenceRefRecords, filterJapaneseRealEstateRecords, filterKnowledgeBrainColdStartIngestionQueue, filterKnowledgeBrainReferenceIntegrityActions, filterKnowledgeBrainReviewQueueItems, filterKnowledgeDocumentRecords, filterKnowledgeGovernanceRecords, filterKnowledgeUnitRecords, filterProjectMemoriesBySourceType, filterSourceReferenceSearchEligibilityReport, filterSourceRegistryRecords, filterSourceTrainingEligibilityReport, filterSourceUsagePermissionReport, filterToolValidationRunRecords, highRiskToolValidationReadiness, knowledgeBrainColdStartDomainPlan, knowledgeBrainColdStartIngestionBatchManifest, knowledgeBrainColdStartIngestionQueue, knowledgeBrainColdStartReadiness, knowledgeBrainColdStartReadinessActions, knowledgeBrainColdStartSourceAcquisitionPlan, knowledgeBrainDomainCoverage, knowledgeBrainExportManifest, knowledgeBrainHighRiskToolReadiness, knowledgeBrainImportAuditSummary, knowledgeBrainImportSizeSummary, knowledgeBrainInventoryStats, knowledgeBrainReferenceIntegrityActions, knowledgeBrainReviewQueueActionSummary, knowledgeBrainReviewQueueItems, knowledgeBrainReviewQueueSummary, knowledgeBrainReviewerRoleActions, knowledgeBrainReviewerRoleSummary, knowledgePanelSearchResults, listToolValidationRuns, normalizeImportedKnowledgeBrainRecord, normalizeImportedSourceRegistryRecord, projectMemoryApprovalQueueSummary, projectMemoryNeedsApproval, projectMemorySourceTypeCounts, putSourceRegistryRecord, putToolValidationRun, rememberWorkflowArtifact, selectLowValueMemories, sourceContributionConsentActions, sourceContributionConsentReport, sourceColdStartTier, sourceColdStartTierCounts, sourceDeletionImpactSummary, sourceReferenceSearchEligibilityActions, sourceReferenceSearchEligibilityReport, sourceTrainingEligibilityBlockedReasonCounts, sourceTrainingEligibilityReasons, sourceTrainingEligibilityReport, sourceUsagePermissionActions, sourceUsagePermissionBlockedReasonCounts, sourceUsagePermissionReport, sourceUsagePermissions, trainingEligibleSources, updateToolValidationRun, validateKnowledgeBrainReferenceIntegrity } from "../lib/projectBrain.mjs";
 
 test("project brain chunks long text with overlap", () => {
   const chunks = chunkText("a".repeat(30), 10, 2);
@@ -1891,6 +1891,56 @@ test("high-risk tool validation readiness requires internal runs signoff and zer
 
   assert.equal(ready.ready, true);
   assert.deepEqual(ready.blockers, []);
+});
+
+test("tool validation run helpers version and filter release evidence", () => {
+  const update = buildToolValidationRunUpdatePayload({
+    id:"run-1",
+    tool_id:"M4",
+    mode:"internal_pilot",
+    status:"pending",
+    eval_case_ids:["eval-1"],
+    source_ids:["src-1"],
+    evidence_ref_ids:["ev-1"],
+    false_negative_findings:0,
+    review_status:"candidate",
+    risk_level:"high",
+    version:1,
+    metadata:{ reviewer_role:"takken" },
+  }, {
+    status:"passed",
+    review_status:"approved",
+    metadata:{ approval_note:"internal pilot passed" },
+  }, {
+    changedBy:"takken-reviewer",
+    reason:"internal_validation_passed",
+    now:"2026-06-12T06:00:00.000Z",
+  });
+
+  assert.equal(update.record.version, 2);
+  assert.equal(update.record.status, "passed");
+  assert.equal(update.record.review_status, "approved");
+  assert.equal(update.record.metadata.reviewed_by, "takken-reviewer");
+  assert.equal(update.record.metadata.reviewed_at, "2026-06-12T06:00:00.000Z");
+  assert.equal(update.quality.ok, true);
+  assert.equal(update.validationReadiness.approvedInternalRuns, 1);
+
+  const filtered = filterToolValidationRunRecords([
+    { ...update.record, updated_at:"2026-06-12T06:00:00.000Z" },
+    { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"failed", review_status:"candidate", risk_level:"high", eval_case_ids:["eval-2"], source_ids:["src-2"], evidence_ref_ids:["ev-2"], false_negative_findings:1, metadata:{}, updated_at:"2026-06-12T07:00:00.000Z" },
+  ], {
+    toolIds:["M4"],
+    statuses:["passed"],
+    reviewStatuses:["approved"],
+    sourceIds:["src-1"],
+    evalCaseIds:["eval-1"],
+    query:"internal pilot",
+  });
+
+  assert.deepEqual(filtered.map(item => item.id), ["run-1"]);
+  assert.equal(typeof putToolValidationRun, "function");
+  assert.equal(typeof listToolValidationRuns, "function");
+  assert.equal(typeof updateToolValidationRun, "function");
 });
 
 test("high-risk tools stay internal until cold start and eval set gates pass", () => {
