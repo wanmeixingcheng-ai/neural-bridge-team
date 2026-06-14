@@ -23,6 +23,7 @@ import {
   buildScenarioRecord,
   buildSourceRegistryRecord,
   buildTaxRecord,
+  buildToolValidationRunRecord,
   buildTransactionRecord,
   buildAreaRecord,
   normalizeReviewStatus,
@@ -34,6 +35,7 @@ import {
   validateKnowledgeUnitQuality,
   validateKnowledgeUnitVersionChain,
   validateSourceRegistryRecord,
+  validateToolValidationRunRecord,
   validateSourceBackedConclusion,
 } from "../lib/knowledgeBrainSchemas.mjs";
 
@@ -46,6 +48,7 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     "eval_cases",
     "evidence_refs",
     "calculation_runs",
+    "tool_validation_runs",
     "property_records",
     "land_records",
     "building_records",
@@ -62,7 +65,8 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
     assert.ok(
       store.indexes.some(([, keyPath]) => keyPath === "source_id") ||
       store.name === "source_registry" ||
-      store.name === "calculation_runs"
+      store.name === "calculation_runs" ||
+      store.name === "tool_validation_runs"
     );
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "review_status"));
     assert.ok(store.indexes.some(([, keyPath]) => keyPath === "risk_level"));
@@ -73,6 +77,7 @@ test("knowledge brain stores define phase 0 and phase 1 database tables", () => 
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.knowledgeUnits.indexes.find(([name]) => name === "sourceReview")?.[1], ["source_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.evidenceRefs.indexes.find(([name]) => name === "targetReview")?.[1], ["target_type", "target_id", "review_status"]);
   assert.deepEqual(KNOWLEDGE_BRAIN_STORES.calculationRuns.indexes.find(([name]) => name === "propertyType")?.[1], ["property_id", "calculation_type"]);
+  assert.deepEqual(KNOWLEDGE_BRAIN_STORES.toolValidationRuns.indexes.find(([name]) => name === "toolReview")?.[1], ["tool_id", "review_status"]);
 });
 
 test("japanese real estate knowledge domains cover D01 through D16", () => {
@@ -155,6 +160,51 @@ test("calculation run schema preserves deterministic formulas and audit referenc
     "missing_source_ids",
     "missing_evidence_ref_ids",
     "high_risk_calculation_not_approved",
+  ]);
+});
+
+test("tool validation run schema preserves internal high-risk release evidence", () => {
+  const run = buildToolValidationRunRecord({
+    tool_id:"M4",
+    mode:"internal_pilot",
+    status:"passed",
+    eval_case_ids:["eval-fn-1"],
+    source_ids:["src-policy"],
+    evidence_ref_ids:["ev-policy"],
+    false_negative_findings:0,
+    review_status:"approved",
+    risk_level:"high",
+    metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" },
+  });
+  const invalid = validateToolValidationRunRecord({
+    id:"run-bad",
+    tool_id:"",
+    mode:"external_release",
+    status:"",
+    eval_case_ids:[],
+    source_ids:[],
+    evidence_ref_ids:[],
+    false_negative_findings:1,
+    review_status:"approved",
+    risk_level:"high",
+    version:1,
+    metadata:{},
+  });
+
+  assert.equal(run.tool_id, "M4");
+  assert.equal(run.mode, "internal_pilot");
+  assert.equal(run.status, "passed");
+  assert.equal(run.version, 1);
+  assert.equal(validateToolValidationRunRecord(run).ok, true);
+  assert.deepEqual(invalid.issues, [
+    "missing_tool_id",
+    "missing_status",
+    "missing_eval_case_ids",
+    "missing_source_ids",
+    "missing_evidence_ref_ids",
+    "false_negative_findings_present",
+    "non_internal_validation_mode",
+    "approved_validation_missing_reviewer_metadata",
   ]);
 });
 
@@ -354,6 +404,22 @@ test("database schema enforces calculation run deterministic payload boundary", 
   assert.match(sql, /jsonb_array_length\(evidence_ref_ids\) > 0/);
 });
 
+test("database schema enforces tool validation run release evidence boundary", () => {
+  const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
+
+  assert.match(sql, /create table if not exists nb_tool_validation_runs/);
+  assert.match(sql, /nb_tool_validation_runs_mode_chk check \(mode = 'internal_pilot'\)/);
+  assert.match(sql, /nb_tool_validation_runs_payload_chk/);
+  assert.match(sql, /false_negative_findings >= 0/);
+  assert.match(sql, /jsonb_typeof\(eval_case_ids\) = 'array'/);
+  assert.match(sql, /jsonb_array_length\(eval_case_ids\) > 0/);
+  assert.match(sql, /jsonb_array_length\(source_ids\) > 0/);
+  assert.match(sql, /jsonb_array_length\(evidence_ref_ids\) > 0/);
+  assert.match(sql, /review_status <> 'approved' or \(/);
+  assert.match(sql, /false_negative_findings = 0/);
+  assert.match(sql, /length\(trim\(metadata->>'reviewed_by'\)\) > 0/);
+});
+
 test("database schema indexes review and source filtering paths", () => {
   const sql = readFileSync(new URL("../lib/database.sql", import.meta.url), "utf8");
 
@@ -378,6 +444,10 @@ test("database schema indexes review and source filtering paths", () => {
     "nb_calculation_runs_property_type_idx",
     "nb_calculation_runs_source_ids_idx",
     "nb_calculation_runs_evidence_ref_ids_idx",
+    "nb_tool_validation_runs_tool_review_idx",
+    "nb_tool_validation_runs_eval_case_ids_idx",
+    "nb_tool_validation_runs_source_ids_idx",
+    "nb_tool_validation_runs_evidence_ref_ids_idx",
   ]) {
     assert.match(sql, new RegExp(indexName));
   }

@@ -285,6 +285,49 @@ create table if not exists nb_calculation_runs (
   )
 );
 
+create table if not exists nb_tool_validation_runs (
+  id text primary key,
+  tool_id text not null,
+  mode text not null default 'internal_pilot',
+  status text not null default 'pending',
+  scenario_id text not null default '',
+  eval_case_ids jsonb not null default '[]'::jsonb,
+  source_ids jsonb not null default '[]'::jsonb,
+  evidence_ref_ids jsonb not null default '[]'::jsonb,
+  false_negative_findings integer not null default 0,
+  findings jsonb not null default '[]'::jsonb,
+  reviewer_role text not null default '',
+  review_status text not null default 'candidate',
+  risk_level text not null default 'high',
+  version integer not null default 1,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint nb_tool_validation_runs_mode_chk check (mode = 'internal_pilot'),
+  constraint nb_tool_validation_runs_status_chk check (status in ('pending', 'passed', 'failed', 'blocked')),
+  constraint nb_tool_validation_runs_review_status_chk check (review_status in ('draft', 'candidate', 'in_review', 'approved', 'rejected', 'archived')),
+  constraint nb_tool_validation_runs_risk_level_chk check (risk_level in ('low', 'medium', 'high', 'restricted')),
+  constraint nb_tool_validation_runs_version_chk check (version >= 1),
+  constraint nb_tool_validation_runs_payload_chk check (
+    false_negative_findings >= 0 and
+    jsonb_typeof(eval_case_ids) = 'array' and
+    jsonb_typeof(source_ids) = 'array' and
+    jsonb_typeof(evidence_ref_ids) = 'array' and
+    jsonb_typeof(findings) = 'array' and
+    jsonb_typeof(metadata) = 'object' and
+    jsonb_array_length(eval_case_ids) > 0 and
+    jsonb_array_length(source_ids) > 0 and
+    jsonb_array_length(evidence_ref_ids) > 0 and
+    (
+      review_status <> 'approved' or (
+        false_negative_findings = 0 and
+        length(trim(metadata->>'reviewed_by')) > 0 and
+        length(trim(metadata->>'reviewed_at')) > 0
+      )
+    )
+  )
+);
+
 create index if not exists nb_source_registry_type_idx on nb_source_registry (source_type);
 create index if not exists nb_source_registry_review_idx on nb_source_registry (review_status);
 create index if not exists nb_source_registry_risk_idx on nb_source_registry (risk_level);
@@ -330,3 +373,12 @@ create index if not exists nb_calculation_runs_risk_idx on nb_calculation_runs (
 create index if not exists nb_calculation_runs_property_type_idx on nb_calculation_runs (property_id, calculation_type);
 create index if not exists nb_calculation_runs_source_ids_idx on nb_calculation_runs using gin (source_ids);
 create index if not exists nb_calculation_runs_evidence_ref_ids_idx on nb_calculation_runs using gin (evidence_ref_ids);
+create index if not exists nb_tool_validation_runs_tool_idx on nb_tool_validation_runs (tool_id);
+create index if not exists nb_tool_validation_runs_mode_idx on nb_tool_validation_runs (mode);
+create index if not exists nb_tool_validation_runs_status_idx on nb_tool_validation_runs (status);
+create index if not exists nb_tool_validation_runs_review_idx on nb_tool_validation_runs (review_status);
+create index if not exists nb_tool_validation_runs_risk_idx on nb_tool_validation_runs (risk_level);
+create index if not exists nb_tool_validation_runs_tool_review_idx on nb_tool_validation_runs (tool_id, review_status);
+create index if not exists nb_tool_validation_runs_eval_case_ids_idx on nb_tool_validation_runs using gin (eval_case_ids);
+create index if not exists nb_tool_validation_runs_source_ids_idx on nb_tool_validation_runs using gin (source_ids);
+create index if not exists nb_tool_validation_runs_evidence_ref_ids_idx on nb_tool_validation_runs using gin (evidence_ref_ids);

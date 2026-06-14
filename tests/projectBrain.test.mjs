@@ -18,7 +18,7 @@ test("project brain ignores empty chunk content", () => {
 test("knowledge database upgrades create missing indexes on existing stores", () => {
   const source = readFileSync(new URL("../lib/projectBrain.mjs", import.meta.url), "utf8");
 
-  assert.match(source, /const KB_DB_VERSION = 5;/);
+  assert.match(source, /const KB_DB_VERSION = 6;/);
   assert.match(source, /function ensureKnowledgeBrainIndexes/);
   assert.match(source, /store\.indexNames\.contains\(indexName\)/);
   assert.match(source, /createKnowledgeBrainStores\(db, transaction\)/);
@@ -162,10 +162,10 @@ test("knowledge import audit summary previews safety rewrites", () => {
   const summary = knowledgeBrainImportAuditSummary(payload);
   const size = knowledgeBrainImportSizeSummary(payload);
 
-  assert.equal(summary.total, 3);
-  assert.equal(size.totalItems, 3);
+  assert.equal(summary.total, 4);
+  assert.equal(size.totalItems, 4);
   assert.equal(size.tooLarge, false);
-  assert.equal(summary.size.totalItems, 3);
+  assert.equal(summary.size.totalItems, 4);
   assert.equal(summary.size.tooLarge, false);
   assert.equal(summary.blocked, false);
   assert.equal(summary.trainingDisabled, 1);
@@ -175,6 +175,7 @@ test("knowledge import audit summary previews safety rewrites", () => {
   assert.equal(summary.importWarnings.approved_high_risk_missing_reviewer_metadata, 2);
   assert.equal(summary.stores.source_registry.reinsCollectionSanitized, 1);
   assert.equal(summary.stores.knowledge_units.reviewDowngraded, 1);
+  assert.equal(summary.stores.tool_validation_runs.total, 1);
   assert.equal(summary.governance.reviewQueue.total, 2);
   assert.equal(summary.governance.reviewQueue.highRiskExpertReview, 2);
   assert.equal(summary.governance.referenceIntegrityIssues, 1);
@@ -235,17 +236,17 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
       { id:"calc-1", source_ids:[], review_status:"candidate", risk_level:"medium", version:1 },
     ],
     tool_validation_runs:[
-      { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
-      { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
-      { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
+      { id:"run-1", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-fn-m5"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T00:00:00.000Z" } },
+      { id:"run-2", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-fn-m5"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T01:00:00.000Z" } },
+      { id:"run-3", tool_id:"M5", mode:"internal_pilot", status:"passed", review_status:"approved", risk_level:"high", version:1, eval_case_ids:["eval-fn-m5"], source_ids:["src-1"], evidence_ref_ids:["ev-1"], false_negative_findings:0, metadata:{ reviewed_by:"takken", reviewed_at:"2026-06-12T02:00:00.000Z" } },
     ],
   });
 
-  assert.equal(manifest.schemaVersion, 5);
-  assert.equal(manifest.total, 6);
-  assert.equal(manifest.approvedRecords, 4);
-  assert.equal(manifest.highRiskRecords, 3);
-  assert.equal(manifest.approvedHighRiskRecords, 2);
+  assert.equal(manifest.schemaVersion, 6);
+  assert.equal(manifest.total, 9);
+  assert.equal(manifest.approvedRecords, 7);
+  assert.equal(manifest.highRiskRecords, 6);
+  assert.equal(manifest.approvedHighRiskRecords, 5);
   assert.equal(manifest.missingSourceId, 2);
   assert.equal(manifest.missingVersion, 1);
   assert.equal(manifest.highRiskMissingEvidence, 2);
@@ -255,6 +256,7 @@ test("knowledge export manifest summarizes governance preservation risks", () =>
   assert.deepEqual(manifest.stores.knowledge_units.reviewStatuses, { approved:1, candidate:1 });
   assert.deepEqual(manifest.stores.knowledge_units.riskLevels, { high:1, restricted:1 });
   assert.equal(manifest.stores.calculation_runs.missingSourceId, 1);
+  assert.equal(manifest.stores.tool_validation_runs.total, 3);
   assert.equal(manifest.reviewQueue.total, 2);
   assert.equal(manifest.reviewQueue.highRiskExpertReview, 1);
   assert.equal(manifest.referenceIntegrityIssues, 3);
